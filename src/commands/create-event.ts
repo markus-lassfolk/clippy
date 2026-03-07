@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
-import { createEvent, getRooms, searchRooms, getScheduleViaOutlook, Recurrence, RecurrencePattern, RecurrenceRange } from '../lib/ews-client.js';
+import { createEvent, getRooms, searchRooms, isRoomFree, Recurrence, RecurrencePattern, RecurrenceRange } from '../lib/ews-client.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -185,35 +185,24 @@ export const createEventCommand = new Command('create-event')
     if (options.findRoom) {
       console.log('Searching for available rooms...');
 
-      // Try searchRooms first, fallback to getRooms
-      let roomsResult = await searchRooms(authResult.token!, '');
-      if (!roomsResult.ok || !roomsResult.data || roomsResult.data.length === 0) {
-        roomsResult = await getRooms(authResult.token!);
-      }
+      const roomsResult = await getRooms(authResult.token!);
 
       if (!roomsResult.ok || !roomsResult.data || roomsResult.data.length === 0) {
         console.error('Could not fetch room list.');
       } else {
-        // Check each room's availability
         for (const room of roomsResult.data) {
-          const scheduleResult = await getScheduleViaOutlook(
+          const free = await isRoomFree(
             authResult.token!,
-            [room.Address],
+            room.Address,
             start.toISOString(),
-            end.toISOString(),
-            Math.round((end.getTime() - start.getTime()) / 60000)
+            end.toISOString()
           );
 
-          if (scheduleResult.ok && scheduleResult.data) {
-            const roomSchedule = scheduleResult.data[0];
-            const hasFreeSlot = roomSchedule?.scheduleItems?.some(item => item.status === 'Free');
-
-            if (hasFreeSlot) {
-              roomEmail = room.Address;
-              roomName = room.Name;
-              console.log(`Found available room: ${room.Name}`);
-              break;
-            }
+          if (free) {
+            roomEmail = room.Address;
+            roomName = room.Name;
+            console.log(`Found available room: ${room.Name}`);
+            break;
           }
         }
 
