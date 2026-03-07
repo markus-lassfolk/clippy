@@ -1729,6 +1729,17 @@ export async function getScheduleViaOutlook(
   durationMinutes: number = 30
 ): Promise<OwaResponse<ScheduleInfo[]>> {
   try {
+    // SuggestionsViewOptions requires dates at midnight with no timezone offset
+    const suggestStartD = new Date(startDateTime);
+    suggestStartD.setHours(0, 0, 0, 0);
+    const suggestEndD = new Date(endDateTime);
+    suggestEndD.setHours(0, 0, 0, 0);
+    suggestEndD.setDate(suggestEndD.getDate() + 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toMidnight = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T00:00:00`;
+    const suggestStart = toMidnight(suggestStartD);
+    const suggestEnd = toMidnight(suggestEndD);
+
     const mailboxDataXml = emails.map(email => `
     <t:MailboxData>
       <t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email>
@@ -1759,8 +1770,8 @@ export async function getScheduleViaOutlook(
       </m:MailboxDataArray>
       <t:FreeBusyViewOptions>
         <t:TimeWindow>
-          <t:StartTime>${xmlEscape(startDateTime)}</t:StartTime>
-          <t:EndTime>${xmlEscape(endDateTime)}</t:EndTime>
+          <t:StartTime>${xmlEscape(suggestStart)}</t:StartTime>
+          <t:EndTime>${xmlEscape(suggestEnd)}</t:EndTime>
         </t:TimeWindow>
         <t:MergedFreeBusyIntervalInMinutes>${durationMinutes}</t:MergedFreeBusyIntervalInMinutes>
         <t:RequestedView>DetailedMerged</t:RequestedView>
@@ -1771,8 +1782,8 @@ export async function getScheduleViaOutlook(
         <t:MaximumNonWorkHourResultsByDay>0</t:MaximumNonWorkHourResultsByDay>
         <t:MeetingDurationInMinutes>${durationMinutes}</t:MeetingDurationInMinutes>
         <t:DetailedSuggestionsWindow>
-          <t:StartTime>${xmlEscape(startDateTime)}</t:StartTime>
-          <t:EndTime>${xmlEscape(endDateTime)}</t:EndTime>
+          <t:StartTime>${xmlEscape(suggestStart)}</t:StartTime>
+          <t:EndTime>${xmlEscape(suggestEnd)}</t:EndTime>
         </t:DetailedSuggestionsWindow>
       </t:SuggestionsViewOptions>
     </m:GetUserAvailabilityRequest>`);
