@@ -1,10 +1,7 @@
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { getCalendarEvents, type CalendarEvent, type CalendarAttendee } from '../lib/ews-client.js';
-
-function resolveMailbox(options: { mailbox?: string }): string | undefined {
-  return options.mailbox?.trim() || process.env.EWS_TARGET_MAILBOX?.trim() || undefined;
-}
+import { resolveMailbox } from '../lib/mailbox-utils.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);

@@ -80,7 +80,7 @@ const EWS_USERNAME = process.env.EWS_USERNAME || '';
 const EWS_TARGET_MAILBOX = process.env.EWS_TARGET_MAILBOX || '';
 
 function getEffectiveMailbox(mailbox?: string): string {
-  return (mailbox || EWS_TARGET_MAILBOX || '').trim();
+  return (mailbox || '').trim();
 }
 
 function mailboxXml(mailbox?: string): string {
@@ -1765,11 +1765,18 @@ export async function getScheduleViaOutlook(
     const suggestStart = toMidnight(suggestStartD);
     const suggestEnd = toMidnight(suggestEndD);
 
-    const mailboxDataXml = emails.map(email => `
+    const mailboxDataXml = [
+      ...(mailbox ? [`
+    <t:MailboxData>
+      <t:Email><t:Address>${xmlEscape(mailbox)}</t:Address></t:Email>
+      <t:AttendeeType>Organizer</t:AttendeeType>
+    </t:MailboxData>`] : []),
+      ...emails.map(email => `
     <t:MailboxData>
       <t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email>
       <t:AttendeeType>Required</t:AttendeeType>
-    </t:MailboxData>`).join('');
+    </t:MailboxData>`)
+    ].join('');
 
     const envelope = soapEnvelope(`
     <m:GetUserAvailabilityRequest>
@@ -1790,7 +1797,6 @@ export async function getScheduleViaOutlook(
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:DaylightTime>
       </t:TimeZone>
-      ${mailbox ? `<t:MailboxDataArray><t:MailboxData><t:Email><t:Address>${xmlEscape(mailbox)}</t:Address></t:Email><t:AttendeeType>Organizer</t:AttendeeType></t:MailboxData></t:MailboxDataArray>` : ''}
       <m:MailboxDataArray>
         ${mailboxDataXml}
       </m:MailboxDataArray>

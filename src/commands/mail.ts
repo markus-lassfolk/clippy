@@ -4,10 +4,7 @@ import { getEmails, getEmail, getAttachments, getAttachment, updateEmail, moveEm
 import { markdownToHtml } from '../lib/markdown.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-
-function resolveMailbox(options: { mailbox?: string }): string | undefined {
-  return options.mailbox?.trim() || process.env.EWS_TARGET_MAILBOX?.trim() || undefined;
-}
+import { resolveMailbox } from '../lib/mailbox-utils.js';
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
