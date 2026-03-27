@@ -1657,7 +1657,7 @@ export async function resolveNames(
   }
 }
 
-export async function getRoomLists(token: string, mailbox?: string): Promise<OwaResponse<RoomList[]>> {
+export async function getRoomLists(token: string): Promise<OwaResponse<RoomList[]>> {
   try {
     const envelope = soapEnvelope(`<m:GetRoomLists />`);
     const xml = await callEws(token, envelope);
@@ -1699,7 +1699,7 @@ export async function getRooms(
     }
 
     // No room list specified: get all room lists first, then rooms from each
-    const listsResult = await getRoomLists(token, mailbox);
+    const listsResult = await getRoomLists(token);
     if (!listsResult.ok || !listsResult.data || listsResult.data.length === 0) {
       return ewsResult([]);
     }

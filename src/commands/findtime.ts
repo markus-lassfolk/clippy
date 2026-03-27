@@ -162,6 +162,11 @@ export const findtimeCommand = new Command('findtime')
       }
     }
 
+    // When using --mailbox without explicit emails, add the mailbox as the attendee
+    if (mailbox && emails.length === 0) {
+      emails.push(mailbox);
+    }
+
     if (emails.length === 0) {
       console.error('Error: Please provide at least one email address.');
       console.error('\nUsage: clippy findtime nextweek user@example.com');
