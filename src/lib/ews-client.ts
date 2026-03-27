@@ -1815,11 +1815,14 @@ export async function getScheduleViaOutlook(
     const xml = await callEws(token, envelope);
 
     // Parse suggestions into free slots
-    const schedules: ScheduleInfo[] = emails.map(email => ({
-      scheduleId: email,
-      availabilityView: '',
-      scheduleItems: [],
-    }));
+    const schedules: ScheduleInfo[] = [
+      ...(mailbox ? [{ scheduleId: mailbox, availabilityView: '', scheduleItems: [] as ScheduleItem[] }] : []),
+      ...emails.map(email => ({
+        scheduleId: email,
+        availabilityView: '',
+        scheduleItems: [] as ScheduleItem[],
+      }))
+    ];
 
     // Extract suggestions
     const suggestions = extractBlocks(xml, 'Suggestion');
