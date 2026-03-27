@@ -1,12 +1,54 @@
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function sanitizeLinkUrl(url: string): string {
+  const trimmed = url.trim();
+  const withoutControlChars = Array.from(trimmed)
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return !(code <= 0x20 || (code >= 0x7f && code <= 0x9f));
+    })
+    .join('');
+  const decoded = withoutControlChars.replace(/&(#x?[\da-f]+|[a-z]+);?/gi, (entity) => {
+    if (/^&#x/i.test(entity)) {
+      const value = Number.parseInt(entity.slice(3).replace(/;$/, ''), 16);
+      return Number.isFinite(value) ? String.fromCharCode(value) : entity;
+    }
+    if (/^&#/i.test(entity)) {
+      const value = Number.parseInt(entity.slice(2).replace(/;$/, ''), 10);
+      return Number.isFinite(value) ? String.fromCharCode(value) : entity;
+    }
+    const named: Record<string, string> = {
+      amp: '&',
+      lt: '<',
+      gt: '>',
+      quot: '"',
+      apos: "'"
+    };
+    const key = entity.slice(1).replace(/;$/, '').toLowerCase();
+    return named[key] ?? entity;
+  });
+  const lower = decoded.toLowerCase();
+
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('vbscript:') ||
+    lower.startsWith('file:')
+  ) {
+    return '#';
+  }
+
+  return trimmed;
+}
+
 /**
  * Convert basic markdown to HTML for email.
  * Supports: bold, italic, links, unordered lists, ordered lists, line breaks.
  */
 export function markdownToHtml(text: string): string {
-  let html = text;
-
-  // Escape HTML entities first
-  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let html = escapeHtml(text);
 
   // Bold: **text** or __text__
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -17,7 +59,10 @@ export function markdownToHtml(text: string): string {
   html = html.replace(/(?<!\w)_([^_]+?)_(?!\w)/g, '<em>$1</em>');
 
   // Links: [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, rawUrl) => {
+    const safeUrl = escapeHtml(sanitizeLinkUrl(rawUrl));
+    return `<a href="${safeUrl}">${label}</a>`;
+  });
 
   // Process lists - need to handle line by line
   const lines = html.split('\n');
