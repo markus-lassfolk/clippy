@@ -104,7 +104,7 @@ describe('ews-client safety and conflict behavior', () => {
     expect(result.ok).toBe(true);
     expect(fetchCalls.length).toBe(1);
     expect(fetchCalls[0]).toContain(
-      '<m:QueryString>&quot;urgent OR from:bob@example.com AND \\&quot;project x\\&quot;&quot;</m:QueryString>'
+      '<m:QueryString>urgent OR from:bob@example.com AND &quot;project x&quot;</m:QueryString>'
     );
   });
 

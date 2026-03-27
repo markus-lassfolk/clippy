@@ -17,6 +17,9 @@ interface CachedToken {
 
 // Security model: cache file stores bearer/refresh tokens and must be owner-only.
 // Directory is created as 0700 and file writes enforce 0600 to satisfy least-privilege.
+// The cache path is anchored to a fixed, local per-user directory under homedir();
+// network values (token contents) are written only as file data, never used to select
+// an arbitrary write location.
 const TOKEN_CACHE_FILE_TEMPLATE = join(homedir(), '.config', 'clippy', 'token-cache-${identity}.json');
 
 async function loadCachedToken(identity: string): Promise<CachedToken | null> {

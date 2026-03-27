@@ -2,6 +2,7 @@
 
 function xmlEscape(value: string): string {
   return String(value)
+    .replace(/\\/g, '\\\\')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -1013,9 +1014,7 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
       }
     }
 
-    const queryStringXml = search
-      ? `<m:QueryString>${xmlEscape(search)}</m:QueryString>`
-      : '';
+    const queryStringXml = search ? `<m:QueryString>${xmlEscape(search)}</m:QueryString>` : '';
 
     const envelope = soapEnvelope(`
     <m:FindItem Traversal="Shallow">
