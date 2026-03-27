@@ -16,11 +16,11 @@ interface CachedGraphToken {
 
 const GRAPH_TOKEN_CACHE_FILE = join(homedir(), '.config', 'clippy', 'graph-token-cache.json');
 const GRAPH_SCOPES = [
-  'https://graph.microsoft.com/Files.Read offline_access User.Read',
   'https://graph.microsoft.com/Files.ReadWrite offline_access User.Read',
   'https://graph.microsoft.com/Files.ReadWrite.All offline_access User.Read',
   'https://graph.microsoft.com/Sites.ReadWrite.All offline_access User.Read',
-  'https://graph.microsoft.com/.default offline_access'
+  'https://graph.microsoft.com/.default offline_access',
+  'https://graph.microsoft.com/Files.Read offline_access User.Read'
 ];
 
 function getJwtExpiration(token: string): number | null {
@@ -46,8 +46,11 @@ async function loadCachedGraphToken(): Promise<CachedGraphToken | null> {
 async function saveCachedGraphToken(token: CachedGraphToken): Promise<void> {
   try {
     const dir = join(homedir(), '.config', 'clippy');
-    await mkdir(dir, { recursive: true });
-    await writeFile(GRAPH_TOKEN_CACHE_FILE, JSON.stringify(token, null, 2), 'utf-8');
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    await writeFile(GRAPH_TOKEN_CACHE_FILE, JSON.stringify(token, null, 2), {
+      encoding: 'utf-8',
+      mode: 0o600
+    });
   } catch {
     // Ignore cache write failures
   }

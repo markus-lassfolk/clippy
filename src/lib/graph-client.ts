@@ -1,5 +1,6 @@
-import { basename, resolve } from 'node:path';
-import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { basename, dirname, resolve } from 'node:path';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 
 const GRAPH_BASE_URL = process.env.GRAPH_BASE_URL || 'https://graph.microsoft.com/v1.0';
@@ -49,6 +50,31 @@ export interface SharingLinkResult {
 export interface UploadLargeResult {
   uploadUrl: string;
   expirationDateTime?: string;
+}
+
+async function streamWebToFile(body: ReadableStream<Uint8Array>, filePath: string): Promise<void> {
+  const stream = createWriteStream(filePath, { flags: 'w', mode: 0o600 });
+
+  try {
+    for await (const chunk of body) {
+      if (!stream.write(chunk)) {
+        await new Promise<void>((resolveDrain, rejectDrain) => {
+          stream.once('drain', resolveDrain);
+          stream.once('error', rejectDrain);
+        });
+      }
+    }
+
+    await new Promise<void>((resolveClose, rejectClose) => {
+      stream.end((err?: Error | null) => {
+        if (err) rejectClose(err);
+        else resolveClose();
+      });
+    });
+  } catch (err) {
+    stream.destroy();
+    throw err;
+  }
 }
 
 function graphResult<T>(data: T): GraphResponse<T> {
@@ -108,6 +134,10 @@ function buildItemPath(reference?: DriveItemReference): string {
   return `${drivePrefix}/items/${encodeURIComponent(reference.id)}`;
 }
 
+function encodeGraphSearchQuery(query: string): string {
+  return encodeURIComponent(query).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
 export async function listFiles(token: string, folder?: DriveItemReference): Promise<GraphResponse<DriveItem[]>> {
   const basePath = buildItemPath(folder);
   const result = await callGraph<DriveItemListResponse>(token, `${basePath}/children`);
@@ -118,12 +148,9 @@ export async function listFiles(token: string, folder?: DriveItemReference): Pro
 }
 
 export async function searchFiles(token: string, query: string): Promise<GraphResponse<DriveItem[]>> {
-  const encodedQuery = encodeURIComponent(query)
-    .replace(/%20/g, ' ')
-    .replace(/'/g, '%27');
   const result = await callGraph<DriveItemListResponse>(
     token,
-    `/me/drive/root/search(q='${encodedQuery}')`
+    `/me/drive/root/search(q='${encodeGraphSearchQuery(query)}')`
   );
   if (!result.ok || !result.data) {
     return graphError(result.error?.message || 'Failed to search files', result.error?.code, result.error?.status);
@@ -148,12 +175,11 @@ export async function uploadFile(
       return graphError('File exceeds 250MB simple upload limit. Use upload-large instead.');
     }
 
-    const content = await readFile(absolutePath);
     const fileName = basename(absolutePath);
     const folderPath = folder?.id ? `${buildItemPath(folder)}:/` : '/me/drive/root:/';
     const result = await callGraph<DriveItem>(token, `${folderPath}${encodeURIComponent(fileName)}:/content`, {
       method: 'PUT',
-      body: content,
+      body: createReadStream(absolutePath) as unknown as BodyInit,
       headers: {
         'Content-Type': 'application/octet-stream'
       }
@@ -199,25 +225,24 @@ export async function downloadFile(
   token: string,
   itemId: string,
   outputPath?: string,
-  metadata?: DriveItem
+  item?: DriveItem
 ): Promise<GraphResponse<{ path: string; item: DriveItem }>> {
   try {
-    let itemMetadata: DriveItem;
-    if (metadata) {
-      itemMetadata = metadata;
-    } else {
-      const metadataResult = await getFileMetadata(token, itemId);
-      if (!metadataResult.ok || !metadataResult.data) {
+    let resolvedItem = item;
+
+    if (!resolvedItem) {
+      const metadata = await getFileMetadata(token, itemId);
+      if (!metadata.ok || !metadata.data) {
         return graphError(
-          metadataResult.error?.message || 'Failed to fetch file metadata before download',
-          metadataResult.error?.code,
-          metadataResult.error?.status
+          metadata.error?.message || 'Failed to fetch file metadata before download',
+          metadata.error?.code,
+          metadata.error?.status
         );
       }
-      itemMetadata = metadataResult.data;
+      resolvedItem = metadata.data;
     }
 
-    const downloadUrl = itemMetadata['@microsoft.graph.downloadUrl'];
+    const downloadUrl = resolvedItem['@microsoft.graph.downloadUrl'];
     if (!downloadUrl) {
       return graphError('Download URL missing from Graph metadata response.');
     }
@@ -226,13 +251,15 @@ export async function downloadFile(
     if (!response.ok) {
       return graphError(`Download failed: HTTP ${response.status}`);
     }
+    if (!response.body) {
+      return graphError('Download failed: response body missing');
+    }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const targetPath = resolve(outputPath || itemMetadata.name || itemId);
-    await mkdir(resolve(targetPath, '..'), { recursive: true }).catch(() => undefined);
-    await writeFile(targetPath, bytes);
+    const targetPath = resolve(outputPath || defaultDownloadPath(resolvedItem.name || itemId));
+    await mkdir(dirname(targetPath), { recursive: true });
+    await streamWebToFile(response.body, targetPath);
 
-    return graphResult({ path: targetPath, item: itemMetadata });
+    return graphResult({ path: targetPath, item: resolvedItem });
   } catch (err) {
     return graphError(err instanceof Error ? err.message : 'Download failed');
   }

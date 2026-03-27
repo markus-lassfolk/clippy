@@ -198,9 +198,9 @@ filesCommand
       process.exit(1);
     }
 
-    const meta = await getFileMetadata(auth.token!, fileId);
-    const defaultOut = meta.ok && meta.data ? defaultDownloadPath(meta.data.name || fileId) : undefined;
-    const result = await downloadFile(auth.token!, fileId, options.out || defaultOut, meta.ok ? meta.data : undefined);
+    const meta = options.out ? undefined : await getFileMetadata(auth.token!, fileId);
+    const defaultOut = meta?.ok && meta.data ? defaultDownloadPath(meta.data.name || fileId) : undefined;
+    const result = await downloadFile(auth.token!, fileId, options.out || defaultOut, meta?.ok ? meta.data : undefined);
     if (!result.ok || !result.data) {
       console.error(`Error: ${result.error?.message || 'Download failed'}`);
       process.exit(1);
