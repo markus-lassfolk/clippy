@@ -1,6 +1,9 @@
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
+  checkinFile,
+  createLargeUploadSession,
+  createOfficeCollaborationLink,
   defaultDownloadPath,
   deleteFile,
   downloadFile,
@@ -9,7 +12,6 @@ import {
   searchFiles,
   shareFile,
   uploadFile,
-  createLargeUploadSession,
   type DriveItem,
   type DriveItemReference
 } from '../lib/graph-client.js';
@@ -242,20 +244,57 @@ filesCommand
 
 filesCommand
   .command('share <fileId>')
-  .description('Create a OneDrive sharing link')
+  .description('Create a OneDrive sharing link or Office Online collaboration handoff')
   .option('--type <type>', 'Link type: view or edit', 'view')
   .option('--scope <scope>', 'Link scope: org or anonymous', 'org')
+  .option('--collab', 'Create an Office Online collaboration handoff (edit/org + webUrl)')
+  .option('--lock', 'Checkout the file before creating a collaboration link (use with --collab)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .action(
     async (
       fileId: string,
-      options: { type?: 'view' | 'edit'; scope?: 'org' | 'anonymous'; json?: boolean; token?: string }
+      options: {
+        type?: 'view' | 'edit';
+        scope?: 'org' | 'anonymous';
+        collab?: boolean;
+        lock?: boolean;
+        json?: boolean;
+        token?: string;
+      }
     ) => {
       const auth = await resolveGraphAuth({ token: options.token });
       if (!auth.success) {
         console.error(`Error: ${auth.error}`);
         process.exit(1);
+      }
+
+      if (options.lock && !options.collab) {
+        console.error('Error: --lock is only supported together with --collab.');
+        process.exit(1);
+      }
+
+      if (options.collab) {
+        const result = await createOfficeCollaborationLink(auth.token!, fileId, { lock: options.lock });
+        if (!result.ok || !result.data) {
+          console.error(`Error: ${result.error?.message || 'Collaboration link creation failed'}`);
+          process.exit(1);
+        }
+
+        if (options.json) {
+          console.log(JSON.stringify(result.data, null, 2));
+          return;
+        }
+
+        console.log('✓ Office Online collaboration handoff created');
+        console.log(`  File: ${result.data.item.name}`);
+        console.log(`  File ID: ${result.data.item.id}`);
+        if (result.data.link.webUrl) console.log(`  Share URL: ${result.data.link.webUrl}`);
+        if (result.data.collaborationUrl) console.log(`  Open in Office Online: ${result.data.collaborationUrl}`);
+        console.log('  Mode: edit / organization');
+        console.log(`  Lock acquired: ${result.data.lockAcquired ? 'yes' : 'no'}`);
+        console.log('  Note: real-time co-authoring happens in Office Online after the user opens the document URL.');
+        return;
       }
 
       const type = options.type === 'edit' ? 'edit' : 'view';
@@ -276,3 +315,33 @@ filesCommand
       if (result.data.id) console.log(`  Link ID: ${result.data.id}`);
     }
   );
+
+filesCommand
+  .command('checkin <fileId>')
+  .description('Check in a previously checked-out Office document')
+  .option('--comment <comment>', 'Optional check-in comment')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific Graph token')
+  .action(async (fileId: string, options: { comment?: string; json?: boolean; token?: string }) => {
+    const auth = await resolveGraphAuth({ token: options.token });
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
+
+    const result = await checkinFile(auth.token!, fileId, options.comment);
+    if (!result.ok || !result.data) {
+      console.error(`Error: ${result.error?.message || 'Check-in failed'}`);
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(result.data, null, 2));
+      return;
+    }
+
+    console.log('✓ File checked in');
+    console.log(`  File: ${result.data.item.name}`);
+    console.log(`  File ID: ${result.data.item.id}`);
+    if (result.data.comment) console.log(`  Comment: ${result.data.comment}`);
+  });

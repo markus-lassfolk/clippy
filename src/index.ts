@@ -79,6 +79,9 @@ export {
   downloadFile,
   deleteFile,
   shareFile,
+  checkoutFile,
+  checkinFile,
+  createOfficeCollaborationLink,
   defaultDownloadPath,
   cleanupDownloadedFile
 } from './lib/graph-client.js';
@@ -90,5 +93,7 @@ export type {
   DriveItem,
   DriveItemListResponse,
   SharingLinkResult,
+  OfficeCollabLinkResult,
+  CheckinResult,
   UploadLargeResult
 } from './lib/graph-client.js';

@@ -47,6 +47,19 @@ export interface SharingLinkResult {
   scope?: string;
 }
 
+export interface OfficeCollabLinkResult {
+  item: DriveItem;
+  link: SharingLinkResult;
+  collaborationUrl?: string;
+  lockAcquired: boolean;
+}
+
+export interface CheckinResult {
+  item: DriveItem;
+  checkedIn: boolean;
+  comment?: string;
+}
+
 export interface UploadLargeResult {
   uploadUrl: string;
   expirationDateTime?: string;
@@ -294,6 +307,83 @@ export async function shareFile(
 
   if (!result.ok || !result.data) return result as GraphResponse<SharingLinkResult>;
   return graphResult(result.data.link || {});
+}
+
+export async function checkoutFile(token: string, itemId: string): Promise<GraphResponse<void>> {
+  return callGraph<void>(token, `/me/drive/items/${encodeURIComponent(itemId)}/checkout`, { method: 'POST' }, false);
+}
+
+export async function checkinFile(
+  token: string,
+  itemId: string,
+  comment?: string
+): Promise<GraphResponse<CheckinResult>> {
+  const result = await callGraph<void>(
+    token,
+    `/me/drive/items/${encodeURIComponent(itemId)}/checkin`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ comment: comment || '' })
+    },
+    false
+  );
+
+  if (!result.ok) {
+    return graphError(result.error?.message || 'Check-in failed', result.error?.code, result.error?.status);
+  }
+
+  const item = await getFileMetadata(token, itemId);
+  if (!item.ok || !item.data) {
+    return graphError(
+      item.error?.message || 'Checked in, but failed to refresh file metadata',
+      item.error?.code,
+      item.error?.status
+    );
+  }
+
+  return graphResult({ item: item.data, checkedIn: true, comment });
+}
+
+export async function createOfficeCollaborationLink(
+  token: string,
+  itemId: string,
+  options: { lock?: boolean } = {}
+): Promise<GraphResponse<OfficeCollabLinkResult>> {
+  const item = await getFileMetadata(token, itemId);
+  if (!item.ok || !item.data) {
+    return graphError(item.error?.message || 'Failed to fetch file metadata', item.error?.code, item.error?.status);
+  }
+
+  const extension = item.data.name.includes('.') ? item.data.name.split('.').pop()?.toLowerCase() : undefined;
+  const supported = new Set(['docx', 'xlsx', 'pptx']);
+  if (!extension || !supported.has(extension)) {
+    return graphError(
+      'Office Online collaboration is only supported for .docx, .xlsx, and .pptx files. Convert legacy Office formats first.'
+    );
+  }
+
+  if (options.lock) {
+    const lock = await checkoutFile(token, itemId);
+    if (!lock.ok) {
+      return graphError(
+        lock.error?.message || 'Failed to checkout file before sharing',
+        lock.error?.code,
+        lock.error?.status
+      );
+    }
+  }
+
+  const link = await shareFile(token, itemId, 'edit', 'organization');
+  if (!link.ok || !link.data) {
+    return graphError(link.error?.message || 'Failed to create collaboration link', link.error?.code, link.error?.status);
+  }
+
+  return graphResult({
+    item: item.data,
+    link: link.data,
+    collaborationUrl: item.data.webUrl || link.data.webUrl,
+    lockAcquired: !!options.lock
+  });
 }
 
 export function defaultDownloadPath(fileName: string): string {

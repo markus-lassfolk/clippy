@@ -1,6 +1,6 @@
 # Clippy
 
-A command-line interface for Microsoft 365 using Exchange Web Services (EWS). Manage your calendar and email directly from the terminal.
+A command-line interface for Microsoft 365 using Exchange Web Services (EWS) and Microsoft Graph. Manage your calendar, email, and OneDrive files directly from the terminal.
 
 ## Installation
 
@@ -255,6 +255,82 @@ clippy send \
   --body "Please find attached." \
   --attach "report.pdf,data.xlsx"
 ```
+
+---
+
+## OneDrive / Office Online Commands
+
+### List, Search, and Inspect Files
+
+```bash
+# List root files
+clippy files list
+
+# List a folder by item ID
+clippy files list --folder <folderId>
+
+# Search OneDrive
+clippy files search "budget 2026"
+
+# Inspect metadata
+clippy files meta <fileId>
+```
+
+### Upload, Download, Delete, and Share
+
+```bash
+# Upload a normal file (<=250MB)
+clippy files upload ./report.docx
+
+# Create a large upload session (>250MB, <=4GB)
+clippy files upload-large ./large-video.mp4
+
+# Download a file
+clippy files download <fileId>
+clippy files download <fileId> --out ./local-copy.docx
+
+# Delete a file
+clippy files delete <fileId>
+
+# Create a normal share link
+clippy files share <fileId> --type view --scope org
+clippy files share <fileId> --type edit --scope anonymous
+```
+
+### Collaborative Editing via Office Online
+
+Microsoft Graph cannot join or control a live Office Online editing session. What Clippy can do is prepare the handoff properly:
+
+1. Find the document in OneDrive
+2. Create an organization-scoped edit link
+3. Return the Office Online URL (`webUrl`) for the user to open
+4. Optionally checkout the file first for exclusive editing workflows
+
+```bash
+# Search for the document first
+clippy files search "budget 2026.xlsx"
+
+# Create a collaboration handoff for Word/Excel/PowerPoint Online
+clippy files share <fileId> --collab
+
+# Same, but checkout the file first
+clippy files share <fileId> --collab --lock
+
+# When the exclusive-edit workflow is done, check the file back in
+clippy files checkin <fileId> --comment "Updated Q1 numbers"
+```
+
+**Supported collaboration file types:**
+- `.docx`
+- `.xlsx`
+- `.pptx`
+
+Legacy Office formats such as `.doc`, `.xls`, and `.ppt` must be converted first.
+
+**Important clarification:**
+- Clippy does **not** participate in the real-time editing session
+- Office Online handles the actual co-authoring once the user opens the returned URL
+- Clippy handles the file lifecycle around that workflow
 
 ### Reply & Forward
 
