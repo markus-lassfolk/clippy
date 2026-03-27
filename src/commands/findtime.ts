@@ -147,11 +147,17 @@ export const findtimeCommand = new Command('findtime')
       // Get current user's email to include in search (unless --solo)
       if (!options.solo) {
         const userInfo = await getOwaUserInfo(authResult.token!);
-        if (userInfo.ok && userInfo.data?.email) {
-          // Add current user if not already in the list
-          if (!emails.includes(userInfo.data.email)) {
-            emails.unshift(userInfo.data.email);
+        if (!userInfo.ok || !userInfo.data?.email) {
+          if (options.json) {
+            console.log(JSON.stringify({ error: 'Failed to determine user email' }, null, 2));
+          } else {
+            console.error('Error: Failed to determine user email');
           }
+          process.exit(1);
+        }
+        // Add current user if not already in the list
+        if (!emails.includes(userInfo.data.email)) {
+          emails.unshift(userInfo.data.email);
         }
       }
 
