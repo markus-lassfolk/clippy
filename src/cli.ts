@@ -12,6 +12,7 @@ import { mailCommand } from './commands/mail.js';
 import { foldersCommand } from './commands/folders.js';
 import { sendCommand } from './commands/send.js';
 import { draftsCommand } from './commands/drafts.js';
+import { filesCommand } from './commands/files.js';
 
 const program = new Command();
 
@@ -29,5 +30,6 @@ program.addCommand(mailCommand);
 program.addCommand(foldersCommand);
 program.addCommand(sendCommand);
 program.addCommand(draftsCommand);
+program.addCommand(filesCommand);
 
 program.parse();

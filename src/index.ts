@@ -66,3 +66,29 @@ export type {
   ResponseType,
   RespondToEventOptions
 } from './lib/ews-client.js';
+
+export { resolveGraphAuth } from './lib/graph-auth.js';
+export type { GraphAuthResult } from './lib/graph-auth.js';
+
+export {
+  listFiles,
+  searchFiles,
+  getFileMetadata,
+  uploadFile,
+  createLargeUploadSession,
+  downloadFile,
+  deleteFile,
+  shareFile,
+  defaultDownloadPath,
+  cleanupDownloadedFile
+} from './lib/graph-client.js';
+
+export type {
+  GraphError,
+  GraphResponse,
+  DriveItemReference,
+  DriveItem,
+  DriveItemListResponse,
+  SharingLinkResult,
+  UploadLargeResult
+} from './lib/graph-client.js';
