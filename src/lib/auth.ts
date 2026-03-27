@@ -90,7 +90,7 @@ async function refreshAccessToken(clientId: string, refreshToken: string): Promi
   throw new Error(`Token refresh failed: ${lastError}`);
 }
 
-export async function resolveAuth(options?: { token?: string, identity?: string }): Promise<AuthResult> {
+export async function resolveAuth(options?: { token?: string; identity?: string }): Promise<AuthResult> {
   if (options?.token) {
     return { success: true, token: options.token };
   }

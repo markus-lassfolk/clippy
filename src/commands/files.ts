@@ -45,8 +45,7 @@ function renderItems(items: DriveItem[]): void {
   }
 }
 
-export const filesCommand = new Command('files')
-  .description('Manage OneDrive files via Microsoft Graph');
+export const filesCommand = new Command('files').description('Manage OneDrive files via Microsoft Graph');
 
 filesCommand
   .command('list')
