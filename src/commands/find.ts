@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { resolveNames } from '../lib/ews-client.js';
-import { resolveMailbox } from '../lib/mailbox-utils.js';
 
 export const findCommand = new Command('find')
   .description('Search for people or rooms')
@@ -33,7 +32,7 @@ export const findCommand = new Command('find')
     }
 
     try {
-      const result = await resolveNames(authResult.token!, query, resolveMailbox(options));
+      const result = await resolveNames(authResult.token!, query);
 
       if (!result.ok || !result.data) {
         if (options.json) {

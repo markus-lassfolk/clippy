@@ -1617,8 +1617,7 @@ export async function getAttachment(
 
 export async function resolveNames(
   token: string,
-  query: string,
-  mailbox?: string
+  query: string
 ): Promise<OwaResponse<Array<{
   DisplayName?: string;
   EmailAddress?: string;
@@ -1628,9 +1627,12 @@ export async function resolveNames(
   MailboxType?: string;
 }>>> {
   try {
+    // Note: ParentFolderIds injection removed — "directory" is not a valid
+    // DistinguishedFolderId and scoping ResolveNames to a mailbox contacts folder
+    // via SOAP body is not reliably supported. Delegation/impersonation headers
+    // are the correct mechanism for mailbox-scoped name resolution instead.
     const envelope = soapEnvelope(`
     <m:ResolveNames ReturnFullContactData="true" SearchScope="ActiveDirectoryContacts">
-      ${mailbox ? `<m:ParentFolderIds><t:DistinguishedFolderId Id="directory">${mailboxXml(mailbox)}</t:DistinguishedFolderId></m:ParentFolderIds>` : ''}
       <m:UnresolvedEntry>${xmlEscape(query)}</m:UnresolvedEntry>
     </m:ResolveNames>`);
 
@@ -1657,9 +1659,10 @@ export async function resolveNames(
   }
 }
 
-export async function getRoomLists(token: string, mailbox?: string): Promise<OwaResponse<RoomList[]>> {
+export async function getRoomLists(token: string): Promise<OwaResponse<RoomList[]>> {
   try {
-    const envelope = soapEnvelope(`<m:GetRoomLists>${mailbox ? mailboxXml(mailbox) : ''}</m:GetRoomLists>`);
+    // GetRoomLists does not accept a mailbox child element — injection causes invalid SOAP
+    const envelope = soapEnvelope('<m:GetRoomLists/>');
     const xml = await callEws(token, envelope);
     const addresses = extractBlocks(xml, 'Address');
 
@@ -1676,8 +1679,7 @@ export async function getRoomLists(token: string, mailbox?: string): Promise<Owa
 
 export async function getRooms(
   token: string,
-  roomListAddress?: string,
-  mailbox?: string
+  roomListAddress?: string
 ): Promise<OwaResponse<Room[]>> {
   try {
     if (roomListAddress) {
@@ -1699,14 +1701,14 @@ export async function getRooms(
     }
 
     // No room list specified: get all room lists first, then rooms from each
-    const listsResult = await getRoomLists(token, mailbox);
+    const listsResult = await getRoomLists(token);
     if (!listsResult.ok || !listsResult.data || listsResult.data.length === 0) {
       return ewsResult([]);
     }
 
     const allRooms: Room[] = [];
     for (const list of listsResult.data) {
-      const roomsResult = await getRooms(token, list.Address, mailbox);
+      const roomsResult = await getRooms(token, list.Address);
       if (roomsResult.ok && roomsResult.data) {
         allRooms.push(...roomsResult.data);
       }
@@ -1725,7 +1727,7 @@ export async function searchRooms(
 ): Promise<OwaResponse<Room[]>> {
   // Use ResolveNames to find rooms by name
   try {
-    const result = await resolveNames(token, query, mailbox);
+    const result = await resolveNames(token, query);
     if (!result.ok || !result.data) return ewsResult([]);
 
     // Try to filter to rooms (MailboxType might indicate this)
@@ -1765,16 +1767,8 @@ export async function getScheduleViaOutlook(
     const suggestEnd = toMidnight(suggestEndD);
 
     const mailboxDataXml = [
-      ...(mailbox ? [`
-    <t:MailboxData>
-      <t:Email><t:Address>${xmlEscape(mailbox)}</t:Address></t:Email>
-      <t:AttendeeType>Organizer</t:AttendeeType>
-    </t:MailboxData>`] : []),
-      ...emails.map(email => `
-    <t:MailboxData>
-      <t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email>
-      <t:AttendeeType>Required</t:AttendeeType>
-    </t:MailboxData>`)
+      ...(mailbox ? [`<t:MailboxData><t:Email><t:Address>${xmlEscape(mailbox)}</t:Address></t:Email><t:AttendeeType>Required</t:AttendeeType></t:MailboxData>`] : []),
+      ...emails.map(email => `<t:MailboxData><t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email><t:AttendeeType>Required</t:AttendeeType></t:MailboxData>`)
     ].join('');
 
     const envelope = soapEnvelope(`

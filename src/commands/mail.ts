@@ -114,11 +114,11 @@ export const mailCommand = new Command('mail')
       spam: 'junkemail',
     };
 
-    const mailbox = resolveMailbox(options);
     let apiFolder = folderMap[folder.toLowerCase()];
 
     // If not a well-known folder, look up by name
     if (!apiFolder) {
+      const mailbox = resolveMailbox(options);
       const foldersResult = await getMailFolders(authResult.token!, undefined, mailbox);
       if (foldersResult.ok && foldersResult.data) {
         const found = foldersResult.data.value.find(
@@ -139,6 +139,9 @@ export const mailCommand = new Command('mail')
     const limit = parseInt(options.limit) || 10;
     const page = parseInt(options.page) || 1;
     const skip = (page - 1) * limit;
+
+    // Only apply mailbox context for read operations (write ops run against the authenticated user's mailbox)
+    const mailbox = resolveMailbox(options);
 
     // Build filter
     const filters: string[] = [];
