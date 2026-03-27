@@ -337,7 +337,7 @@ export interface RespondToEventOptions {
 
 // ─── Parsing Helpers ───
 
-function parseCalendarItem(block: string): CalendarEvent {
+function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const id = extractAttribute(block, 'ItemId', 'Id');
   const changeKey = extractAttribute(block, 'ItemId', 'ChangeKey');
   const subject = extractTag(block, 'Subject');
@@ -355,7 +355,8 @@ function parseCalendarItem(block: string): CalendarEvent {
   const organizerName = extractTag(organizerBlock, 'Name');
   const organizerEmail = extractTag(organizerBlock, 'EmailAddress');
   const myResponseType = extractTag(block, 'MyResponseType');
-  const isOrganizer = myResponseType === 'Organizer' || organizerEmail.toLowerCase() === EWS_USERNAME.toLowerCase();
+  const effectiveUser = mailbox || EWS_USERNAME;
+  const isOrganizer = myResponseType === 'Organizer' || organizerEmail.toLowerCase() === effectiveUser.toLowerCase();
 
   // Attendees
   const attendees: CalendarAttendee[] = [];
@@ -607,7 +608,7 @@ export async function getCalendarEvents(
 
     const xml = await callEws(token, envelope, mailbox);
     const blocks = extractBlocks(xml, 'CalendarItem');
-    const events = blocks.map(parseCalendarItem);
+    const events = blocks.map((block) => parseCalendarItem(block, mailbox));
 
     return ewsResult(events);
   } catch (err) {
@@ -873,8 +874,8 @@ export interface DeleteEventOptions {
 }
 
 export async function deleteEvent(options: DeleteEventOptions): Promise<OwaResponse<void>> {
-  const { token, eventId, mailbox } = options;
   try {
+    const { token, eventId, mailbox } = options;
     const envelope = soapEnvelope(`
     <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToNone">
       <m:ItemIds>
@@ -896,8 +897,8 @@ export interface CancelEventOptions {
 }
 
 export async function cancelEvent(options: CancelEventOptions): Promise<OwaResponse<void>> {
-  const { token, eventId, comment, mailbox } = options;
   try {
+    const { token, eventId, comment, mailbox } = options;
     const envelope = soapEnvelope(`
     <m:CreateItem MessageDisposition="SendAndSaveCopy">
       <m:Items>
@@ -912,6 +913,7 @@ export async function cancelEvent(options: CancelEventOptions): Promise<OwaRespo
   } catch {
     // Fallback: delete with cancellation notices
     try {
+      const { token, eventId, mailbox } = options;
       const envelope = soapEnvelope(`
       <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToAllAndSaveCopy">
         <m:ItemIds>
