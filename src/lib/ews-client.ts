@@ -93,14 +93,15 @@ function soapEnvelope(body: string): string {
 </soap:Envelope>`;
 }
 
-async function callEws(token: string, envelope: string): Promise<string> {
+async function callEws(token: string, envelope: string, mailbox?: string): Promise<string> {
+  const anchorMailbox = mailbox || EWS_USERNAME;
   const response = await fetch(EWS_ENDPOINT, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'text/xml; charset=utf-8',
       'Accept': 'text/xml',
-      'X-AnchorMailbox': EWS_USERNAME,
+      'X-AnchorMailbox': anchorMailbox,
     },
     body: envelope,
   });
@@ -1025,9 +1026,12 @@ export async function sendEmail(
     body: string;
     bodyType?: 'Text' | 'HTML';
     attachments?: EmailAttachment[];
+    mailbox?: string;
   }
 ): Promise<OwaResponse<void>> {
   try {
+    const { mailbox } = options;
+
     const toXml = options.to.map(e =>
       `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
     ).join('');
@@ -1044,12 +1048,24 @@ export async function sendEmail(
 
     const bodyType = options.bodyType || 'Text';
 
+    // Build From element for shared mailbox (Send As)
+    const fromXml = mailbox
+      ? `<t:From><t:Mailbox><t:EmailAddress>${xmlEscape(mailbox)}</t:EmailAddress></t:Mailbox></t:From>`
+      : '';
+
+    // Build SavedItemFolderId targeting shared mailbox sentitems
+    const savedItemFolderIdXml = mailbox
+      ? `<m:SavedItemFolderId><t:DistinguishedFolderId Id="sentitems"><t:Mailbox><t:EmailAddress>${xmlEscape(mailbox)}</t:EmailAddress></t:Mailbox></t:DistinguishedFolderId></m:SavedItemFolderId>`
+      : '';
+
     // If no attachments, send directly
     if (!options.attachments || options.attachments.length === 0) {
       const envelope = soapEnvelope(`
       <m:CreateItem MessageDisposition="SendAndSaveCopy">
+        ${savedItemFolderIdXml}
         <m:Items>
           <t:Message>
+            ${fromXml}
             <t:Subject>${xmlEscape(options.subject)}</t:Subject>
             <t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body>
             <t:ToRecipients>${toXml}</t:ToRecipients>
@@ -1058,7 +1074,7 @@ export async function sendEmail(
           </t:Message>
         </m:Items>
       </m:CreateItem>`);
-      await callEws(token, envelope);
+      await callEws(token, envelope, mailbox);
       return { ok: true, status: 200 };
     }
 
@@ -1088,7 +1104,8 @@ export async function replyToEmail(
   messageId: string,
   comment: string,
   replyAll: boolean = false,
-  isHtml: boolean = false
+  isHtml: boolean = false,
+  mailbox?: string
 ): Promise<OwaResponse<void>> {
   try {
     const tag = replyAll ? 'ReplyAllToItem' : 'ReplyToItem';
@@ -1104,7 +1121,7 @@ export async function replyToEmail(
       </m:Items>
     </m:CreateItem>`);
 
-    await callEws(token, envelope);
+    await callEws(token, envelope, mailbox);
     return { ok: true, status: 200 };
   } catch (err) {
     return ewsError(err);
@@ -1116,7 +1133,8 @@ export async function replyToEmailDraft(
   messageId: string,
   comment: string,
   replyAll: boolean = false,
-  isHtml: boolean = false
+  isHtml: boolean = false,
+  mailbox?: string
 ): Promise<OwaResponse<{ draftId: string }>> {
   try {
     const tag = replyAll ? 'ReplyAllToItem' : 'ReplyToItem';
@@ -1132,7 +1150,7 @@ export async function replyToEmailDraft(
       </m:Items>
     </m:CreateItem>`);
 
-    const xml = await callEws(token, envelope);
+    const xml = await callEws(token, envelope, mailbox);
     const draftId = extractAttribute(xml, 'ItemId', 'Id');
     return ewsResult({ draftId });
   } catch (err) {
@@ -1144,7 +1162,8 @@ export async function forwardEmail(
   token: string,
   messageId: string,
   toRecipients: string[],
-  comment?: string
+  comment?: string,
+  mailbox?: string
 ): Promise<OwaResponse<void>> {
   try {
     const toXml = toRecipients.map(e =>
@@ -1162,7 +1181,7 @@ export async function forwardEmail(
       </m:Items>
     </m:CreateItem>`);
 
-    await callEws(token, envelope);
+    await callEws(token, envelope, mailbox);
     return { ok: true, status: 200 };
   } catch (err) {
     return ewsError(err);
