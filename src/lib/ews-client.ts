@@ -1659,7 +1659,7 @@ export async function resolveNames(
 
 export async function getRoomLists(token: string, mailbox?: string): Promise<OwaResponse<RoomList[]>> {
   try {
-    const envelope = soapEnvelope(`<m:GetRoomLists>${mailbox ? mailboxXml(mailbox) : ''}</m:GetRoomLists>`);
+    const envelope = soapEnvelope(`<m:GetRoomLists />`);
     const xml = await callEws(token, envelope);
     const addresses = extractBlocks(xml, 'Address');
 
