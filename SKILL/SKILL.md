@@ -1,182 +1,99 @@
 ---
 name: clippy
-description: Microsoft 365 / Outlook CLI for calendar and email. With Shared Collaboarion and Onedrice Support. Use when managing Outlook calendar (view, create, update, delete events, find meeting times, respond to invitations), sending/reading emails, or searching for people/rooms in the organization, or accessing another persons mail/calendar or working with Onedrive files. 
+description: Microsoft 365 / Outlook CLI using EWS SOAP API + OAuth2. Manage calendar (view, create, update, delete events, find meeting times, respond to invitations), send/read/search email, shared mailbox support, and OneDrive file operations via Microsoft Graph.
 metadata: {"clawdbot":{"requires":{"bins":["clippy"]}}}
 ---
 
-# Clippy - Microsoft 365 CLI
+# Clippy - Microsoft 365 CLI (EWS Edition)
 
 Source: https://github.com/markus-lassfolk/clippy
 
-Works through the M365 web UI via browser automation (Playwright), not the Graph API. No Azure AD app registration required - just login with your browser.
+Uses EWS SOAP API with OAuth2 refresh token auth. Runs on Bun.
 
 ## Install
 
 ```bash
-git clone https://github.com/markus-lassfolk/clippy/clippy.git
+git clone https://github.com/markus-lassfolk/clippy.git
 cd clippy && bun install
 bun run src/cli.ts --help
 ```
 
-Or link globally: `bun link`
+## Auth Setup
 
-## Authentication
+Set these env vars (e.g. in `.env`):
 
 ```bash
-# Interactive login (opens browser, establishes session)
-clippy login --interactive
-
-# Check auth status
-clippy whoami
+EWS_CLIENT_ID=<Azure AD app client ID>
+EWS_REFRESH_TOKEN=<OAuth2 refresh token>
+EWS_USERNAME=<your email>
+EWS_ENDPOINT=https://outlook.office365.com/EWS/Exchange.asmx
+EWS_TENANT_ID=common  # or your tenant ID
 ```
 
-### Keepalive (recommended)
-
-Keep a browser session alive to prevent token expiry:
-
+For shared mailbox access:
 ```bash
-# Start keepalive (keeps browser open, refreshes every 10min)
-clippy keepalive --interval 10
+EWS_TARGET_MAILBOX=<shared@mailbox.com>
 ```
 
-For persistent operation, set up as a launchd service (macOS) or systemd (Linux).
+Check auth: `bun run src/cli.ts whoami`
 
-**Health monitoring:** Keepalive writes to `~/.config/clippy/keepalive-health.txt` on each successful refresh. Check if this file is stale (>15min) to detect failures.
+## Commands
 
-## Calendar
+### Calendar
 
 ```bash
-# Today's events
-clippy calendar
-
-# Specific day
+clippy calendar                        # today's events
 clippy calendar --day tomorrow
-clippy calendar --day monday
-clippy calendar --day 2024-02-15
-
-# Week view
 clippy calendar --week
-
-# With details (description, attendees)
 clippy calendar --details
-```
 
-### Create Events
-
-```bash
-clippy create-event "Title" 09:00 10:00
-
-# Full options
-clippy create-event "Meeting" 14:00 15:00 \
-  --day tomorrow \
-  --description "Meeting notes" \
-  --attendees "alice@company.com,bob@company.com" \
-  --teams \
-  --find-room
-
-# Recurring
-clippy create-event "Standup" 09:00 09:15 --repeat daily
-clippy create-event "Sync" 14:00 15:00 --repeat weekly --days mon,wed,fri
-```
-
-### Update/Delete Events
-
-```bash
-clippy update-event 1 --title "New Title"
-clippy update-event 1 --start 10:00 --end 11:00
-clippy delete-event 1
-clippy delete-event 1 --message "Need to reschedule"
-```
-
-### Respond to Invitations
-
-```bash
-clippy respond                           # List pending
+# Write ops
+clippy create-event "Meeting" 14:00 15:00 --day tomorrow --description "Notes"
+clippy update-event <id> --title "New Title"
+clippy delete-event <id>
 clippy respond accept --id <eventId>
-clippy respond decline --id <eventId> --message "Conflict"
-clippy respond tentative --id <eventId>
+clippy findtime --attendees "a@co.com,b@co.com" --duration 60
 ```
 
-### Find Meeting Times
+### Shared Mailbox Calendar (--mailbox flag)
 
 ```bash
-clippy findtime
-clippy findtime --attendees "alice@company.com,bob@company.com"
-clippy findtime --duration 60 --days 5
+clippy calendar --mailbox shared@company.com
+clippy create-event "Team Meeting" 10:00 11:00 --mailbox shared@company.com
 ```
 
-## Email
+### Email
 
 ```bash
-# Inbox
-clippy mail
-clippy mail --unread
-clippy mail -n 20
+clippy mail                            # inbox
+clippy mail sent
+clippy mail -r <number>               # read email
 clippy mail --search "invoice"
 
-# Other folders
-clippy mail sent
-clippy mail drafts
-clippy mail archive
-
-# Read email
-clippy mail -r <number>
-
-# Download attachments
-clippy mail -d <number> -o ~/Downloads
-```
-
-### Send Email
-
-```bash
-clippy send \
-  --to "recipient@example.com" \
-  --subject "Subject" \
-  --body "Message body"
-
-# With CC, attachments, markdown
-clippy send \
-  --to "alice@example.com" \
-  --cc "manager@example.com" \
-  --subject "Report" \
-  --body "**See attached**" \
-  --markdown \
-  --attach "report.pdf"
-```
-
-### Reply/Forward
-
-```bash
+# Write ops
+clippy send --to "recipient@company.com" --subject "Hello" --body "Body"
 clippy mail --reply <number> --message "Thanks!"
-clippy mail --reply-all <number> --message "Got it"
-clippy mail --forward <number> --to-addr "colleague@example.com"
+clippy mail --forward <number> --to-addr "colleague@company.com"
 ```
 
-### Email Actions
+### Shared Mailbox Email (--mailbox flag)
 
 ```bash
-clippy mail --mark-read <number>
-clippy mail --flag <number>
-clippy mail --move <number> --to archive
+clippy mail --mailbox shared@company.com
+clippy send --to "recipient@company.com" --subject "From shared" --body "..." --mailbox shared@company.com
 ```
 
-## People/Room Search
+### Other
 
 ```bash
-clippy find "john"                       # People
-clippy find "conference" --rooms         # Rooms
+clippy folders                         # list mail folders
+clippy find "john"                    # people search
+clippy findtime                        # find meeting slots
+clippy whoami                          # check auth
 ```
 
-## JSON Output
+## Architecture
 
-```bash
-clippy calendar --json
-clippy mail --json
-```
-
-## Configuration
-
-Profile directory can be overridden:
-```bash
-export CLIPPY_PROFILE_DIR=~/.config/clippy/my-profile
-```
+- **EWS** (`src/ews-client.ts`): SOAP calls to Exchange Online
+- **Auth** (`src/auth.ts`): OAuth2 refresh token, token cache at `~/.config/clippy/token-cache.json`
+- **Commands** (`src/commands/`): `mail.ts`, `calendar.ts`, `send.ts`, `create-event.ts`, etc.
