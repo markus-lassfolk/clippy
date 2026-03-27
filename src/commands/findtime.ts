@@ -162,7 +162,7 @@ export const findtimeCommand = new Command('findtime')
 
     const mailbox = resolveMailbox(options);
 
-    if (emails.length === 0) {
+    if (emails.length === 0 && !mailbox) {
       console.error('Error: Please provide at least one email address.');
       console.error('\nUsage: clippy findtime nextweek user@example.com');
       process.exit(1);

@@ -1722,8 +1722,7 @@ export async function getRooms(
 
 export async function searchRooms(
   token: string,
-  query: string = 'room',
-  mailbox?: string
+  query: string = 'room'
 ): Promise<OwaResponse<Room[]>> {
   // Use ResolveNames to find rooms by name
   try {
