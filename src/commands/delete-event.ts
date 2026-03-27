@@ -176,7 +176,7 @@ export const deleteEventCommand = new Command('delete-event')
       // Use cancel to send cancellation notices
       console.log(`  Attendees: ${attendees.map(a => a.EmailAddress?.Address).join(', ')}`);
       console.log(`  Sending cancellation notices...`);
-      deleteResult = await cancelEvent(authResult.token!, targetEvent.Id, options.message);
+      deleteResult = await cancelEvent(authResult.token!, targetEvent.Id, options.message, options.mailbox);
       action = 'cancelled';
     } else {
       // Just delete without notification

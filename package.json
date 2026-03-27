@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "bun run src/cli.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npx tsc --noEmit",
     "lint": "biome lint --max-diagnostics=none --diagnostic-level=error .",
     "lint:fix": "biome lint --write --unsafe --diagnostic-level=error .",
     "format": "biome format --write .",
