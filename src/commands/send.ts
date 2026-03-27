@@ -18,7 +18,6 @@ export const sendCommand = new Command('send')
   .option('--markdown', 'Parse body as markdown (bold, links, lists)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
-  .option('--mailbox <email>', 'Send from shared mailbox (Send As)')
   .action(async (options: {
     to: string;
     subject: string;
@@ -30,7 +29,6 @@ export const sendCommand = new Command('send')
     markdown?: boolean;
     json?: boolean;
     token?: string;
-    mailbox?: string;
   }) => {
     const authResult = await resolveAuth({
       token: options.token,
@@ -116,7 +114,6 @@ export const sendCommand = new Command('send')
       body,
       bodyType,
       attachments,
-      mailbox: options.mailbox,
     });
 
     if (!result.ok) {
