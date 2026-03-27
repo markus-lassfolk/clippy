@@ -1,6 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { getJwtExpiration } from './jwt-utils.js';
 
 export interface AuthResult {
   success: boolean;
@@ -15,17 +16,6 @@ interface CachedToken {
 }
 
 const TOKEN_CACHE_FILE_TEMPLATE = join(homedir(), '.config', 'clippy', 'token-cache-${identity}.json');
-
-function getJwtExpiration(token: string): number | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    return payload.exp ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
 
 async function loadCachedToken(identity: string): Promise<CachedToken | null> {
   try {

@@ -1,6 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { getJwtExpiration } from './jwt-utils.js';
 
 export interface GraphAuthResult {
   success: boolean;
@@ -22,17 +23,6 @@ const GRAPH_SCOPES = [
   'https://graph.microsoft.com/.default offline_access',
   'https://graph.microsoft.com/Files.Read offline_access User.Read'
 ];
-
-function getJwtExpiration(token: string): number | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    return payload.exp ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
 
 async function loadCachedGraphToken(): Promise<CachedGraphToken | null> {
   try {

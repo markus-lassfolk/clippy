@@ -59,8 +59,16 @@ async function streamWebToFile(body: ReadableStream<Uint8Array>, filePath: strin
     for await (const chunk of body) {
       if (!stream.write(chunk)) {
         await new Promise<void>((resolveDrain, rejectDrain) => {
-          stream.once('drain', resolveDrain);
-          stream.once('error', rejectDrain);
+          const onDrain = () => {
+            stream.off('error', onError);
+            resolveDrain();
+          };
+          const onError = (err: Error) => {
+            stream.off('drain', onDrain);
+            rejectDrain(err);
+          };
+          stream.once('drain', onDrain);
+          stream.once('error', onError);
         });
       }
     }
@@ -255,7 +263,7 @@ export async function downloadFile(
       return graphError('Download failed: response body missing');
     }
 
-    const targetPath = resolve(outputPath || defaultDownloadPath(resolvedItem.name || itemId));
+    const targetPath = resolve(outputPath || defaultDownloadPath(basename(resolvedItem.name || itemId)));
     await mkdir(dirname(targetPath), { recursive: true });
     await streamWebToFile(response.body, targetPath);
 
@@ -289,7 +297,7 @@ export async function shareFile(
 }
 
 export function defaultDownloadPath(fileName: string): string {
-  return resolve(homedir(), 'Downloads', fileName);
+  return resolve(homedir(), 'Downloads', basename(fileName));
 }
 
 export async function cleanupDownloadedFile(path: string): Promise<void> {
