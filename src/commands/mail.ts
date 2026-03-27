@@ -56,6 +56,7 @@ export const mailCommand = new Command('mail')
   .option('--markdown', 'Parse message as markdown (bold, links, lists)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
+  .option('--mailbox <email>', 'Shared mailbox for reply/forward (routes via X-AnchorMailbox)')
   .action(async (folder: string, options: {
     limit: string;
     page: string;
@@ -81,6 +82,7 @@ export const mailCommand = new Command('mail')
     json?: boolean;
     token?: string;
     draft?: boolean;
+    mailbox?: string;
   }) => {
     const authResult = await resolveAuth({
       token: options.token,
@@ -404,7 +406,8 @@ export const mailCommand = new Command('mail')
           id,
           message,
           isReplyAll,
-          isHtml
+          isHtml,
+          options.mailbox
         );
 
         if (!result.ok || !result.data) {
@@ -422,7 +425,8 @@ export const mailCommand = new Command('mail')
         id,
         message,
         isReplyAll,
-        isHtml
+        isHtml,
+        options.mailbox
       );
 
       if (!result.ok) {
@@ -451,7 +455,8 @@ export const mailCommand = new Command('mail')
         authResult.token!,
         id,
         recipients,
-        options.message
+        options.message,
+        options.mailbox
       );
 
       if (!result.ok) {
