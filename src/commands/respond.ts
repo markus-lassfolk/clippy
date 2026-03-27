@@ -39,6 +39,7 @@ export const respondCommand = new Command('respond')
   .option('--only-required', 'Only show required invitations')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
+  .option('--mailbox <email>', 'Respond to event in shared mailbox calendar')
   .action(
     async (
       action: string | undefined,
@@ -51,6 +52,7 @@ export const respondCommand = new Command('respond')
         onlyRequired?: boolean;
         json?: boolean;
         token?: string;
+        mailbox?: string;
       }
     ) => {
       const authResult = await resolveAuth({
@@ -71,12 +73,20 @@ export const respondCommand = new Command('respond')
       const userInfo = await getOwaUserInfo(authResult.token!);
       const userEmail = userInfo.data?.email?.toLowerCase();
 
+      // When using a shared mailbox, the attendee email is the mailbox, not the authenticated user
+      const attendeeEmail = options.mailbox?.toLowerCase() || userEmail;
+
       // Fetch upcoming events
       const now = new Date();
       const futureDate = new Date(now);
       futureDate.setDate(futureDate.getDate() + 30); // Look 30 days ahead
 
-      const result = await getCalendarEvents(authResult.token!, now.toISOString(), futureDate.toISOString());
+      const result = await getCalendarEvents(
+        authResult.token!,
+        now.toISOString(),
+        futureDate.toISOString(),
+        options.mailbox
+      );
 
       if (!result.ok || !result.data) {
         if (options.json) {
@@ -93,7 +103,7 @@ export const respondCommand = new Command('respond')
         if (event.IsOrganizer) return false;
 
         // Find user's attendance record
-        const myAttendance = event.Attendees?.find((a) => a.EmailAddress?.Address?.toLowerCase() === userEmail);
+        const myAttendance = event.Attendees?.find((a) => a.EmailAddress?.Address?.toLowerCase() === attendeeEmail);
 
         // Some events don't include attendee records; fall back to event-level ResponseStatus if present
         const eventResponse = (event as any).ResponseStatus?.Response as string | undefined;
@@ -149,7 +159,7 @@ export const respondCommand = new Command('respond')
           const startTime = formatTime(event.Start.DateTime);
           const endTime = formatTime(event.End.DateTime);
 
-          const myAttendance = event.Attendees?.find((a) => a.EmailAddress?.Address?.toLowerCase() === userEmail);
+          const myAttendance = event.Attendees?.find((a) => a.EmailAddress?.Address?.toLowerCase() === attendeeEmail);
           const eventResponse = (event as any).ResponseStatus?.Response as string | undefined;
           const response = myAttendance?.Status?.Response || eventResponse || 'None';
           const icon = getResponseIcon(response);
@@ -209,7 +219,8 @@ export const respondCommand = new Command('respond')
         eventId: targetEvent.Id,
         response: actionLower as ResponseType,
         comment: options.comment,
-        sendResponse: options.notify
+        sendResponse: options.notify,
+        mailbox: options.mailbox
       });
 
       if (!response.ok) {
