@@ -39,6 +39,7 @@ export const respondCommand = new Command('respond')
   .option('--only-required', 'Only show required invitations')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
+  .option('--mailbox <email>', 'Respond to event in shared mailbox calendar')
   .action(
     async (
       action: string | undefined,
@@ -51,6 +52,7 @@ export const respondCommand = new Command('respond')
         onlyRequired?: boolean;
         json?: boolean;
         token?: string;
+        mailbox?: string;
       }
     ) => {
       const authResult = await resolveAuth({
@@ -209,7 +211,8 @@ export const respondCommand = new Command('respond')
         eventId: targetEvent.Id,
         response: actionLower as ResponseType,
         comment: options.comment,
-        sendResponse: options.notify
+        sendResponse: options.notify,
+        mailbox: options.mailbox
       });
 
       if (!response.ok) {

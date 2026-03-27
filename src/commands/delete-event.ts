@@ -40,169 +40,191 @@ export const deleteEventCommand = new Command('delete-event')
   .option('--force-delete', 'Delete without sending cancellation (even with attendees)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
-  .action(async (eventIndex: string | undefined, options: {
-    id?: string;
-    day: string;
-    search?: string;
-    message?: string;
-    forceDelete?: boolean;
-    json?: boolean;
-    token?: string;
-  }) => {
-    const authResult = await resolveAuth({
-      token: options.token,
-    });
-
-    if (!authResult.success) {
-      if (options.json) {
-        console.log(JSON.stringify({ error: authResult.error }, null, 2));
-      } else {
-        console.error(`Error: ${authResult.error}`);
-        console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+  .option('--mailbox <email>', 'Delete event in shared mailbox calendar')
+  .action(
+    async (
+      eventIndex: string | undefined,
+      options: {
+        id?: string;
+        day: string;
+        search?: string;
+        message?: string;
+        forceDelete?: boolean;
+        json?: boolean;
+        token?: string;
+        mailbox?: string;
       }
-      process.exit(1);
-    }
+    ) => {
+      const authResult = await resolveAuth({
+        token: options.token
+      });
 
-    // Get events for the day
-    const baseDate = parseDay(options.day);
-    const startOfDay = new Date(baseDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(baseDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const result = await getCalendarEvents(
-      authResult.token!,
-      startOfDay.toISOString(),
-      endOfDay.toISOString()
-    );
-
-    if (!result.ok || !result.data) {
-      if (options.json) {
-        console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
-      } else {
-        console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
+      if (!authResult.success) {
+        if (options.json) {
+          console.log(JSON.stringify({ error: authResult.error }, null, 2));
+        } else {
+          console.error(`Error: ${authResult.error}`);
+          console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+        }
+        process.exit(1);
       }
-      process.exit(1);
-    }
 
-    // Filter to events the user owns (IsOrganizer) and optionally by search
-    let events = result.data.filter(e => e.IsOrganizer && !e.IsCancelled);
+      // Get events for the day
+      const baseDate = parseDay(options.day);
+      const startOfDay = new Date(baseDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(baseDate);
+      endOfDay.setHours(23, 59, 59, 999);
 
-    if (options.search) {
-      const searchLower = options.search.toLowerCase();
-      events = events.filter(e => e.Subject?.toLowerCase().includes(searchLower));
-    }
+      const result = await getCalendarEvents(authResult.token!, startOfDay.toISOString(), endOfDay.toISOString());
 
-    // If no id provided, list events
-    if (!options.id) {
-      if (options.json) {
-        console.log(JSON.stringify({
-          events: events.map((e, i) => ({
-            index: i + 1,
-            id: e.Id,
-            subject: e.Subject,
-            start: e.Start.DateTime,
-            end: e.End.DateTime,
-          })),
-        }, null, 2));
+      if (!result.ok || !result.data) {
+        if (options.json) {
+          console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
+        } else {
+          console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
+        }
+        process.exit(1);
+      }
+
+      // Filter to events the user owns (IsOrganizer) and optionally by search
+      let events = result.data.filter((e) => e.IsOrganizer && !e.IsCancelled);
+
+      if (options.search) {
+        const searchLower = options.search.toLowerCase();
+        events = events.filter((e) => e.Subject?.toLowerCase().includes(searchLower));
+      }
+
+      // If no id provided, list events
+      if (!options.id) {
+        if (options.json) {
+          console.log(
+            JSON.stringify(
+              {
+                events: events.map((e, i) => ({
+                  index: i + 1,
+                  id: e.Id,
+                  subject: e.Subject,
+                  start: e.Start.DateTime,
+                  end: e.End.DateTime
+                }))
+              },
+              null,
+              2
+            )
+          );
+          return;
+        }
+
+        console.log(`\nYour events for ${formatDate(baseDate.toISOString())}:\n`);
+        console.log('\u2500'.repeat(60));
+
+        if (events.length === 0) {
+          console.log('\n  No events found that you can delete.');
+          console.log('  (You can only delete events you organized)\n');
+          return;
+        }
+
+        for (let i = 0; i < events.length; i++) {
+          const event = events[i];
+          const startTime = formatTime(event.Start.DateTime);
+          const endTime = formatTime(event.End.DateTime);
+          const attendees = event.Attendees?.filter((a) => a.EmailAddress?.Address && a.Type !== 'Resource') || [];
+
+          console.log(`\n  [${i + 1}] ${event.Subject}`);
+          console.log(`      ${startTime} - ${endTime}`);
+          console.log(`      ID: ${event.Id}`);
+          if (event.Location?.DisplayName) {
+            console.log(`      Location: ${event.Location.DisplayName}`);
+          }
+          if (attendees.length > 0) {
+            console.log(`      Attendees: ${attendees.length} (will be notified on cancel)`);
+          }
+        }
+
+        console.log('\n' + '\u2500'.repeat(60));
+        console.log('\nTo delete/cancel an event:');
+        console.log('  clippy delete-event <number>                    # Cancel & notify attendees');
+        console.log('  clippy delete-event <number> --message "Sorry"  # With cancellation message');
+        console.log('  clippy delete-event <number> --force-delete     # Delete without notifying');
+        console.log('');
         return;
       }
 
-      console.log(`\nYour events for ${formatDate(baseDate.toISOString())}:\n`);
-      console.log('\u2500'.repeat(60));
-
-      if (events.length === 0) {
-        console.log('\n  No events found that you can delete.');
-        console.log('  (You can only delete events you organized)\n');
-        return;
+      // Delete the specified event by ID
+      if (!options.id) {
+        console.error('Please specify the event id with --id.');
+        console.error('Run `clippy delete-event` to list events and IDs.');
+        process.exit(1);
       }
 
-      for (let i = 0; i < events.length; i++) {
-        const event = events[i];
-        const startTime = formatTime(event.Start.DateTime);
-        const endTime = formatTime(event.End.DateTime);
-        const attendees = event.Attendees?.filter(a =>
-          a.EmailAddress?.Address && a.Type !== 'Resource'
-        ) || [];
-
-        console.log(`\n  [${i + 1}] ${event.Subject}`);
-        console.log(`      ${startTime} - ${endTime}`);
-        console.log(`      ID: ${event.Id}`);
-        if (event.Location?.DisplayName) {
-          console.log(`      Location: ${event.Location.DisplayName}`);
-        }
-        if (attendees.length > 0) {
-          console.log(`      Attendees: ${attendees.length} (will be notified on cancel)`);
-        }
+      const targetEvent = events.find((e) => e.Id === options.id);
+      if (!targetEvent) {
+        console.error(`Invalid event id: ${options.id}`);
+        process.exit(1);
       }
 
-      console.log('\n' + '\u2500'.repeat(60));
-      console.log('\nTo delete/cancel an event:');
-      console.log('  clippy delete-event <number>                    # Cancel & notify attendees');
-      console.log('  clippy delete-event <number> --message "Sorry"  # With cancellation message');
-      console.log('  clippy delete-event <number> --force-delete     # Delete without notifying');
-      console.log('');
-      return;
-    }
+      // Check if event has attendees (other than organizer)
+      const attendees = targetEvent.Attendees?.filter((a) => a.EmailAddress?.Address && a.Type !== 'Resource') || [];
+      const hasAttendees = attendees.length > 0;
 
-    // Delete the specified event by ID
-    if (!options.id) {
-      console.error('Please specify the event id with --id.');
-      console.error('Run `clippy delete-event` to list events and IDs.');
-      process.exit(1);
-    }
+      console.log(`\nDeleting: ${targetEvent.Subject}`);
+      console.log(
+        `  ${formatDate(targetEvent.Start.DateTime)} ${formatTime(targetEvent.Start.DateTime)} - ${formatTime(targetEvent.End.DateTime)}`
+      );
 
-    const targetEvent = events.find(e => e.Id === options.id);
-    if (!targetEvent) {
-      console.error(`Invalid event id: ${options.id}`);
-      process.exit(1);
-    }
+      let deleteResult: Awaited<ReturnType<typeof deleteEvent>>;
+      let action: string;
 
-    // Check if event has attendees (other than organizer)
-    const attendees = targetEvent.Attendees?.filter(a =>
-      a.EmailAddress?.Address && a.Type !== 'Resource'
-    ) || [];
-    const hasAttendees = attendees.length > 0;
-
-    console.log(`\nDeleting: ${targetEvent.Subject}`);
-    console.log(`  ${formatDate(targetEvent.Start.DateTime)} ${formatTime(targetEvent.Start.DateTime)} - ${formatTime(targetEvent.End.DateTime)}`);
-
-    let deleteResult: Awaited<ReturnType<typeof deleteEvent>>;
-    let action: string;
-
-    if (hasAttendees && !options.forceDelete) {
-      // Use cancel to send cancellation notices
-      console.log(`  Attendees: ${attendees.map(a => a.EmailAddress?.Address).join(', ')}`);
-      console.log(`  Sending cancellation notices...`);
-      deleteResult = await cancelEvent(authResult.token!, targetEvent.Id, options.message);
-      action = 'cancelled';
-    } else {
-      // Just delete without notification
-      deleteResult = await deleteEvent(authResult.token!, targetEvent.Id);
-      action = 'deleted';
-    }
-
-    if (!deleteResult.ok) {
-      if (options.json) {
-        console.log(JSON.stringify({ error: deleteResult.error?.message || `Failed to ${action} event` }, null, 2));
-      } else {
-        console.error(`\nError: ${deleteResult.error?.message || `Failed to ${action} event`}`);
-      }
-      process.exit(1);
-    }
-
-    if (options.json) {
-      console.log(JSON.stringify({
-        success: true,
-        action,
-        event: targetEvent.Subject,
-        attendeesNotified: hasAttendees && !options.forceDelete ? attendees.length : 0,
-      }, null, 2));
-    } else {
       if (hasAttendees && !options.forceDelete) {
-        console.log(`\n\u2713 Event cancelled. ${attendees.length} attendee(s) notified.\n`);
+        // Use cancel to send cancellation notices
+        console.log(`  Attendees: ${attendees.map((a) => a.EmailAddress?.Address).join(', ')}`);
+        console.log(`  Sending cancellation notices...`);
+        deleteResult = await cancelEvent({
+          token: authResult.token!,
+          eventId: targetEvent.Id,
+          comment: options.message,
+          mailbox: options.mailbox
+        });
+        action = 'cancelled';
       } else {
-        console.log('\n\u2713 Event deleted.\n');
+        // Just delete without notification
+        deleteResult = await deleteEvent({
+          token: authResult.token!,
+          eventId: targetEvent.Id,
+          mailbox: options.mailbox
+        });
+        action = 'deleted';
+      }
+
+      if (!deleteResult.ok) {
+        if (options.json) {
+          console.log(JSON.stringify({ error: deleteResult.error?.message || `Failed to ${action} event` }, null, 2));
+        } else {
+          console.error(`\nError: ${deleteResult.error?.message || `Failed to ${action} event`}`);
+        }
+        process.exit(1);
+      }
+
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            {
+              success: true,
+              action,
+              event: targetEvent.Subject,
+              attendeesNotified: hasAttendees && !options.forceDelete ? attendees.length : 0
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        if (hasAttendees && !options.forceDelete) {
+          console.log(`\n\u2713 Event cancelled. ${attendees.length} attendee(s) notified.\n`);
+        } else {
+          console.log('\n\u2713 Event deleted.\n');
+        }
       }
     }
-  });
+  );
