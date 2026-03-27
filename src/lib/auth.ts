@@ -15,6 +15,8 @@ interface CachedToken {
   expiresAt: number;
 }
 
+// Security model: cache file stores bearer/refresh tokens and must be owner-only.
+// Directory is created as 0700 and file writes enforce 0600 to satisfy least-privilege.
 const TOKEN_CACHE_FILE_TEMPLATE = join(homedir(), '.config', 'clippy', 'token-cache-${identity}.json');
 
 async function loadCachedToken(identity: string): Promise<CachedToken | null> {

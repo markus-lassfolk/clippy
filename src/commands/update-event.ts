@@ -209,6 +209,7 @@ export const updateEventCommand = new Command('update-event')
       const updateOptions: Parameters<typeof updateEvent>[0] = {
         token: authResult.token!,
         eventId: targetEvent.Id,
+        changeKey: targetEvent.ChangeKey,
         mailbox: options.mailbox
       };
 
