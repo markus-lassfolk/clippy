@@ -8,7 +8,7 @@ export const whoamiCommand = new Command('whoami')
   .option('--token <token>', 'Use a specific token')
   .action(async (options: { json?: boolean; token?: string }) => {
     const authResult = await resolveAuth({
-      token: options.token,
+      token: options.token
     });
 
     if (!authResult.success) {
@@ -29,7 +29,7 @@ export const whoamiCommand = new Command('whoami')
           JSON.stringify(
             {
               error: userInfo.error?.message || 'Failed to fetch user info',
-              authenticated: true,
+              authenticated: true
             },
             null,
             2
@@ -50,7 +50,7 @@ export const whoamiCommand = new Command('whoami')
           {
             displayName,
             email,
-            authenticated: true,
+            authenticated: true
           },
           null,
           2

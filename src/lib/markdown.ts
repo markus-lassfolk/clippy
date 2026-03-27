@@ -6,10 +6,7 @@ export function markdownToHtml(text: string): string {
   let html = text;
 
   // Escape HTML entities first
-  html = html
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // Bold: **text** or __text__
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -104,5 +101,7 @@ ${html}
  */
 export function hasMarkdown(text: string): boolean {
   // Check for common markdown patterns
-  return /\*\*.+?\*\*|__.+?__|(?<!\w)\*[^*]+?\*(?!\w)|(?<!\w)_[^_]+?_(?!\w)|\[.+?\]\(.+?\)|^[\s]*[-*]\s+|^[\s]*\d+\.\s+/m.test(text);
+  return /\*\*.+?\*\*|__.+?__|(?<!\w)\*[^*]+?\*(?!\w)|(?<!\w)_[^_]+?_(?!\w)|\[.+?\]\(.+?\)|^[\s]*[-*]\s+|^[\s]*\d+\.\s+/m.test(
+    text
+  );
 }

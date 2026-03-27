@@ -37,7 +37,7 @@ function extractTag(xml: string, tagName: string): string {
   return match ? xmlDecode(match[1]) : '';
 }
 
-function extractTagRaw(xml: string, tagName: string): string {
+function _extractTagRaw(xml: string, tagName: string): string {
   const regex = new RegExp(
     `<(?:[A-Za-z0-9_]+:)?${tagName}\\b[^>]*>([\\s\\S]*?)<\\/(?:[A-Za-z0-9_]+:)?${tagName}>`,
     'i'
@@ -47,20 +47,14 @@ function extractTagRaw(xml: string, tagName: string): string {
 }
 
 function extractAttribute(xml: string, tagName: string, attrName: string): string {
-  const regex = new RegExp(
-    `<(?:[A-Za-z0-9_]+:)?${tagName}\\b[^>]*\\b${attrName}="([^"]*)"`,
-    'i'
-  );
+  const regex = new RegExp(`<(?:[A-Za-z0-9_]+:)?${tagName}\\b[^>]*\\b${attrName}="([^"]*)"`, 'i');
   const match = xml.match(regex);
   return match ? xmlDecode(match[1]) : '';
 }
 
 function extractBlocks(xml: string, tagName: string): string[] {
-  const regex = new RegExp(
-    `<(?:[A-Za-z0-9_]+:)?${tagName}\\b[\\s\\S]*?<\\/(?:[A-Za-z0-9_]+:)?${tagName}>`,
-    'g'
-  );
-  return [...xml.matchAll(regex)].map(m => m[0]);
+  const regex = new RegExp(`<(?:[A-Za-z0-9_]+:)?${tagName}\\b[\\s\\S]*?<\\/(?:[A-Za-z0-9_]+:)?${tagName}>`, 'g');
+  return [...xml.matchAll(regex)].map((m) => m[0]);
 }
 
 function extractSelfClosingOrBlock(xml: string, tagName: string): string {
@@ -98,25 +92,25 @@ async function callEws(token: string, envelope: string, mailbox?: string): Promi
   const response = await fetch(EWS_ENDPOINT, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'text/xml; charset=utf-8',
-      'Accept': 'text/xml',
-      'X-AnchorMailbox': anchorMailbox,
+      Accept: 'text/xml',
+      'X-AnchorMailbox': anchorMailbox
     },
-    body: envelope,
+    body: envelope
   });
 
   const xml = await response.text();
 
   if (!response.ok) {
     const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');
-    throw new Error(`EWS HTTP ${response.status}${soapError ? ': ' + soapError : ''}`);
+    throw new Error(`EWS HTTP ${response.status}${soapError ? `: ${soapError}` : ''}`);
   }
 
   const responseCode = extractTag(xml, 'ResponseCode');
   if (responseCode && responseCode !== 'NoError') {
     const messageText = extractTag(xml, 'MessageText');
-    throw new Error(`EWS ${responseCode}${messageText ? ': ' + messageText : ''}`);
+    throw new Error(`EWS ${responseCode}${messageText ? `: ${messageText}` : ''}`);
   }
 
   return xml;
@@ -358,8 +352,7 @@ function parseCalendarItem(block: string): CalendarEvent {
   const organizerName = extractTag(organizerBlock, 'Name');
   const organizerEmail = extractTag(organizerBlock, 'EmailAddress');
   const myResponseType = extractTag(block, 'MyResponseType');
-  const isOrganizer = myResponseType === 'Organizer' ||
-    organizerEmail.toLowerCase() === EWS_USERNAME.toLowerCase();
+  const isOrganizer = myResponseType === 'Organizer' || organizerEmail.toLowerCase() === EWS_USERNAME.toLowerCase();
 
   // Attendees
   const attendees: CalendarAttendee[] = [];
@@ -367,8 +360,8 @@ function parseCalendarItem(block: string): CalendarEvent {
   for (const type of ['RequiredAttendees', 'OptionalAttendees', 'Resources'] as const) {
     const typeBlock = extractSelfClosingOrBlock(block, type);
     const attendeeBlocks = extractBlocks(typeBlock, 'Attendee');
-    const attendeeType = type === 'RequiredAttendees' ? 'Required' :
-                          type === 'OptionalAttendees' ? 'Optional' : 'Resource';
+    const attendeeType =
+      type === 'RequiredAttendees' ? 'Required' : type === 'OptionalAttendees' ? 'Optional' : 'Resource';
 
     for (const ab of attendeeBlocks) {
       const mailboxBlock = extractSelfClosingOrBlock(ab, 'Mailbox');
@@ -379,28 +372,30 @@ function parseCalendarItem(block: string): CalendarEvent {
 
       // Map EWS ResponseType to our format
       const responseMap: Record<string, CalendarAttendee['Status']['Response']> = {
-        'Accept': 'Accepted',
-        'Decline': 'Declined',
-        'Tentative': 'TentativelyAccepted',
-        'NoResponseReceived': 'NotResponded',
-        'Organizer': 'Organizer',
-        'Unknown': 'None',
+        Accept: 'Accepted',
+        Decline: 'Declined',
+        Tentative: 'TentativelyAccepted',
+        NoResponseReceived: 'NotResponded',
+        Organizer: 'Organizer',
+        Unknown: 'None'
       };
 
       attendees.push({
         Type: attendeeType,
         Status: {
           Response: responseMap[responseType] || 'None',
-          Time: lastResponseTime,
+          Time: lastResponseTime
         },
-        EmailAddress: { Name: name, Address: email },
+        EmailAddress: { Name: name, Address: email }
       });
     }
   }
 
   // Categories
   const categoriesBlock = extractSelfClosingOrBlock(block, 'Categories');
-  const categories = extractBlocks(categoriesBlock, 'String').map(b => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, '')));
+  const categories = extractBlocks(categoriesBlock, 'String').map(
+    (b) => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, ''))
+  );
 
   return {
     Id: id,
@@ -417,7 +412,7 @@ function parseCalendarItem(block: string): CalendarEvent {
     BodyPreview: bodyPreview ? bodyPreview.substring(0, 200).replace(/\s+/g, ' ').trim() : undefined,
     Categories: categories.length > 0 ? categories : undefined,
     ShowAs: showAs,
-    Importance: importance,
+    Importance: importance
   };
 }
 
@@ -427,7 +422,8 @@ function parseEmailMessage(block: string): EmailMessage {
   const subject = extractTag(block, 'Subject');
   const bodyContent = extractTag(block, 'Body') || extractTag(block, 'TextBody');
   const bodyType = extractAttribute(block, 'Body', 'BodyType') || 'Text';
-  const preview = extractTag(block, 'Preview') || (bodyContent ? bodyContent.substring(0, 200).replace(/\s+/g, ' ').trim() : '');
+  const preview =
+    extractTag(block, 'Preview') || (bodyContent ? bodyContent.substring(0, 200).replace(/\s+/g, ' ').trim() : '');
   const receivedDateTime = extractTag(block, 'DateTimeReceived');
   const sentDateTime = extractTag(block, 'DateTimeSent');
   const isRead = extractTag(block, 'IsRead').toLowerCase() === 'true';
@@ -444,21 +440,21 @@ function parseEmailMessage(block: string): EmailMessage {
   // To
   const toBlock = extractSelfClosingOrBlock(block, 'ToRecipients');
   const toMailboxes = extractBlocks(toBlock, 'Mailbox');
-  const toRecipients = toMailboxes.map(mb => ({
+  const toRecipients = toMailboxes.map((mb) => ({
     EmailAddress: {
       Name: extractTag(mb, 'Name'),
-      Address: extractTag(mb, 'EmailAddress'),
-    },
+      Address: extractTag(mb, 'EmailAddress')
+    }
   }));
 
   // Cc
   const ccBlock = extractSelfClosingOrBlock(block, 'CcRecipients');
   const ccMailboxes = extractBlocks(ccBlock, 'Mailbox');
-  const ccRecipients = ccMailboxes.map(mb => ({
+  const ccRecipients = ccMailboxes.map((mb) => ({
     EmailAddress: {
       Name: extractTag(mb, 'Name'),
-      Address: extractTag(mb, 'EmailAddress'),
-    },
+      Address: extractTag(mb, 'EmailAddress')
+    }
   }));
 
   // Flag
@@ -480,7 +476,7 @@ function parseEmailMessage(block: string): EmailMessage {
     IsDraft: isDraft,
     HasAttachments: hasAttachments,
     Importance: importance,
-    Flag: flagStatus ? { FlagStatus: flagStatus } : undefined,
+    Flag: flagStatus ? { FlagStatus: flagStatus } : undefined
   };
 }
 
@@ -489,9 +485,9 @@ function parseFolder(block: string): MailFolder {
     Id: extractAttribute(block, 'FolderId', 'Id'),
     DisplayName: extractTag(block, 'DisplayName'),
     ParentFolderId: extractAttribute(block, 'ParentFolderId', 'Id') || undefined,
-    ChildFolderCount: parseInt(extractTag(block, 'ChildFolderCount') || '0'),
-    UnreadItemCount: parseInt(extractTag(block, 'UnreadItemCount') || '0'),
-    TotalItemCount: parseInt(extractTag(block, 'TotalItemCount') || '0'),
+    ChildFolderCount: parseInt(extractTag(block, 'ChildFolderCount') || '0', 10),
+    UnreadItemCount: parseInt(extractTag(block, 'UnreadItemCount') || '0', 10),
+    TotalItemCount: parseInt(extractTag(block, 'TotalItemCount') || '0', 10)
   };
 }
 
@@ -517,7 +513,7 @@ const FOLDER_MAP: Record<string, string> = {
   junk: 'junkemail',
   spam: 'junkemail',
   outbox: 'outbox',
-  archive: 'archivemsgfolderoot',
+  archive: 'archivemsgfolderoot'
 };
 
 function folderIdXml(folder: string): string {
@@ -562,7 +558,7 @@ export async function getOwaUserInfo(token: string): Promise<OwaResponse<OwaUser
     const email = extractTag(mailbox, 'EmailAddress') || EWS_USERNAME;
 
     return ewsResult({ displayName: name, email });
-  } catch (err) {
+  } catch (_err) {
     // Fallback to env
     return ewsResult({ displayName: EWS_USERNAME, email: EWS_USERNAME });
   }
@@ -611,10 +607,7 @@ export async function getCalendarEvents(
   }
 }
 
-export async function getCalendarEvent(
-  token: string,
-  eventId: string
-): Promise<OwaResponse<CalendarEvent>> {
+export async function getCalendarEvent(token: string, eventId: string): Promise<OwaResponse<CalendarEvent>> {
   try {
     const envelope = soapEnvelope(`
     <m:GetItem>
@@ -659,7 +652,7 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
       patternXml = `<t:DailyRecurrence><t:Interval>${p.Interval}</t:Interval></t:DailyRecurrence>`;
       break;
     case 'Weekly': {
-      const days = (p.DaysOfWeek || []).map(d => `<t:DayOfWeek>${xmlEscape(d)}</t:DayOfWeek>`).join('');
+      const days = (p.DaysOfWeek || []).map((d) => `<t:DayOfWeek>${xmlEscape(d)}</t:DayOfWeek>`).join('');
       patternXml = `<t:WeeklyRecurrence><t:Interval>${p.Interval}</t:Interval><t:DaysOfWeek>${days || ''}</t:DaysOfWeek></t:WeeklyRecurrence>`;
       break;
     }
@@ -667,7 +660,7 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
       patternXml = `<t:AbsoluteMonthlyRecurrence><t:Interval>${p.Interval}</t:Interval><t:DayOfMonth>${p.DayOfMonth || 1}</t:DayOfMonth></t:AbsoluteMonthlyRecurrence>`;
       break;
     case 'AbsoluteYearly':
-      patternXml = `<t:AbsoluteYearlyRecurrence><t:DayOfMonth>${p.DayOfMonth || 1}</t:DayOfMonth><t:Month>${['January','February','March','April','May','June','July','August','September','October','November','December'][(p.Month || 1) - 1]}</t:Month></t:AbsoluteYearlyRecurrence>`;
+      patternXml = `<t:AbsoluteYearlyRecurrence><t:DayOfMonth>${p.DayOfMonth || 1}</t:DayOfMonth><t:Month>${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][(p.Month || 1) - 1]}</t:Month></t:AbsoluteYearlyRecurrence>`;
       break;
     default:
       patternXml = `<t:DailyRecurrence><t:Interval>${p.Interval}</t:Interval></t:DailyRecurrence>`;
@@ -695,24 +688,33 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
     let attendeesXml = '';
     if (attendees && attendees.length > 0) {
-      const required = attendees.filter(a => (a.type || 'Required') === 'Required');
-      const optional = attendees.filter(a => a.type === 'Optional');
-      const resources = attendees.filter(a => a.type === 'Resource');
+      const required = attendees.filter((a) => (a.type || 'Required') === 'Required');
+      const optional = attendees.filter((a) => a.type === 'Optional');
+      const resources = attendees.filter((a) => a.type === 'Resource');
 
       if (required.length > 0) {
-        attendeesXml += `<t:RequiredAttendees>${required.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
-        ).join('')}</t:RequiredAttendees>`;
+        attendeesXml += `<t:RequiredAttendees>${required
+          .map(
+            (a) =>
+              `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
+          )
+          .join('')}</t:RequiredAttendees>`;
       }
       if (optional.length > 0) {
-        attendeesXml += `<t:OptionalAttendees>${optional.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
-        ).join('')}</t:OptionalAttendees>`;
+        attendeesXml += `<t:OptionalAttendees>${optional
+          .map(
+            (a) =>
+              `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
+          )
+          .join('')}</t:OptionalAttendees>`;
       }
       if (resources.length > 0) {
-        attendeesXml += `<t:Resources>${resources.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
-        ).join('')}</t:Resources>`;
+        attendeesXml += `<t:Resources>${resources
+          .map(
+            (a) =>
+              `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress>${a.name ? `<t:Name>${xmlEscape(a.name)}</t:Name>` : ''}</t:Mailbox></t:Attendee>`
+          )
+          .join('')}</t:Resources>`;
       }
     }
 
@@ -744,7 +746,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
       Start: { DateTime: start, TimeZone: 'UTC' },
       End: { DateTime: end, TimeZone: 'UTC' },
       WebLink: undefined,
-      OnlineMeetingUrl: undefined,
+      OnlineMeetingUrl: undefined
     });
   } catch (err) {
     return ewsError(err);
@@ -758,39 +760,64 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     const updates: string[] = [];
 
     if (subject !== undefined) {
-      updates.push(`<t:SetItemField><t:FieldURI FieldURI="item:Subject" /><t:CalendarItem><t:Subject>${xmlEscape(subject)}</t:Subject></t:CalendarItem></t:SetItemField>`);
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="item:Subject" /><t:CalendarItem><t:Subject>${xmlEscape(subject)}</t:Subject></t:CalendarItem></t:SetItemField>`
+      );
     }
     if (body !== undefined) {
-      updates.push(`<t:SetItemField><t:FieldURI FieldURI="item:Body" /><t:CalendarItem><t:Body BodyType="Text">${xmlEscape(body)}</t:Body></t:CalendarItem></t:SetItemField>`);
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="item:Body" /><t:CalendarItem><t:Body BodyType="Text">${xmlEscape(body)}</t:Body></t:CalendarItem></t:SetItemField>`
+      );
     }
     if (start !== undefined) {
-      updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:Start" /><t:CalendarItem><t:Start>${xmlEscape(start)}</t:Start></t:CalendarItem></t:SetItemField>`);
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:Start" /><t:CalendarItem><t:Start>${xmlEscape(start)}</t:Start></t:CalendarItem></t:SetItemField>`
+      );
     }
     if (end !== undefined) {
-      updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:End" /><t:CalendarItem><t:End>${xmlEscape(end)}</t:End></t:CalendarItem></t:SetItemField>`);
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:End" /><t:CalendarItem><t:End>${xmlEscape(end)}</t:End></t:CalendarItem></t:SetItemField>`
+      );
     }
     if (location !== undefined) {
-      updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:Location" /><t:CalendarItem><t:Location>${xmlEscape(location)}</t:Location></t:CalendarItem></t:SetItemField>`);
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:Location" /><t:CalendarItem><t:Location>${xmlEscape(location)}</t:Location></t:CalendarItem></t:SetItemField>`
+      );
     }
     if (attendees !== undefined) {
-      const required = attendees.filter(a => (a.type || 'Required') !== 'Optional' && a.type !== 'Resource');
-      const optional = attendees.filter(a => a.type === 'Optional');
-      const resources = attendees.filter(a => a.type === 'Resource');
+      const required = attendees.filter((a) => (a.type || 'Required') !== 'Optional' && a.type !== 'Resource');
+      const optional = attendees.filter((a) => a.type === 'Optional');
+      const resources = attendees.filter((a) => a.type === 'Resource');
 
       if (required.length > 0) {
-        updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:RequiredAttendees" /><t:CalendarItem><t:RequiredAttendees>${required.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
-        ).join('')}</t:RequiredAttendees></t:CalendarItem></t:SetItemField>`);
+        updates.push(
+          `<t:SetItemField><t:FieldURI FieldURI="calendar:RequiredAttendees" /><t:CalendarItem><t:RequiredAttendees>${required
+            .map(
+              (a) =>
+                `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
+            )
+            .join('')}</t:RequiredAttendees></t:CalendarItem></t:SetItemField>`
+        );
       }
       if (optional.length > 0) {
-        updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:OptionalAttendees" /><t:CalendarItem><t:OptionalAttendees>${optional.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
-        ).join('')}</t:OptionalAttendees></t:CalendarItem></t:SetItemField>`);
+        updates.push(
+          `<t:SetItemField><t:FieldURI FieldURI="calendar:OptionalAttendees" /><t:CalendarItem><t:OptionalAttendees>${optional
+            .map(
+              (a) =>
+                `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
+            )
+            .join('')}</t:OptionalAttendees></t:CalendarItem></t:SetItemField>`
+        );
       }
       if (resources.length > 0) {
-        updates.push(`<t:SetItemField><t:FieldURI FieldURI="calendar:Resources" /><t:CalendarItem><t:Resources>${resources.map(a =>
-          `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
-        ).join('')}</t:Resources></t:CalendarItem></t:SetItemField>`);
+        updates.push(
+          `<t:SetItemField><t:FieldURI FieldURI="calendar:Resources" /><t:CalendarItem><t:Resources>${resources
+            .map(
+              (a) =>
+                `<t:Attendee><t:Mailbox><t:EmailAddress>${xmlEscape(a.email)}</t:EmailAddress></t:Mailbox></t:Attendee>`
+            )
+            .join('')}</t:Resources></t:CalendarItem></t:SetItemField>`
+        );
       }
     }
 
@@ -820,7 +847,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
       Id: newId,
       Subject: subject || '',
       Start: { DateTime: start || '', TimeZone: 'UTC' },
-      End: { DateTime: end || '', TimeZone: 'UTC' },
+      End: { DateTime: end || '', TimeZone: 'UTC' }
     });
   } catch (err) {
     return ewsError(err);
@@ -880,7 +907,7 @@ export async function respondToEvent(options: RespondToEventOptions): Promise<Ow
     const responseTagMap: Record<ResponseType, string> = {
       accept: 'AcceptItem',
       decline: 'DeclineItem',
-      tentative: 'TentativelyAcceptItem',
+      tentative: 'TentativelyAcceptItem'
     };
     const tag = responseTagMap[response];
 
@@ -905,14 +932,7 @@ export async function respondToEvent(options: RespondToEventOptions): Promise<Ow
 
 export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<EmailListResponse>> {
   try {
-    const {
-      token,
-      folder = 'inbox',
-      top = 10,
-      skip = 0,
-      filter,
-      search,
-    } = options;
+    const { token, folder = 'inbox', top = 10, skip = 0, filter, search } = options;
 
     // Build restriction for filters
     let restrictionXml = '';
@@ -926,7 +946,7 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
           <t:FieldURIOrConstant><t:Constant Value="false" /></t:FieldURIOrConstant>
         </t:IsEqualTo>`);
       }
-      if (filter.includes("FlagStatus") && filter.includes("Flagged")) {
+      if (filter.includes('FlagStatus') && filter.includes('Flagged')) {
         restrictions.push(`
         <t:IsEqualTo>
           <t:FieldURI FieldURI="item:Flag/FlagStatus" />
@@ -961,11 +981,15 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
       </m:ItemShape>
       <m:IndexedPageItemView MaxEntriesReturned="${top}" Offset="${skip}" BasePoint="Beginning" />
       ${restrictionXml}
-      ${!search ? `<m:SortOrder>
+      ${
+        !search
+          ? `<m:SortOrder>
         <t:FieldOrder Order="Descending">
           <t:FieldURI FieldURI="item:DateTimeReceived" />
         </t:FieldOrder>
-      </m:SortOrder>` : ''}
+      </m:SortOrder>`
+          : ''
+      }
       ${queryStringXml}
       <m:ParentFolderIds>
         ${folderIdXml(folder)}
@@ -1032,19 +1056,23 @@ export async function sendEmail(
   try {
     const { mailbox } = options;
 
-    const toXml = options.to.map(e =>
-      `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-    ).join('');
+    const toXml = options.to
+      .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+      .join('');
 
-    const ccXml = options.cc && options.cc.length > 0
-      ? `<t:CcRecipients>${options.cc.map(e =>
-          `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-        ).join('')}</t:CcRecipients>` : '';
+    const ccXml =
+      options.cc && options.cc.length > 0
+        ? `<t:CcRecipients>${options.cc
+            .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+            .join('')}</t:CcRecipients>`
+        : '';
 
-    const bccXml = options.bcc && options.bcc.length > 0
-      ? `<t:BccRecipients>${options.bcc.map(e =>
-          `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-        ).join('')}</t:BccRecipients>` : '';
+    const bccXml =
+      options.bcc && options.bcc.length > 0
+        ? `<t:BccRecipients>${options.bcc
+            .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+            .join('')}</t:BccRecipients>`
+        : '';
 
     const bodyType = options.bodyType || 'Text';
 
@@ -1084,7 +1112,7 @@ export async function sendEmail(
       cc: options.cc,
       subject: options.subject,
       body: options.body,
-      bodyType,
+      bodyType
     });
     if (!draftResult.ok || !draftResult.data) return draftResult as OwaResponse<void>;
 
@@ -1166,9 +1194,9 @@ export async function forwardEmail(
   mailbox?: string
 ): Promise<OwaResponse<void>> {
   try {
-    const toXml = toRecipients.map(e =>
-      `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-    ).join('');
+    const toXml = toRecipients
+      .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+      .join('');
 
     const envelope = soapEnvelope(`
     <m:CreateItem MessageDisposition="SendAndSaveCopy">
@@ -1272,15 +1300,19 @@ export async function createDraft(
   }
 ): Promise<OwaResponse<{ Id: string }>> {
   try {
-    const toXml = options.to && options.to.length > 0
-      ? `<t:ToRecipients>${options.to.map(e =>
-          `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-        ).join('')}</t:ToRecipients>` : '';
+    const toXml =
+      options.to && options.to.length > 0
+        ? `<t:ToRecipients>${options.to
+            .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+            .join('')}</t:ToRecipients>`
+        : '';
 
-    const ccXml = options.cc && options.cc.length > 0
-      ? `<t:CcRecipients>${options.cc.map(e =>
-          `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-        ).join('')}</t:CcRecipients>` : '';
+    const ccXml =
+      options.cc && options.cc.length > 0
+        ? `<t:CcRecipients>${options.cc
+            .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+            .join('')}</t:CcRecipients>`
+        : '';
 
     const bodyType = options.bodyType || 'Text';
 
@@ -1319,21 +1351,29 @@ export async function updateDraft(
     const setFields: string[] = [];
 
     if (options.subject !== undefined) {
-      setFields.push(`<t:SetItemField><t:FieldURI FieldURI="item:Subject" /><t:Message><t:Subject>${xmlEscape(options.subject)}</t:Subject></t:Message></t:SetItemField>`);
+      setFields.push(
+        `<t:SetItemField><t:FieldURI FieldURI="item:Subject" /><t:Message><t:Subject>${xmlEscape(options.subject)}</t:Subject></t:Message></t:SetItemField>`
+      );
     }
     if (options.body !== undefined) {
       const bodyType = options.bodyType || 'Text';
-      setFields.push(`<t:SetItemField><t:FieldURI FieldURI="item:Body" /><t:Message><t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body></t:Message></t:SetItemField>`);
+      setFields.push(
+        `<t:SetItemField><t:FieldURI FieldURI="item:Body" /><t:Message><t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body></t:Message></t:SetItemField>`
+      );
     }
     if (options.to !== undefined) {
-      setFields.push(`<t:SetItemField><t:FieldURI FieldURI="message:ToRecipients" /><t:Message><t:ToRecipients>${options.to.map(e =>
-        `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-      ).join('')}</t:ToRecipients></t:Message></t:SetItemField>`);
+      setFields.push(
+        `<t:SetItemField><t:FieldURI FieldURI="message:ToRecipients" /><t:Message><t:ToRecipients>${options.to
+          .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+          .join('')}</t:ToRecipients></t:Message></t:SetItemField>`
+      );
     }
     if (options.cc !== undefined) {
-      setFields.push(`<t:SetItemField><t:FieldURI FieldURI="message:CcRecipients" /><t:Message><t:CcRecipients>${options.cc.map(e =>
-        `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`
-      ).join('')}</t:CcRecipients></t:Message></t:SetItemField>`);
+      setFields.push(
+        `<t:SetItemField><t:FieldURI FieldURI="message:CcRecipients" /><t:Message><t:CcRecipients>${options.cc
+          .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+          .join('')}</t:CcRecipients></t:Message></t:SetItemField>`
+      );
     }
 
     const envelope = soapEnvelope(`
@@ -1390,11 +1430,7 @@ export async function deleteDraftById(token: string, draftId: string): Promise<O
   }
 }
 
-async function addAttachmentToItem(
-  token: string,
-  itemId: string,
-  attachment: EmailAttachment
-): Promise<void> {
+async function addAttachmentToItem(token: string, itemId: string, attachment: EmailAttachment): Promise<void> {
   const envelope = soapEnvelope(`
   <m:CreateAttachment>
     <m:ParentItemId Id="${xmlEscape(itemId)}" />
@@ -1488,7 +1524,7 @@ export async function createMailFolder(
       DisplayName: displayName,
       ChildFolderCount: 0,
       UnreadItemCount: 0,
-      TotalItemCount: 0,
+      TotalItemCount: 0
     });
   } catch (err) {
     return ewsError(err);
@@ -1525,7 +1561,7 @@ export async function updateMailFolder(
       DisplayName: displayName,
       ChildFolderCount: 0,
       UnreadItemCount: 0,
-      TotalItemCount: 0,
+      TotalItemCount: 0
     });
   } catch (err) {
     return ewsError(err);
@@ -1550,10 +1586,7 @@ export async function deleteMailFolder(token: string, folderId: string): Promise
 
 // ─── Attachment Operations ───
 
-export async function getAttachments(
-  token: string,
-  messageId: string
-): Promise<OwaResponse<AttachmentListResponse>> {
+export async function getAttachments(token: string, messageId: string): Promise<OwaResponse<AttachmentListResponse>> {
   try {
     // First get the item to find attachment IDs
     const envelope = soapEnvelope(`
@@ -1572,13 +1605,13 @@ export async function getAttachments(
     const xml = await callEws(token, envelope);
     const attachBlocks = extractBlocks(xml, 'FileAttachment');
 
-    const attachments: Attachment[] = attachBlocks.map(ab => ({
+    const attachments: Attachment[] = attachBlocks.map((ab) => ({
       Id: extractAttribute(ab, 'AttachmentId', 'Id'),
       Name: extractTag(ab, 'Name'),
       ContentType: extractTag(ab, 'ContentType') || 'application/octet-stream',
-      Size: parseInt(extractTag(ab, 'Size') || '0'),
+      Size: parseInt(extractTag(ab, 'Size') || '0', 10),
       IsInline: extractTag(ab, 'IsInline').toLowerCase() === 'true',
-      ContentId: extractTag(ab, 'ContentId') || undefined,
+      ContentId: extractTag(ab, 'ContentId') || undefined
     }));
 
     return ewsResult({ value: attachments });
@@ -1607,10 +1640,10 @@ export async function getAttachment(
       Id: extractAttribute(block, 'AttachmentId', 'Id'),
       Name: extractTag(block, 'Name'),
       ContentType: extractTag(block, 'ContentType') || 'application/octet-stream',
-      Size: parseInt(extractTag(block, 'Size') || '0'),
+      Size: parseInt(extractTag(block, 'Size') || '0', 10),
       IsInline: extractTag(block, 'IsInline').toLowerCase() === 'true',
       ContentId: extractTag(block, 'ContentId') || undefined,
-      ContentBytes: extractTag(block, 'Content') || undefined,
+      ContentBytes: extractTag(block, 'Content') || undefined
     });
   } catch (err) {
     return ewsError(err);
@@ -1622,14 +1655,18 @@ export async function getAttachment(
 export async function resolveNames(
   token: string,
   query: string
-): Promise<OwaResponse<Array<{
-  DisplayName?: string;
-  EmailAddress?: string;
-  JobTitle?: string;
-  Department?: string;
-  OfficeLocation?: string;
-  MailboxType?: string;
-}>>> {
+): Promise<
+  OwaResponse<
+    Array<{
+      DisplayName?: string;
+      EmailAddress?: string;
+      JobTitle?: string;
+      Department?: string;
+      OfficeLocation?: string;
+      MailboxType?: string;
+    }>
+  >
+> {
   try {
     const envelope = soapEnvelope(`
     <m:ResolveNames ReturnFullContactData="true" SearchScope="ActiveDirectoryContacts">
@@ -1639,7 +1676,7 @@ export async function resolveNames(
     const xml = await callEws(token, envelope);
     const resolutions = extractBlocks(xml, 'Resolution');
 
-    const results = resolutions.map(block => {
+    const results = resolutions.map((block) => {
       const mailbox = extractSelfClosingOrBlock(block, 'Mailbox');
       const contact = extractSelfClosingOrBlock(block, 'Contact');
 
@@ -1649,7 +1686,7 @@ export async function resolveNames(
         JobTitle: extractTag(contact, 'JobTitle') || undefined,
         Department: extractTag(contact, 'Department') || undefined,
         OfficeLocation: extractTag(contact, 'OfficeLocation') || undefined,
-        MailboxType: extractTag(mailbox, 'MailboxType') || undefined,
+        MailboxType: extractTag(mailbox, 'MailboxType') || undefined
       };
     });
 
@@ -1665,9 +1702,9 @@ export async function getRoomLists(token: string): Promise<OwaResponse<RoomList[
     const xml = await callEws(token, envelope);
     const addresses = extractBlocks(xml, 'Address');
 
-    const lists: RoomList[] = addresses.map(block => ({
+    const lists: RoomList[] = addresses.map((block) => ({
       Name: extractTag(block, 'Name'),
-      Address: extractTag(block, 'EmailAddress'),
+      Address: extractTag(block, 'EmailAddress')
     }));
 
     return ewsResult(lists);
@@ -1676,10 +1713,7 @@ export async function getRoomLists(token: string): Promise<OwaResponse<RoomList[
   }
 }
 
-export async function getRooms(
-  token: string,
-  roomListAddress?: string
-): Promise<OwaResponse<Room[]>> {
+export async function getRooms(token: string, roomListAddress?: string): Promise<OwaResponse<Room[]>> {
   try {
     if (roomListAddress) {
       const envelope = soapEnvelope(`
@@ -1689,11 +1723,11 @@ export async function getRooms(
         </m:RoomList>
       </m:GetRooms>`);
       const xml = await callEws(token, envelope);
-      const rooms = extractBlocks(xml, 'Room').map(block => {
+      const rooms = extractBlocks(xml, 'Room').map((block) => {
         const id = extractSelfClosingOrBlock(block, 'Id');
         return {
           Name: extractTag(id, 'Name'),
-          Address: extractTag(id, 'EmailAddress'),
+          Address: extractTag(id, 'EmailAddress')
         };
       });
       return ewsResult(rooms);
@@ -1719,10 +1753,7 @@ export async function getRooms(
   }
 }
 
-export async function searchRooms(
-  token: string,
-  query: string = 'room'
-): Promise<OwaResponse<Room[]>> {
+export async function searchRooms(token: string, query: string = 'room'): Promise<OwaResponse<Room[]>> {
   // Use ResolveNames to find rooms by name
   try {
     const result = await resolveNames(token, query);
@@ -1730,10 +1761,10 @@ export async function searchRooms(
 
     // Try to filter to rooms (MailboxType might indicate this)
     const rooms: Room[] = result.data
-      .filter(r => r.EmailAddress)
-      .map(r => ({
+      .filter((r) => r.EmailAddress)
+      .map((r) => ({
         Name: r.DisplayName || '',
-        Address: r.EmailAddress || '',
+        Address: r.EmailAddress || ''
       }));
 
     return ewsResult(rooms);
@@ -1759,15 +1790,19 @@ export async function getScheduleViaOutlook(
     suggestEndD.setHours(0, 0, 0, 0);
     suggestEndD.setDate(suggestEndD.getDate() + 1);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const toMidnight = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T00:00:00`;
+    const toMidnight = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00`;
     const suggestStart = toMidnight(suggestStartD);
     const suggestEnd = toMidnight(suggestEndD);
 
-    const mailboxDataXml = emails.map(email => `
+    const mailboxDataXml = emails
+      .map(
+        (email) => `
     <t:MailboxData>
       <t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email>
       <t:AttendeeType>Required</t:AttendeeType>
-    </t:MailboxData>`).join('');
+    </t:MailboxData>`
+      )
+      .join('');
 
     const envelope = soapEnvelope(`
     <m:GetUserAvailabilityRequest>
@@ -1814,10 +1849,10 @@ export async function getScheduleViaOutlook(
     const xml = await callEws(token, envelope);
 
     // Parse suggestions into free slots
-    const schedules: ScheduleInfo[] = emails.map(email => ({
+    const schedules: ScheduleInfo[] = emails.map((email) => ({
       scheduleId: email,
       availabilityView: '',
-      scheduleItems: [],
+      scheduleItems: []
     }));
 
     // Extract suggestions
@@ -1831,28 +1866,30 @@ export async function getScheduleViaOutlook(
         const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
         freeSlots.push({
           start: startTime.toISOString(),
-          end: endTime.toISOString(),
+          end: endTime.toISOString()
         });
       }
     }
 
     // Apply free slots to all schedules
     for (const schedule of schedules) {
-      schedule.scheduleItems = freeSlots.map(slot => ({
+      schedule.scheduleItems = freeSlots.map((slot) => ({
         status: 'Free',
         start: { dateTime: slot.start, timeZone: 'W. Europe Standard Time' },
-        end: { dateTime: slot.end, timeZone: 'W. Europe Standard Time' },
+        end: { dateTime: slot.end, timeZone: 'W. Europe Standard Time' }
       }));
     }
 
     if (freeSlots.length === 0) {
       for (const schedule of schedules) {
-        schedule.scheduleItems = [{
-          status: 'Busy',
-          start: { dateTime: startDateTime, timeZone: 'W. Europe Standard Time' },
-          end: { dateTime: endDateTime, timeZone: 'W. Europe Standard Time' },
-          subject: 'No available times',
-        }];
+        schedule.scheduleItems = [
+          {
+            status: 'Busy',
+            start: { dateTime: startDateTime, timeZone: 'W. Europe Standard Time' },
+            end: { dateTime: endDateTime, timeZone: 'W. Europe Standard Time' },
+            subject: 'No available times'
+          }
+        ];
       }
     }
 
@@ -1871,13 +1908,17 @@ export async function getFreeBusy(
   if (!result.ok || !result.data) return { ok: false, status: result.status, error: result.error };
 
   const slots: FreeBusySlot[] = result.data
-    .filter(event => !event.IsCancelled)
-    .map(event => ({
-      status: event.ShowAs === 'Free' ? 'Free' as const :
-              event.ShowAs === 'Tentative' ? 'Tentative' as const : 'Busy' as const,
+    .filter((event) => !event.IsCancelled)
+    .map((event) => ({
+      status:
+        event.ShowAs === 'Free'
+          ? ('Free' as const)
+          : event.ShowAs === 'Tentative'
+            ? ('Tentative' as const)
+            : ('Busy' as const),
       start: event.Start.DateTime,
       end: event.End.DateTime,
-      subject: event.Subject,
+      subject: event.Subject
     }));
 
   return ewsResult(slots);

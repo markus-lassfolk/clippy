@@ -15,10 +15,7 @@ import { draftsCommand } from './commands/drafts.js';
 
 const program = new Command();
 
-program
-  .name('clippy')
-  .description('CLI for Microsoft 365/EWS')
-  .version('0.1.0');
+program.name('clippy').description('CLI for Microsoft 365/EWS').version('0.1.0');
 
 program.addCommand(whoamiCommand);
 program.addCommand(calendarCommand);

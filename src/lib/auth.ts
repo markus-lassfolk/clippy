@@ -1,6 +1,6 @@
-import { homedir } from 'os';
-import { join } from 'path';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
 export interface AuthResult {
   success: boolean;
@@ -49,7 +49,7 @@ async function saveCachedToken(token: CachedToken): Promise<void> {
 async function refreshAccessToken(clientId: string, refreshToken: string): Promise<CachedToken> {
   const scopes = [
     'https://outlook.office365.com/EWS.AccessAsUser.All offline_access',
-    'https://outlook.office365.com/.default offline_access',
+    'https://outlook.office365.com/.default offline_access'
   ];
 
   let lastError = '';
@@ -62,11 +62,11 @@ async function refreshAccessToken(clientId: string, refreshToken: string): Promi
         client_id: clientId,
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        scope,
-      }).toString(),
+        scope
+      }).toString()
     });
 
-    const json = await response.json() as {
+    const json = (await response.json()) as {
       access_token?: string;
       refresh_token?: string;
       expires_in?: number;
@@ -78,7 +78,7 @@ async function refreshAccessToken(clientId: string, refreshToken: string): Promi
       return {
         accessToken: json.access_token,
         refreshToken: json.refresh_token || refreshToken,
-        expiresAt: getJwtExpiration(json.access_token) || (Date.now() + (json.expires_in || 3600) * 1000),
+        expiresAt: getJwtExpiration(json.access_token) || Date.now() + (json.expires_in || 3600) * 1000
       };
     }
 
@@ -100,7 +100,7 @@ export async function resolveAuth(options?: { token?: string }): Promise<AuthRes
     if (!clientId || !envRefreshToken) {
       return {
         success: false,
-        error: 'Missing EWS_CLIENT_ID or EWS_REFRESH_TOKEN in environment. Check your .env file.',
+        error: 'Missing EWS_CLIENT_ID or EWS_REFRESH_TOKEN in environment. Check your .env file.'
       };
     }
 
@@ -111,10 +111,7 @@ export async function resolveAuth(options?: { token?: string }): Promise<AuthRes
     }
 
     // Refresh - try cached refresh token first (may have been rotated), then .env
-    const refreshTokens = [...new Set([
-      cached?.refreshToken,
-      envRefreshToken,
-    ].filter((t): t is string => !!t))];
+    const refreshTokens = [...new Set([cached?.refreshToken, envRefreshToken].filter((t): t is string => !!t))];
 
     for (const rt of refreshTokens) {
       try {
@@ -128,12 +125,12 @@ export async function resolveAuth(options?: { token?: string }): Promise<AuthRes
 
     return {
       success: false,
-      error: 'Token refresh failed. You may need to update EWS_REFRESH_TOKEN in .env.',
+      error: 'Token refresh failed. You may need to update EWS_REFRESH_TOKEN in .env.'
     };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Authentication failed',
+      error: err instanceof Error ? err.message : 'Authentication failed'
     };
   }
 }

@@ -45,10 +45,11 @@ function parseDate(day: string, baseDate: Date = new Date(), forwardOnly: boolea
       now.setDate(now.getDate() + diff);
       return now;
     }
-    default:
+    default: {
       // Try to parse as date
       const parsed = new Date(day);
-      return isNaN(parsed.getTime()) ? now : parsed;
+      return Number.isNaN(parsed.getTime()) ? now : parsed;
+    }
   }
 }
 
@@ -119,12 +120,18 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
 
 function getResponseIcon(response: string): string {
   switch (response) {
-    case 'Accepted': return '✓';
-    case 'Declined': return '✗';
-    case 'TentativelyAccepted': return '?';
-    case 'NotResponded': return '·';
-    case 'Organizer': return '★';
-    default: return '·';
+    case 'Accepted':
+      return '✓';
+    case 'Declined':
+      return '✗';
+    case 'TentativelyAccepted':
+      return '?';
+    case 'NotResponded':
+      return '·';
+    case 'Organizer':
+      return '★';
+    default:
+      return '·';
   }
 }
 
@@ -152,9 +159,9 @@ function displayEvent(event: CalendarEvent, verbose: boolean): void {
 
     // Show attendees
     if (event.Attendees && event.Attendees.length > 0) {
-      const attendeeList = event.Attendees
-        .map((a: CalendarAttendee) => `${getResponseIcon(a.Status.Response)} ${a.EmailAddress.Name}`)
-        .join(', ');
+      const attendeeList = event.Attendees.map(
+        (a: CalendarAttendee) => `${getResponseIcon(a.Status.Response)} ${a.EmailAddress.Name}`
+      ).join(', ');
       console.log(`     👥 ${attendeeList}`);
     }
 
@@ -173,75 +180,85 @@ function displayEvent(event: CalendarEvent, verbose: boolean): void {
 
 export const calendarCommand = new Command('calendar')
   .description('View calendar events')
-  .argument('[start]', 'Start day: today, yesterday, tomorrow, monday-sunday, week, lastweek, nextweek, or YYYY-MM-DD', 'today')
+  .argument(
+    '[start]',
+    'Start day: today, yesterday, tomorrow, monday-sunday, week, lastweek, nextweek, or YYYY-MM-DD',
+    'today'
+  )
   .argument('[end]', 'End day for range (optional)')
   .option('-v, --verbose', 'Show attendees and more details')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
-  .action(async (startDay: string, endDay: string | undefined, options: { json?: boolean; token?: string; verbose?: boolean }) => {
-    const authResult = await resolveAuth({
-      token: options.token,
-    });
+  .action(
+    async (
+      startDay: string,
+      endDay: string | undefined,
+      options: { json?: boolean; token?: string; verbose?: boolean }
+    ) => {
+      const authResult = await resolveAuth({
+        token: options.token
+      });
 
-    if (!authResult.success) {
-      if (options.json) {
-        console.log(JSON.stringify({ error: authResult.error }, null, 2));
-      } else {
-        console.error(`Error: ${authResult.error}`);
-        console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
-      }
-      process.exit(1);
-    }
-
-    const { start, end, label } = getDateRange(startDay, endDay);
-    const result = await getCalendarEvents(authResult.token!, start, end);
-
-    if (!result.ok || !result.data) {
-      if (options.json) {
-        console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
-      } else {
-        console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
-      }
-      process.exit(1);
-    }
-
-    const events = result.data.filter(e => !e.IsCancelled);
-
-    if (options.json) {
-      console.log(JSON.stringify(events, null, 2));
-      return;
-    }
-
-    console.log(`\n📆 Calendar for ${label}`);
-    console.log('─'.repeat(40));
-
-    if (events.length === 0) {
-      console.log('  No events scheduled.');
-    } else {
-      // Group by date for multi-day ranges
-      const eventsByDate = new Map<string, CalendarEvent[]>();
-      for (const event of events) {
-        const dateKey = event.Start.DateTime.split('T')[0];
-        if (!eventsByDate.has(dateKey)) {
-          eventsByDate.set(dateKey, []);
+      if (!authResult.success) {
+        if (options.json) {
+          console.log(JSON.stringify({ error: authResult.error }, null, 2));
+        } else {
+          console.error(`Error: ${authResult.error}`);
+          console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
         }
-        eventsByDate.get(dateKey)!.push(event);
+        process.exit(1);
       }
 
-      // Check if multiple days
-      if (eventsByDate.size > 1) {
-        for (const [dateKey, dayEvents] of eventsByDate) {
-          const dayLabel = formatDate(new Date(dateKey).toISOString());
-          console.log(`\n  ${dayLabel}`);
-          for (const event of dayEvents) {
+      const { start, end, label } = getDateRange(startDay, endDay);
+      const result = await getCalendarEvents(authResult.token!, start, end);
+
+      if (!result.ok || !result.data) {
+        if (options.json) {
+          console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
+        } else {
+          console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
+        }
+        process.exit(1);
+      }
+
+      const events = result.data.filter((e) => !e.IsCancelled);
+
+      if (options.json) {
+        console.log(JSON.stringify(events, null, 2));
+        return;
+      }
+
+      console.log(`\n📆 Calendar for ${label}`);
+      console.log('─'.repeat(40));
+
+      if (events.length === 0) {
+        console.log('  No events scheduled.');
+      } else {
+        // Group by date for multi-day ranges
+        const eventsByDate = new Map<string, CalendarEvent[]>();
+        for (const event of events) {
+          const dateKey = event.Start.DateTime.split('T')[0];
+          if (!eventsByDate.has(dateKey)) {
+            eventsByDate.set(dateKey, []);
+          }
+          eventsByDate.get(dateKey)?.push(event);
+        }
+
+        // Check if multiple days
+        if (eventsByDate.size > 1) {
+          for (const [dateKey, dayEvents] of eventsByDate) {
+            const dayLabel = formatDate(new Date(dateKey).toISOString());
+            console.log(`\n  ${dayLabel}`);
+            for (const event of dayEvents) {
+              displayEvent(event, options.verbose ?? false);
+            }
+          }
+        } else {
+          for (const event of events) {
             displayEvent(event, options.verbose ?? false);
           }
         }
-      } else {
-        for (const event of events) {
-          displayEvent(event, options.verbose ?? false);
-        }
       }
+      console.log();
     }
-    console.log();
-  });
+  );
