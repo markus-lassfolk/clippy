@@ -218,7 +218,10 @@ export function createMockFetch(): any {
       }
 
       // CreateItem (reply/forward draft)
-      if ((hasTag(body, 'CreateItem') && hasTag(body, 'ReplyToItem')) || hasTag(body, 'ForwardItem')) {
+      if (hasTag(body, 'CreateItem') && (hasTag(body, 'ReplyToItem') || hasTag(body, 'ForwardItem'))) {
+        if (hasTag(body, 'ForwardItem')) {
+          return makeResponse(mockForwardEmailResponse);
+        }
         return makeResponse(mockReplyToEmailResponse);
       }
 
