@@ -118,7 +118,7 @@ docs/GOALS.md
 BRIEF_EOF
   fi
 
-  log "Dispatching Forge for ${IS_GOALS_GAP:+GOALS gap-}:#$ISSUE_NUM"
+  [[ "$IS_GOALS_GAP" == "true" ]] && log "Dispatching Forge for GOALS gap-:#$ISSUE_NUM" || log "Dispatching Forge for :#$ISSUE_NUM"
 
   if [[ "$IS_GOALS_GAP" == "false" ]]; then
     gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null || true
@@ -127,7 +127,7 @@ BRIEF_EOF
   LABEL="forge-clippy-$(date +%s)"
   sessions_spawn runtime="subagent" agentId="forge" mode="run" timeoutSeconds="3600" \
     task="$(cat "$FORGE_BRIEF")" label="$LABEL" 2>/dev/null &
-  echo "$(date +%s) pid=$! label=$LABEL issue=$ISSUE_NUM ${IS_GOALS_GAP:+goals_gap=1}" > "$FORGE_GUARD"
+  [[ "$IS_GOALS_GAP" == "true" ]] && echo "$(date +%s) pid=$! label=$LABEL issue=$ISSUE_NUM goals_gap=1" > "$FORGE_GUARD" || echo "$(date +%s) pid=$! label=$LABEL issue=$ISSUE_NUM" > "$FORGE_GUARD"
 
   rm -f "$FORGE_BRIEF"
   log "Forge dispatched (label=$LABEL)"
@@ -193,7 +193,7 @@ print(f"OPEN={len(data)}")
 print(f"ENRICHED={len(enriched)}")
 print(f"UNENRICHED={len(unenriched)}")
 print(f"NEEDS_TRIAGE={len(needs_triage)}")
-print(f"FORGE_CANDIDATE={forge_cand or '"'"'}")
+print(f"FORGE_CANDIDATE={forge_cand or ''}")
 ')
 
   eval "$ANALYSIS"
