@@ -26,7 +26,7 @@ export async function validateAttachmentPath(
   inputPath: string,
   allowedBaseDir: string
 ): Promise<ValidatedAttachmentPath> {
-  if (!inputPath || !inputPath.trim()) {
+  if (!inputPath?.trim()) {
     throw new AttachmentPathError('Attachment path cannot be empty');
   }
 

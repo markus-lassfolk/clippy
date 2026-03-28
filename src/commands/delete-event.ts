@@ -26,7 +26,7 @@ export const deleteEventCommand = new Command('delete-event')
   .option('--mailbox <email>', 'Delete event in shared mailbox calendar')
   .action(
     async (
-      eventIndex: string | undefined,
+      _eventIndex: string | undefined,
       options: {
         id?: string;
         day: string;
@@ -130,7 +130,7 @@ export const deleteEventCommand = new Command('delete-event')
           }
         }
 
-        console.log('\n' + '\u2500'.repeat(60));
+        console.log(`\n${'\u2500'.repeat(60)}`);
         console.log('\nTo delete/cancel an event:');
         console.log('  clippy delete-event <number>                    # Cancel & notify attendees');
         console.log('  clippy delete-event <number> --message "Sorry"  # With cancellation message');
