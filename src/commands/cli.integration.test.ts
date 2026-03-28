@@ -24,11 +24,11 @@ function setupMocks() {
   const originalError = console.error;
   const originalWarn = console.warn;
   console.log = (...args: any[]) => {
-    stdout += args.map((a) => String(a)).join(' ') + '\n';
+    stdout += `${args.map((a) => String(a)).join(' ')}\n`;
     originalLog.apply(console, args);
   };
   console.error = (...args: any[]) => {
-    stderr += args.map((a) => String(a)).join(' ') + '\n';
+    stderr += `${args.map((a) => String(a)).join(' ')}\n`;
     originalError.apply(console, args);
   };
   console.warn = (...args: any[]) => {
@@ -47,7 +47,6 @@ function setupMocks() {
   }) as typeof process.exit;
 
   // Mock globalThis.fetch
-  // @ts-ignore
   globalThis.fetch = createMockFetch();
 
   return () => {
@@ -97,18 +96,16 @@ async function runCommand(action: () => Promise<void>): Promise<{ stdout: string
 
 beforeAll(() => {
   // Global fetch mock set once - individual commands may override with clearMockFetch + new mock
-  // @ts-ignore
   globalThis.fetch = createMockFetch();
 });
 
 afterAll(() => {
-  // @ts-ignore
+  // @ts-expect-error
   globalThis.fetch = undefined;
 });
 
 beforeEach(() => {
   clearMockFetch();
-  // @ts-ignore
   globalThis.fetch = createMockFetch();
 });
 
@@ -131,7 +128,7 @@ import { filesCommand } from '../commands/files.js';
 // Helper to call a command action with options
 type CommandAction = (opts: any) => Promise<void>;
 
-async function runCmdAction(command: any, opts: any): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function _runCmdAction(command: any, opts: any): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return runCommand(async () => {
     // Commander commands have a `.action()` that we need to call
     // The action receives options as the last argument (plus any positional args before)
@@ -206,11 +203,11 @@ async function runClippy(args: string): Promise<{ stdout: string; stderr: string
   const originalExit = process.exit;
 
   console.log = (...args2: any[]) => {
-    capturedStdout += args2.map((a) => String(a)).join(' ') + '\n';
+    capturedStdout += `${args2.map((a) => String(a)).join(' ')}\n`;
     originalLog.apply(console, args2);
   };
   console.error = (...args2: any[]) => {
-    capturedStderr += args2.map((a) => String(a)).join(' ') + '\n';
+    capturedStderr += `${args2.map((a) => String(a)).join(' ')}\n`;
     originalError.apply(console, args2);
   };
 
@@ -237,7 +234,6 @@ async function runClippy(args: string): Promise<{ stdout: string; stderr: string
     console.log = originalLog;
     console.error = originalError;
     process.exit = originalExit;
-    // @ts-ignore
     // delete globalThis.fetch;
   }
 }

@@ -9,18 +9,14 @@ import {
   mockCalendarEventsEmptyResponse,
   mockCalendarEventsWithCancelled,
   mockGetScheduleResponse,
-  mockGetScheduleEmptyResponse,
   mockRespondListResponse,
   mockRespondSuccessResponse,
   mockCreateEventResponse,
   mockDeleteEventSuccessResponse,
   mockCancelEventSuccessResponse,
   mockResolveNamesPeopleResponse,
-  mockResolveNamesRoomsResponse,
-  mockResolveNamesEmptyResponse,
   mockUpdateEventResponse,
   mockGetEmailsResponse,
-  mockGetEmailsEmptyResponse,
   mockGetEmailDetailResponse,
   mockGetAttachmentsResponse,
   mockUpdateEmailResponse,
@@ -33,22 +29,16 @@ import {
   mockUpdateMailFolderResponse,
   mockDeleteMailFolderResponse,
   mockGetDraftsResponse,
-  mockCreateDraftResponse,
-  mockUpdateDraftResponse,
-  mockSendDraftResponse,
-  mockDeleteDraftResponse,
   mockAddAttachmentResponse,
   mockGetRoomsResponse,
   mockGetRoomsFromListResponse,
   mockSearchRoomsResponse,
-  mockIsRoomFreeResponse,
   mockGraphListFilesResponse,
   mockGraphSearchFilesResponse,
   mockGraphGetFileMetadataResponse,
   mockGraphUploadResponse,
   mockGraphDeleteResponse,
   mockGraphShareResponse,
-  mockGraphCollabResponse,
   mockGraphCheckinResponse,
   mockGraphCreateUploadSessionResponse
 } from './responses.js';
@@ -330,12 +320,10 @@ export function createMockFetch(): any {
 
 // Setup/teardown helpers for use in tests
 export function setupMockFetch(): void {
-  // @ts-ignore - globalThis.fetch
-  // @ts-ignore
   globalThis.fetch = createMockFetch() as typeof fetch;
 }
 
 export function teardownMockFetch(): void {
-  // @ts-ignore - globalThis.fetch
-  globalThis.fetch = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).fetch = undefined;
 }
