@@ -5,13 +5,10 @@ import {
   callEws,
   soapEnvelope,
   extractBlocks,
-  extractSelfClosingOrBlock,
   extractTag,
-  extractAttribute,
   xmlEscape,
   ewsResult,
   ewsError,
-  EWS_ENDPOINT,
   EWS_USERNAME
 } from './ews-client.js';
 

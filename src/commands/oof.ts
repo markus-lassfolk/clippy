@@ -205,11 +205,17 @@ export const oofCommand = new Command('oof')
     }
 
     if (options.json) {
+      const normalizeDateTime = (dt: string | DateTimeTimeZone | undefined): string | null => {
+        if (!dt) return null;
+        if (typeof dt === 'string') return dt;
+        return dt.dateTime;
+      };
+
       const responseBody: any = {
         status: 'success',
         automaticRepliesSetting: {
-          scheduledStartDateTime: scheduledStartDateTime ?? null,
-          scheduledEndDateTime: scheduledEndDateTime ?? null,
+          scheduledStartDateTime: normalizeDateTime(scheduledStartDateTime),
+          scheduledEndDateTime: normalizeDateTime(scheduledEndDateTime),
           internalReplyMessage: options.internalMessage ?? null,
           externalReplyMessage: options.externalMessage ?? null
         }
