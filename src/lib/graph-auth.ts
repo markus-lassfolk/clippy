@@ -121,8 +121,10 @@ export async function resolveGraphAuth(options?: { token?: string }): Promise<Gr
     if (cached && cached.expiresAt > Date.now() + 60_000) {
       // Guard against corrupted cache: validate JWT structure before returning
       if (!isValidJwtStructure(cached.accessToken)) {
-        console.warn('[graph-auth] Cached Graph token has an invalid JWT structure — falling back to token refresh. '
-          + 'You may need to re-authenticate if this persists.');
+        console.warn(
+          '[graph-auth] Cached Graph token has an invalid JWT structure — falling back to token refresh. ' +
+            'You may need to re-authenticate if this persists.'
+        );
       } else {
         return { success: true, token: cached.accessToken };
       }
@@ -130,14 +132,17 @@ export async function resolveGraphAuth(options?: { token?: string }): Promise<Gr
 
     const refreshTokens = [...new Set([cached?.refreshToken, envRefreshToken].filter((t): t is string => !!t))];
 
-    for (const refreshToken of refreshTokens) {
+    for (let i = 0; i < refreshTokens.length; i++) {
       try {
-        const result = await refreshGraphAccessToken(clientId, refreshToken, tenant);
+        const result = await refreshGraphAccessToken(clientId, refreshTokens[i], tenant);
         await saveCachedGraphToken(result);
         return { success: true, token: result.accessToken };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[graph-auth] Token refresh attempt failed: ${msg} — trying next token candidate.`);
+        const isLast = i === refreshTokens.length - 1;
+        console.warn(
+          `[graph-auth] Token refresh attempt failed: ${msg}${isLast ? '.' : ' — trying next token candidate.'}`
+        );
       }
     }
 
