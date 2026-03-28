@@ -154,7 +154,6 @@ updateCommand
   .option('--deliver <mode>', `deliver meeting requests (${VALID_DELIVER.join('|')})`)
   .option('--mailbox <email>', 'mailbox (shared/alternative primary)')
   .action(async (opts) => {
-    const perms: DelegatePermissions | undefined = undefined;
     const permsOut: DelegatePermissions = {};
     let hasPerms = false;
 
