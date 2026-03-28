@@ -69,7 +69,12 @@ export function extractSelfClosingOrBlock(xml: string, tagName: string): string 
 
 // ─── SOAP Core ───
 
-export const EWS_ENDPOINT = process.env.EWS_ENDPOINT || 'https://outlook.office365.com/EWS/Exchange.asmx';
+import { validateUrl } from './url-validation';
+
+export const EWS_ENDPOINT = validateUrl(
+  process.env.EWS_ENDPOINT || 'https://outlook.office365.com/EWS/Exchange.asmx',
+  'EWS_ENDPOINT'
+);
 export const EWS_USERNAME = process.env.EWS_USERNAME || '';
 
 export function soapEnvelope(body: string): string {
