@@ -668,9 +668,42 @@ export async function getCalendarEvent(token: string, eventId: string): Promise<
   }
 }
 
+/**
+ * Validates required fields on a Recurrence input.
+ * Throws a descriptive Error for any missing required field.
+ */
+function validateRecurrenceInput(recurrence: Recurrence): void {
+  if (!recurrence) {
+    throw new Error('[Recurrence] recurrence object is required');
+  }
+  if (!recurrence.Pattern) {
+    throw new Error('[Recurrence] recurrence.Pattern is required');
+  }
+  if (!recurrence.Range) {
+    throw new Error('[Recurrence] recurrence.Range is required');
+  }
+
+  const { Pattern: p, Range: r } = recurrence;
+
+  if (!r.StartDate || r.StartDate.trim() === '') {
+    throw new Error('[Recurrence] recurrence.Range.StartDate is required');
+  }
+
+  if (r.Type === 'EndDate' && (!r.EndDate || r.EndDate.trim() === '')) {
+    throw new Error('[Recurrence] recurrence.Range.EndDate is required when Range.Type is "EndDate"');
+  }
+
+  if (p.Interval === undefined || p.Interval <= 0) {
+    throw new Error('[Recurrence] recurrence.Pattern.Interval must be a positive integer');
+  }
+}
+
 function buildRecurrenceXml(recurrence: Recurrence): string {
+  validateRecurrenceInput(recurrence);
+
   let patternXml = '';
   const p = recurrence.Pattern;
+  const validTypes = ['Daily', 'Weekly', 'AbsoluteMonthly', 'RelativeMonthly', 'AbsoluteYearly', 'RelativeYearly'] as const;
 
   switch (p.Type) {
     case 'Daily':
@@ -688,16 +721,27 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
       patternXml = `<t:AbsoluteYearlyRecurrence><t:DayOfMonth>${p.DayOfMonth || 1}</t:DayOfMonth><t:Month>${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][(p.Month || 1) - 1]}</t:Month></t:AbsoluteYearlyRecurrence>`;
       break;
     default:
+      if (!validTypes.includes(p.Type)) {
+        console.warn(`[Recurrence] Unknown Pattern.Type "${p.Type}", defaulting to Daily`);
+      }
       patternXml = `<t:DailyRecurrence><t:Interval>${p.Interval}</t:Interval></t:DailyRecurrence>`;
   }
 
   let rangeXml = '';
   const r = recurrence.Range;
   switch (r.Type) {
-    case 'EndDate':
-      rangeXml = `<t:EndDateRecurrence><t:StartDate>${xmlEscape(r.StartDate)}</t:StartDate><t:EndDate>${xmlEscape(r.EndDate || r.StartDate)}</t:EndDate></t:EndDateRecurrence>`;
+    case 'EndDate': {
+      const endDate = r.EndDate || r.StartDate;
+      if (!r.EndDate) {
+        console.warn('[Recurrence] Range.EndDate is missing; EndDate will equal StartDate (effectively a single-occurrence event)');
+      }
+      rangeXml = `<t:EndDateRecurrence><t:StartDate>${xmlEscape(r.StartDate)}</t:StartDate><t:EndDate>${xmlEscape(endDate)}</t:EndDate></t:EndDateRecurrence>`;
       break;
+    }
     case 'Numbered':
+      if (r.NumberOfOccurrences === undefined || r.NumberOfOccurrences <= 0) {
+        console.warn('[Recurrence] Range.NumberOfOccurrences is missing or invalid, defaulting to 10');
+      }
       rangeXml = `<t:NumberedRecurrence><t:StartDate>${xmlEscape(r.StartDate)}</t:StartDate><t:NumberOfOccurrences>${r.NumberOfOccurrences || 10}</t:NumberOfOccurrences></t:NumberedRecurrence>`;
       break;
     default:
