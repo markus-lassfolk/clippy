@@ -38,6 +38,25 @@ export function toLocalISOString(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
+/**
+ * Parse a YYYY-MM-DD string as local midnight (in the user's timezone),
+ * not UTC midnight. This fixes off-by-one day shifts for UTC-X timezones.
+ *
+ * `new Date('YYYY-MM-DD')` parses as UTC midnight, which becomes the
+ * previous calendar day when local timezone is west of UTC.
+ */
+function parseLocalDate(dayStr: string): Date {
+  const match = dayStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date(dayStr);
+  const [, yearStr, monthStr, dayOfMonthStr] = match;
+  return new Date(
+    parseInt(yearStr, 10),
+    parseInt(monthStr, 10) - 1,
+    parseInt(dayOfMonthStr, 10),
+    0, 0, 0, 0
+  );
+}
+
 export function parseDay(day: string, options: ParseDayOptions = {}): Date {
   const { baseDate = new Date(), weekdayDirection = 'next', throwOnInvalid = false } = options;
 
@@ -71,7 +90,8 @@ export function parseDay(day: string, options: ParseDayOptions = {}): Date {
     return now;
   }
 
-  const parsed = new Date(day);
+  // Parse YYYY-MM-DD as local midnight to avoid UTC off-by-one
+  const parsed = parseLocalDate(day);
   if (Number.isNaN(parsed.getTime())) {
     if (throwOnInvalid) {
       throw new Error(`Invalid day value: ${day}`);
