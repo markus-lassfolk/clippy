@@ -147,7 +147,7 @@ export async function isRoomFree(
   startISO: string,
   endISO: string
 ): Promise<boolean | null> {
-  const result = await callGraph<{ value: unknown[] }>(
+  const result = await callGraph<{ value: Array<{ showAs?: string }> }>(
     token,
     `/users/${encodeURIComponent(roomEmail)}/calendar/calendarView?startDateTime=${encodeURIComponent(
       startISO
@@ -158,5 +158,6 @@ export async function isRoomFree(
     return null;
   }
 
-  return result.data.value.length === 0;
+  const busyEvents = result.data.value.filter((event) => event.showAs !== 'free');
+  return busyEvents.length === 0;
 }

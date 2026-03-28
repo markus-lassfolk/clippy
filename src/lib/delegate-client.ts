@@ -273,7 +273,9 @@ export async function updateDelegate(
     const xml = await callEws(token, envelope, address);
 
     const deliverStr = extractTag(xml, 'DeliverMeetingRequests');
-    const actualDeliverMeetingRequests = (deliverStr || 'DelegatesAndMe') as DeliverMeetingRequests;
+    const actualDeliverMeetingRequests = (deliverStr ||
+      deliverMeetingRequests ||
+      'DelegatesAndMe') as DeliverMeetingRequests;
 
     const delegateBlock = extractBlocks(xml, 'DelegateUser')[0] || '';
 
