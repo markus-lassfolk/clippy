@@ -2110,18 +2110,7 @@ export async function getAutoReplyRule(token: string, mailbox?: string): Promise
 
       try {
         const itemXml = await callEws(token, getTemplateEnvelope, address);
-        const bodyMatch = itemXml.match(/<t:Body[^>]*>(.*?)<\/t:Body>/s);
-        if (bodyMatch) {
-          messageText = bodyMatch[1]
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&apos;/g, "'")
-            .replace(/&amp;/g, '&');
-          // remove HTML tags if it's HTML, or just return as is?
-          // Since it's a template, maybe it's HTML. We can do a basic strip
-          // or just return the raw text if it's plain text.
-        }
+        messageText = extractTag(itemXml, 'Body');
       } catch (err) {
         // template missing or error
       }
@@ -2163,10 +2152,7 @@ export async function setAutoReplyRule(
     let match;
     while ((match = rulesRegex.exec(rulesXml)) !== null) {
       if (match[1].includes('<t:DisplayName>AutoReplyTemplate</t:DisplayName>')) {
-        const idMatch = match[1].match(/<t:RuleId>(.*?)<\/t:RuleId>/);
-        if (idMatch) {
-          ruleIdStr = idMatch[1];
-        }
+        ruleIdStr = extractTag(match[1], 'RuleId');
         oldTemplateId = extractAttribute(match[1], 'ItemId', 'Id');
         break;
       }
@@ -2235,7 +2221,24 @@ export async function setAutoReplyRule(
       </m:UpdateInboxRules>
     `);
 
-    await callEws(token, setRulesEnvelope, address);
+    try {
+      await callEws(token, setRulesEnvelope, address);
+    } catch (err) {
+      // Clean up the newly created draft template on failure
+      try {
+        const deleteTemplateEnvelope = soapEnvelope(`
+          <m:DeleteItem DeleteType="HardDelete">
+            <m:ItemIds>
+              <t:ItemId Id="${xmlEscape(templateId)}" />
+            </m:ItemIds>
+          </m:DeleteItem>
+        `);
+        await callEws(token, deleteTemplateEnvelope, address);
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw err;
+    }
 
     // 5. Delete the old template draft if it exists (after successful rule update)
     if (oldTemplateId) {
