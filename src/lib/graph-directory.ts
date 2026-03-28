@@ -1,4 +1,4 @@
-import { callGraph, type GraphResponse } from './graph-client.js';
+import { callGraph, GRAPH_BASE_URL, type GraphResponse } from './graph-client.js';
 
 export interface Person {
   id: string;
@@ -88,9 +88,16 @@ export async function expandGroup(token: string, groupId: string): Promise<Graph
     }) as User[];
 
     members.push(...userMembers);
-    path = result.data['@odata.nextLink']
-      ? new URL(result.data['@odata.nextLink']).pathname
-      : '';
+    if (result.data['@odata.nextLink']) {
+      const nextUrl = new URL(result.data['@odata.nextLink']);
+      const baseUrl = new URL(GRAPH_BASE_URL);
+      const relativePath = nextUrl.pathname.startsWith(baseUrl.pathname)
+        ? nextUrl.pathname.slice(baseUrl.pathname.length)
+        : nextUrl.pathname;
+      path = relativePath + nextUrl.search;
+    } else {
+      path = '';
+    }
   }
 
   return { ok: true, data: members };
