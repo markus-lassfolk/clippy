@@ -2110,7 +2110,11 @@ export async function getAutoReplyRule(token: string, mailbox?: string): Promise
 
       try {
         const itemXml = await callEws(token, getTemplateEnvelope, address);
-        messageText = extractTag(itemXml, 'Body');
+        // Extract the GetItemResponseMessage block first to avoid matching the
+        // outer <soap:Body> wrapper before the actual <t:Body> item content
+        const responseBlocks = extractBlocks(itemXml, 'GetItemResponseMessage');
+        const itemBlock = responseBlocks[0] || itemXml;
+        messageText = extractTag(itemBlock, 'Body');
       } catch (err) {
         // template missing or error
       }
@@ -2196,6 +2200,9 @@ export async function setAutoReplyRule(
       dateRangeXml += '</t:WithinDateRange>';
     }
 
+    const conditionsXml = dateRangeXml ? `<t:Conditions>${dateRangeXml}</t:Conditions>` : '';
+    const templateChangeKeyAttr = templateChangeKey ? ` ChangeKey="${xmlEscape(templateChangeKey)}"` : '';
+
     const setRulesEnvelope = soapEnvelope(`
       <m:UpdateInboxRules>
         <m:MailboxSmtpAddress>${xmlEscape(address)}</m:MailboxSmtpAddress>
@@ -2207,12 +2214,10 @@ export async function setAutoReplyRule(
               <t:DisplayName>AutoReplyTemplate</t:DisplayName>
               <t:Sequence>1</t:Sequence>
               <t:IsEnabled>${enabled ? 'true' : 'false'}</t:IsEnabled>
-              <t:Conditions>
-                ${dateRangeXml}
-              </t:Conditions>
+              ${conditionsXml}
               <t:Actions>
                 <t:ServerReplyWithMessage>
-                  <t:ItemId Id="${xmlEscape(templateId)}" ChangeKey="${xmlEscape(templateChangeKey)}" />
+                  <t:ItemId Id="${xmlEscape(templateId)}"${templateChangeKeyAttr} />
                 </t:ServerReplyWithMessage>
               </t:Actions>
             </t:Rule>

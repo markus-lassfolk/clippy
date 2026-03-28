@@ -10,22 +10,77 @@ export const autoReplyCommand = new Command('auto-reply')
   .option('--start <datetime>', 'Start datetime (ISO string)')
   .option('--end <datetime>', 'End datetime (ISO string)')
   .option('--mailbox <email>', 'Target mailbox (if different from authenticated user)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific EWS token')
   .action(async (options) => {
     try {
-      const auth = await resolveAuth();
-      if (!auth || !auth.token) {
+      const auth = await resolveAuth({ token: options.token });
+      if (!auth.success || !auth.token) {
+        const msg = auth.error || 'Authentication failed';
+        if (options.json) {
+          console.log(JSON.stringify({ error: msg }, null, 2));
+        } else {
+          console.error(`Error: ${msg}`);
+        }
         process.exit(1);
+      }
+
+      // Validate mutually exclusive --enable and --disable
+      if (options.enable && options.disable) {
+        const msg = 'Error: --enable and --disable cannot be used together.';
+        if (options.json) {
+          console.log(JSON.stringify({ error: msg }, null, 2));
+        } else {
+          console.error(msg);
+        }
+        process.exit(1);
+      }
+
+      // Validate date inputs
+      let start: Date | undefined;
+      let end: Date | undefined;
+      if (options.start) {
+        start = new Date(options.start);
+        if (!Number.isFinite(start.getTime())) {
+          const msg = 'Error: --start must be a valid ISO datetime string.';
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(msg);
+          }
+          process.exit(1);
+        }
+      }
+      if (options.end) {
+        end = new Date(options.end);
+        if (!Number.isFinite(end.getTime())) {
+          const msg = 'Error: --end must be a valid ISO datetime string.';
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(msg);
+          }
+          process.exit(1);
+        }
       }
 
       if (options.message || options.enable || options.disable || options.start || options.end) {
         let enabled = true;
         let messageText = options.message;
-        let start = options.start ? new Date(options.start) : undefined;
-        let end = options.end ? new Date(options.end) : undefined;
-
         const currentRuleRes = await getAutoReplyRule(auth.token, options.mailbox);
-        
-        if (currentRuleRes.ok && currentRuleRes.data) {
+
+        // Handle error case separately from "not found"
+        if (!currentRuleRes.ok) {
+          const msg = `Failed to get current auto-reply rule: ${currentRuleRes.status} ${currentRuleRes.error?.message || ''}`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(msg);
+          }
+          process.exit(1);
+        }
+
+        if (currentRuleRes.data) {
           if (options.enable === undefined && options.disable === undefined) {
             enabled = currentRuleRes.data.enabled;
           } else {
@@ -37,15 +92,24 @@ export const autoReplyCommand = new Command('auto-reply')
         } else {
           if (options.disable) enabled = false;
           if (!messageText) {
-            console.error('Error: --message is required when creating a new auto-reply rule.');
+            const msg = 'Error: --message is required when creating a new auto-reply rule.';
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg }, null, 2));
+            } else {
+              console.error(msg);
+            }
             process.exit(1);
           }
         }
 
-        console.log(`Setting auto-reply rule (enabled: ${enabled})...`);
+        if (options.json) {
+          console.log(JSON.stringify({ status: 'updating', enabled }, null, 2));
+        } else {
+          console.log(`Setting auto-reply rule (enabled: ${enabled})...`);
+        }
         const result = await setAutoReplyRule(
           auth.token,
-          messageText,
+          messageText!,
           enabled,
           start,
           end,
@@ -53,31 +117,70 @@ export const autoReplyCommand = new Command('auto-reply')
         );
 
         if (!result.ok) {
-          console.error(`Failed to set auto-reply rule: ${result.status} ${(result.error as any)?.message || result.error}`);
+          const msg = `Failed to set auto-reply rule: ${result.status} ${(result.error as any)?.message || result.error}`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(msg);
+          }
           process.exit(1);
         }
 
-        console.log('Auto-reply rule successfully set.');
+        if (options.json) {
+          console.log(JSON.stringify({ status: 'success' }, null, 2));
+        } else {
+          console.log('Auto-reply rule successfully set.');
+        }
       } else {
         const result = await getAutoReplyRule(auth.token, options.mailbox);
-        
+
         if (!result.ok) {
-          console.error(`Failed to get auto-reply rule: ${result.status} ${(result.error as any)?.message || result.error}`);
+          const msg = `Failed to get auto-reply rule: ${result.status} ${(result.error as any)?.message || result.error}`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(msg);
+          }
           process.exit(1);
         }
 
         if (!result.data) {
-          console.log('No auto-reply template rule found.');
+          if (options.json) {
+            console.log(JSON.stringify({ exists: false }, null, 2));
+          } else {
+            console.log('No auto-reply template rule found.');
+          }
         } else {
-          console.log('Auto-Reply Template Rule:');
-          console.log(`  Enabled: ${result.data.enabled}`);
-          console.log(`  Start Time: ${result.data.startTime ? result.data.startTime.toISOString() : 'None'}`);
-          console.log(`  End Time:   ${result.data.endTime ? result.data.endTime.toISOString() : 'None'}`);
-          console.log(`\nMessage:\n${result.data.messageText}`);
+          if (options.json) {
+            console.log(
+              JSON.stringify(
+                {
+                  exists: true,
+                  enabled: result.data.enabled,
+                  startTime: result.data.startTime ? result.data.startTime.toISOString() : null,
+                  endTime: result.data.endTime ? result.data.endTime.toISOString() : null,
+                  messageText: result.data.messageText
+                },
+                null,
+                2
+              )
+            );
+          } else {
+            console.log('Auto-Reply Template Rule:');
+            console.log(`  Enabled: ${result.data.enabled}`);
+            console.log(`  Start Time: ${result.data.startTime ? result.data.startTime.toISOString() : 'None'}`);
+            console.log(`  End Time:   ${result.data.endTime ? result.data.endTime.toISOString() : 'None'}`);
+            console.log(`\nMessage:\n${result.data.messageText}`);
+          }
         }
       }
     } catch (err) {
-      console.error('An unexpected error occurred:', err);
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      if (options.json) {
+        console.log(JSON.stringify({ error: msg }, null, 2));
+      } else {
+        console.error('An unexpected error occurred:', msg);
+      }
       process.exit(1);
     }
   });
