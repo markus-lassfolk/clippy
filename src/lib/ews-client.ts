@@ -2082,7 +2082,7 @@ export async function getAutoReplyRule(token: string, mailbox?: string): Promise
     }
 
     const enabledStr = extractTag(ruleXml, 'IsEnabled');
-    const enabled = enabledStr === 'true';
+    const enabled = enabledStr.toLowerCase() === 'true';
 
     // Dates
     const startStr = extractTag(ruleXml, 'StartDateTime');
@@ -2108,16 +2108,12 @@ export async function getAutoReplyRule(token: string, mailbox?: string): Promise
         </m:GetItem>
       `);
 
-      try {
-        const itemXml = await callEws(token, getTemplateEnvelope, address);
-        // Extract the GetItemResponseMessage block first to avoid matching the
-        // outer <soap:Body> wrapper before the actual <t:Body> item content
-        const responseBlocks = extractBlocks(itemXml, 'GetItemResponseMessage');
-        const itemBlock = responseBlocks[0] || itemXml;
-        messageText = extractTag(itemBlock, 'Body');
-      } catch (err) {
-        // template missing or error
-      }
+      const itemXml = await callEws(token, getTemplateEnvelope, address);
+      // Extract the GetItemResponseMessage block first to avoid matching the
+      // outer <soap:Body> wrapper before the actual <t:Body> item content
+      const responseBlocks = extractBlocks(itemXml, 'GetItemResponseMessage');
+      const itemBlock = responseBlocks[0] || itemXml;
+      messageText = extractTag(itemBlock, 'Body');
     }
 
     return ewsResult({

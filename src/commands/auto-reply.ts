@@ -107,14 +107,7 @@ export const autoReplyCommand = new Command('auto-reply')
         } else {
           console.log(`Setting auto-reply rule (enabled: ${enabled})...`);
         }
-        const result = await setAutoReplyRule(
-          auth.token,
-          messageText!,
-          enabled,
-          start,
-          end,
-          options.mailbox
-        );
+        const result = await setAutoReplyRule(auth.token, messageText!, enabled, start, end, options.mailbox);
 
         if (!result.ok) {
           const msg = `Failed to set auto-reply rule: ${result.status} ${(result.error as any)?.message || result.error}`;
