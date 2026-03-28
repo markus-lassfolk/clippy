@@ -55,29 +55,17 @@ export async function proposeNewTime(options: ProposeNewTimeOptions): Promise<Gr
     proposedNewTime: {
       start: { dateTime: startDateTime, timeZone },
       end: { dateTime: endDateTime, timeZone }
-    }
+    },
+    sendResponse: true
   };
 
-  const response = await fetch(`https://graph.microsoft.com/beta/me/events/${encodeURIComponent(eventId)}`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
+  return callGraph<void>(
+    token,
+    `/me/events/${encodeURIComponent(eventId)}/tentativelyAccept`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body)
     },
-    body: JSON.stringify(body)
-  });
-
-  if (!response.ok) {
-    let message = `Graph request failed: HTTP ${response.status}`;
-    let code;
-    try {
-      const json = await response.json();
-      message = json?.error?.message || message;
-      code = json?.error?.code;
-    } catch {}
-    return { ok: false, error: { message, code, status: response.status } };
-  }
-
-  return { ok: true, data: undefined };
+    false
+  );
 }
