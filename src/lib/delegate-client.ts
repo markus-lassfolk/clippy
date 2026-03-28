@@ -78,14 +78,6 @@ export interface RemoveDelegateOptions {
 
 // ─── Helpers ───
 
-const FOLDER_MAP: Record<string, string> = {
-  calendar: 'Calendar',
-  inbox: 'Inbox',
-  contacts: 'Contacts',
-  tasks: 'Tasks',
-  notes: 'Notes'
-};
-
 const FOLDER_PERMISSION_ELEMENT_MAP: Record<string, string> = {
   calendar: 'CalendarFolderPermissionLevel',
   inbox: 'InboxFolderPermissionLevel',
@@ -154,10 +146,10 @@ export async function getDelegates(
   try {
     const address = mailbox || EWS_USERNAME;
     const envelope = soapEnvelope(`
-    <m:GetDelegate>
+    <m:GetDelegate IncludePermissions="true">
       <m:Mailbox>
         <t:EmailAddress>${xmlEscape(address)}</t:EmailAddress>
-      </t:Mailbox>
+      </m:Mailbox>
       <m:UserIds />
     </m:GetDelegate>`);
 
@@ -280,7 +272,7 @@ export async function updateDelegate(
     <m:UpdateDelegate>
       <m:Mailbox>
         <t:EmailAddress>${xmlEscape(address)}</t:EmailAddress>
-      </t:Mailbox>
+      </m:Mailbox>
       <m:DelegateUsers>
         ${delegateUserXml}
       </m:DelegateUsers>

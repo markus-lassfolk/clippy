@@ -150,11 +150,6 @@ export const oofCommand = new Command('oof')
       status = 'scheduled';
     }
 
-    // If no status yet, default to disabled (so user can clear OOF)
-    if (!status) {
-      status = 'disabled';
-    }
-
     if (errors.length > 0) {
       for (const e of errors) {
         if (options.json) {
