@@ -45,6 +45,16 @@ remaining_budget() {
 
 log "Ralph clippy Wiggum run: $(date -Iminutes)"
 
+# Check if Forge from a previous run is still active
+if [[ -f "$FORGE_GUARD" ]]; then
+  FORGE_AGE=$(($(date +%s) - $(sed 's/ .*//' < "$FORGE_GUARD")))
+  if (( FORGE_AGE < 2700 )); then
+    log "Forge from previous run still active (${FORGE_AGE}s), skipping this run."
+    echo "Ralph clippy: Forge still running from previous session (${FORGE_AGE}s)"
+    exit 0
+  fi
+fi
+
 # Fetch issues once per loop iteration
 fetch_issues() {
   gh issue list --repo "$REPO" --state open \
@@ -141,15 +151,6 @@ while true; do
   if (( BUDGET < MIN_BUDGET )); then
     log "Budget exhausted (${BUDGET}s left, need >${MIN_BUDGET}s). Stopping."
     break
-  fi
-
-  # Check if Forge is still running
-  if [[ -f "$FORGE_GUARD" ]]; then
-    FORGE_AGE=$(($(date +%s) - $(sed 's/ .*//' < "$FORGE_GUARD")))
-    if (( FORGE_AGE < 2700 )); then
-      log "Forge still active (${FORGE_AGE}s), skipping."
-      break
-    fi
   fi
 
   # Python analysis
