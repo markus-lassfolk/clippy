@@ -61,7 +61,7 @@ dispatch_forge() {
     local ISSUE_TITLE ISSUE_BODY ENRICHMENT
     ISSUE_TITLE=$(gh issue view "$ISSUE_NUM" --repo "$REPO" --json title --jq '.title')
     ISSUE_BODY=$(gh issue view "$ISSUE_NUM" --repo "$REPO" --json body --jq -r '.body // ""')
-    ENRICHMENT=$(gh issue view "$ISSUE_NUM" --repo "$REPO" --comments --json body \
+    ENRICHMENT=$(gh issue view "$ISSUE_NUM" --repo "$REPO" --json comments \
       --jq '[.comments[] | select(.body | contains("Enrichment Analysis"))] | last.body' 2>/dev/null || echo "")
 
     FORGE_BRIEF=$(mktemp)
