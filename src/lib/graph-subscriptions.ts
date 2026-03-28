@@ -1,6 +1,5 @@
 import { resolveGraphAuth } from './graph-auth.js';
-
-const GRAPH_BASE_URL = process.env.GRAPH_BASE_URL || 'https://graph.microsoft.com/v1.0';
+import { fetchGraphRaw } from './graph-client.js';
 
 export interface Subscription {
   id: string;
@@ -19,17 +18,13 @@ async function fetchGraph(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(auth.error || 'Failed to authenticate to Graph API');
   }
 
-  const url = `${GRAPH_BASE_URL}${endpoint}`;
-  const response = await fetch(url, {
+  return fetchGraphRaw(auth.token, endpoint, {
     ...options,
     headers: {
-      Authorization: `Bearer ${auth.token}`,
       'Content-Type': 'application/json',
       ...(options.headers || {})
     }
   });
-
-  return response;
 }
 
 export async function createSubscription(
@@ -71,7 +66,7 @@ export async function listSubscriptions(): Promise<Subscription[]> {
 }
 
 export async function deleteSubscription(id: string): Promise<void> {
-  const response = await fetchGraph(`/subscriptions/${id}`, {
+  const response = await fetchGraph(`/subscriptions/${encodeURIComponent(id)}`, {
     method: 'DELETE'
   });
 
@@ -82,7 +77,7 @@ export async function deleteSubscription(id: string): Promise<void> {
 }
 
 export async function renewSubscription(id: string, expirationDateTime: string): Promise<void> {
-  const response = await fetchGraph(`/subscriptions/${id}`, {
+  const response = await fetchGraph(`/subscriptions/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({
       expirationDateTime
