@@ -8,8 +8,9 @@ export const scheduleCommand = new Command('schedule')
   .requiredOption('--start <date>', 'Start date/time (e.g. 2026-04-01T00:00:00Z or 2026-04-01)')
   .requiredOption('--end <date>', 'End date/time (e.g. 2026-04-07T00:00:00Z or 2026-04-07)')
   .option('--json', 'Output as JSON')
-  .action(async (emails: string[], options: { start: string; end: string; json?: boolean }) => {
-    const authResult = await resolveGraphAuth();
+  .option('--token <token>', 'Graph access token (bypass interactive auth)')
+  .action(async (emails: string[], options: { start: string; end: string; json?: boolean; token?: string }) => {
+    const authResult = await resolveGraphAuth({ token: options.token });
     if (!authResult.success || !authResult.token) {
       if (options.json) {
         console.log(JSON.stringify({ error: authResult.error }, null, 2));
@@ -19,8 +20,23 @@ export const scheduleCommand = new Command('schedule')
       process.exit(1);
     }
 
-    const startDateTime = new Date(options.start).toISOString();
-    const endDateTime = new Date(options.end).toISOString();
+    const startDate = new Date(options.start);
+    const endDate = new Date(options.end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      const errorMessage =
+        'Invalid start or end date. Please provide ISO 8601 date/time values (e.g. 2026-04-01T00:00:00Z or 2026-04-01).';
+      if (options.json) {
+        console.log(JSON.stringify({ error: errorMessage }, null, 2));
+      } else {
+        console.error(`Error: ${errorMessage}`);
+      }
+      process.exit(1);
+    }
+
+    // dateTime should not include Z/offset - keep dateTime and timeZone separate
+    const startDateTime = startDate.toISOString().replace('Z', '');
+    const endDateTime = endDate.toISOString().replace('Z', '');
 
     const result = await getSchedule(authResult.token, {
       schedules: emails,

@@ -126,8 +126,6 @@ import { draftsCommand } from '../commands/drafts.js';
 import { filesCommand } from '../commands/files.js';
 import { scheduleCommand } from '../commands/schedule.js';
 import { suggestCommand } from '../commands/suggest.js';
-import { scheduleCommand } from '../commands/schedule.js';
-import { suggestCommand } from '../commands/suggest.js';
 
 // Helper to call a command action with options
 type CommandAction = (opts: any) => Promise<void>;

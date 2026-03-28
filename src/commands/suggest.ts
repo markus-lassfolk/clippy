@@ -8,8 +8,9 @@ export const suggestCommand = new Command('suggest')
   .option('--duration <duration>', 'Duration (e.g., 30m, 1h)', '30m')
   .option('--days <days>', 'Number of days to check from now', '5')
   .option('--json', 'Output as JSON')
-  .action(async (options: { attendees?: string; duration: string; days: string; json?: boolean }) => {
-    const authResult = await resolveGraphAuth();
+  .option('--token <token>', 'Graph access token (bypass interactive auth)')
+  .action(async (options: { attendees?: string; duration: string; days: string; json?: boolean; token?: string }) => {
+    const authResult = await resolveGraphAuth({ token: options.token });
     if (!authResult.success || !authResult.token) {
       if (options.json) {
         console.log(JSON.stringify({ error: authResult.error }, null, 2));
@@ -27,16 +28,31 @@ export const suggestCommand = new Command('suggest')
       '2h': 'PT2H'
     };
 
-    const durationStr = durationMapping[options.duration.toLowerCase()] || 'PT30M';
+    const durationKey = options.duration.trim().toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(durationMapping, durationKey)) {
+      const message = `Invalid duration "${options.duration}". Supported values are: ${Object.keys(durationMapping).join(', ')}.`;
+      if (options.json) {
+        console.log(JSON.stringify({ error: message }, null, 2));
+      } else {
+        console.error(`Error: ${message}`);
+      }
+      process.exit(1);
+    }
+
+    const durationStr = durationMapping[durationKey];
     const days = parseInt(options.days, 10) || 5;
 
     const startDateTime = new Date();
     const endDateTime = new Date(startDateTime);
     endDateTime.setDate(startDateTime.getDate() + days);
 
+    // dateTime should not include Z/offset - keep dateTime and timeZone separate
+    const startDateTimeISO = startDateTime.toISOString().replace('Z', '');
+    const endDateTimeISO = endDateTime.toISOString().replace('Z', '');
+
     const attendeesList: AttendeeBase[] = options.attendees
       ? options.attendees.split(',').map((email) => ({
-          type: 'required',
+          type: 'required' as const,
           emailAddress: {
             address: email.trim()
           }
@@ -51,11 +67,11 @@ export const suggestCommand = new Command('suggest')
         timeSlots: [
           {
             start: {
-              dateTime: startDateTime.toISOString(),
+              dateTime: startDateTimeISO,
               timeZone: 'UTC'
             },
             end: {
-              dateTime: endDateTime.toISOString(),
+              dateTime: endDateTimeISO,
               timeZone: 'UTC'
             }
           }
