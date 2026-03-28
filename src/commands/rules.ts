@@ -17,21 +17,25 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function parseEmailAddresses(raw: string): { emailAddress: { name?: string; address: string } }[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => (typeof item === 'string' ? { emailAddress: { address: item } } : item));
+    }
+    return parsed;
+  } catch {
+    return raw.split(',').map((s) => ({ emailAddress: { address: s.trim() } }));
+  }
+}
+
 function parseCondition(key: string, raw: string): unknown {
   if (key === 'hasAttachments' || key === 'isAutomaticForward') {
     return raw.toLowerCase() === 'true';
   }
   // Addresses fields expect JSON array; plain strings are split by comma
   if (key === 'fromAddresses' || key === 'sentToAddresses') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((item) => (typeof item === 'string' ? { emailAddress: { address: item } } : item));
-      }
-      return parsed;
-    } catch {
-      return raw.split(',').map((s) => ({ emailAddress: { address: s.trim() } }));
-    }
+    return parseEmailAddresses(raw);
   }
   // Contains fields expect string arrays
   if (key === 'bodyContains' || key === 'subjectContains' || key === 'senderContains' || key === 'recipientContains') {
@@ -45,15 +49,7 @@ function parseAction(key: string, raw: string): MessageRuleAction[keyof MessageR
     return raw.toLowerCase() === 'true';
   }
   if (key === 'forwardToRecipients' || key === 'forwardAsAttachmentToRecipients') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((item) => (typeof item === 'string' ? { emailAddress: { address: item } } : item));
-      }
-      return parsed;
-    } catch {
-      return raw.split(',').map((s) => ({ emailAddress: { address: s.trim() } }));
-    }
+    return parseEmailAddresses(raw);
   }
   if (key === 'assignCategories') {
     return raw.split(',').map((s) => s.trim());
