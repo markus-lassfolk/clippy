@@ -2,8 +2,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-
-export const GRAPH_BASE_URL = process.env.GRAPH_BASE_URL || 'https://graph.microsoft.com/v1.0';
+import { GRAPH_BASE_URL } from './graph-constants.js';
 
 export interface GraphError {
   message: string;
@@ -106,7 +105,17 @@ export function graphError(message: string, code?: string, status?: number): Gra
   return { ok: false, error: { message, code, status } };
 }
 
-export async function callGraph<T>(
+export async function fetchGraphRaw(token: string, path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(`${GRAPH_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+}
+
+async function callGraph<T>(
   token: string,
   path: string,
   options: RequestInit = {},
