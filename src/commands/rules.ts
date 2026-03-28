@@ -29,6 +29,10 @@ function parseCondition(key: string, raw: string): unknown {
       return raw.split(',').map((s) => ({ emailAddress: { address: s.trim() } }));
     }
   }
+  // Contains fields expect string arrays
+  if (key === 'bodyContains' || key === 'subjectContains' || key === 'senderContains' || key === 'recipientContains') {
+    return [raw];
+  }
   return raw;
 }
 
@@ -62,7 +66,7 @@ function conditionsFromOpts(options: Record<string, unknown>): MessageRuleCondit
     ['sentToAddresses', options.sentToAddresses],
     ['hasAttachments', options.hasAttachments],
     ['importance', options.importance],
-    ['isAutomaticForward', options.isAutomaticForward],
+    ['isAutomaticForward', options.isAutomaticForward]
   ];
 
   for (const [key, val] of entries) {
@@ -87,7 +91,7 @@ function actionsFromOpts(options: Record<string, unknown>): MessageRuleAction {
     ['forwardToRecipients', options.forwardTo],
     ['forwardAsAttachmentToRecipients', options.forwardAsAttachmentTo],
     ['assignCategories', options.assignCategories],
-    ['stopProcessingRules', options.stopProcessingRules],
+    ['stopProcessingRules', options.stopProcessingRules]
   ];
 
   for (const [key, val] of entries) {
@@ -116,7 +120,8 @@ function printRule(rule: MessageRule, json: boolean): void {
     if (c.senderContains?.length) parts.push(`sender contains: ${c.senderContains.join(', ')}`);
     if (c.recipientContains?.length) parts.push(`recipient contains: ${c.recipientContains.join(', ')}`);
     if (c.fromAddresses?.length) parts.push(`from: ${c.fromAddresses.map((a) => a.emailAddress.address).join(', ')}`);
-    if (c.sentToAddresses?.length) parts.push(`sent to: ${c.sentToAddresses.map((a) => a.emailAddress.address).join(', ')}`);
+    if (c.sentToAddresses?.length)
+      parts.push(`sent to: ${c.sentToAddresses.map((a) => a.emailAddress.address).join(', ')}`);
     if (c.hasAttachments !== undefined) parts.push(`has attachments: ${c.hasAttachments}`);
     if (c.importance) parts.push(`importance: ${c.importance}`);
     if (c.isAutomaticForward !== undefined) parts.push(`auto forward: ${c.isAutomaticForward}`);
@@ -132,9 +137,12 @@ function printRule(rule: MessageRule, json: boolean): void {
     if (a.permanentDelete) parts.push('permanent delete');
     if (a.markAsRead) parts.push('mark as read');
     if (a.markImportance) parts.push(`mark importance: ${a.markImportance}`);
-    if (a.forwardToRecipients?.length) parts.push(`forward to: ${a.forwardToRecipients.map((r) => r.emailAddress.address).join(', ')}`);
+    if (a.forwardToRecipients?.length)
+      parts.push(`forward to: ${a.forwardToRecipients.map((r) => r.emailAddress.address).join(', ')}`);
     if (a.forwardAsAttachmentToRecipients?.length) {
-      parts.push(`forward as attachment to: ${a.forwardAsAttachmentToRecipients.map((r) => r.emailAddress.address).join(', ')}`);
+      parts.push(
+        `forward as attachment to: ${a.forwardAsAttachmentToRecipients.map((r) => r.emailAddress.address).join(', ')}`
+      );
     }
     if (a.assignCategories?.length) parts.push(`categories: ${a.assignCategories.join(', ')}`);
     if (a.stopProcessingRules) parts.push('stop processing rules');
@@ -154,7 +162,9 @@ const listCmd = new Command('list')
   .description('List all inbox message rules')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
-  .addHelpText('after', `
+  .addHelpText(
+    'after',
+    `
 Conditions you can filter by:
   --bodyContains <text>         Match message body contains text
   --subjectContains <text>      Match subject contains text
@@ -165,7 +175,8 @@ Conditions you can filter by:
   --hasAttachments <true|false> Match attachment presence
   --importance <Low|Normal|High> Match importance
   --isAutomaticForward <true|false> Match auto-forward messages
-`)
+`
+  )
   .option('--bodyContains <text>', 'Match body contains text')
   .option('--subjectContains <text>', 'Match subject contains text')
   .option('--senderContains <text>', 'Match sender contains text')
@@ -177,12 +188,87 @@ Conditions you can filter by:
   .option('--isAutomaticForward <value>', 'Match is auto-forward (true|false)')
   .action(async (opts) => {
     const auth = await resolveGraphAuth({ token: opts.token });
-    if (!auth.success) { console.error(`Error: ${auth.error}`); process.exit(1); }
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
 
     const result = await listMessageRules(auth.token!);
-    if (!result.ok) { console.error(`Error: ${result.error?.message}`); process.exit(1); }
+    if (!result.ok) {
+      console.error(`Error: ${result.error?.message}`);
+      process.exit(1);
+    }
 
-    const rules = result.data || [];
+    let rules = result.data || [];
+
+    // Apply client-side filtering based on condition options
+    const filterConditions = conditionsFromOpts(opts as Record<string, unknown>);
+    if (filterConditions) {
+      rules = rules.filter((rule) => {
+        if (!rule.conditions) return false;
+        const c = rule.conditions;
+
+        // Check each filter condition
+        if (
+          filterConditions.bodyContains &&
+          (!c.bodyContains || !filterConditions.bodyContains.some((term) => c.bodyContains?.includes(term)))
+        ) {
+          return false;
+        }
+        if (
+          filterConditions.subjectContains &&
+          (!c.subjectContains || !filterConditions.subjectContains.some((term) => c.subjectContains?.includes(term)))
+        ) {
+          return false;
+        }
+        if (
+          filterConditions.senderContains &&
+          (!c.senderContains || !filterConditions.senderContains.some((term) => c.senderContains?.includes(term)))
+        ) {
+          return false;
+        }
+        if (
+          filterConditions.recipientContains &&
+          (!c.recipientContains ||
+            !filterConditions.recipientContains.some((term) => c.recipientContains?.includes(term)))
+        ) {
+          return false;
+        }
+        if (
+          filterConditions.fromAddresses &&
+          (!c.fromAddresses ||
+            !filterConditions.fromAddresses.some((addr) =>
+              c.fromAddresses?.some((ruleAddr) => ruleAddr.emailAddress.address === addr.emailAddress.address)
+            ))
+        ) {
+          return false;
+        }
+        if (
+          filterConditions.sentToAddresses &&
+          (!c.sentToAddresses ||
+            !filterConditions.sentToAddresses.some((addr) =>
+              c.sentToAddresses?.some((ruleAddr) => ruleAddr.emailAddress.address === addr.emailAddress.address)
+            ))
+        ) {
+          return false;
+        }
+        if (filterConditions.hasAttachments !== undefined && c.hasAttachments !== filterConditions.hasAttachments) {
+          return false;
+        }
+        if (filterConditions.importance && c.importance !== filterConditions.importance) {
+          return false;
+        }
+        if (
+          filterConditions.isAutomaticForward !== undefined &&
+          c.isAutomaticForward !== filterConditions.isAutomaticForward
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
     if (rules.length === 0) {
       console.log(opts.json ? '[]' : 'No inbox rules found.');
       return;
@@ -208,10 +294,16 @@ const getCmd = new Command('get')
   .option('--token <token>', 'Use a specific token')
   .action(async (ruleId, opts) => {
     const auth = await resolveGraphAuth({ token: opts.token });
-    if (!auth.success) { console.error(`Error: ${auth.error}`); process.exit(1); }
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
 
     const result = await getMessageRule(auth.token!, ruleId);
-    if (!result.ok) { console.error(`Error: ${result.error?.message}`); process.exit(1); }
+    if (!result.ok) {
+      console.error(`Error: ${result.error?.message}`);
+      process.exit(1);
+    }
 
     printRule(result.data!, !!opts.json);
   });
@@ -224,6 +316,7 @@ const createCmd = new Command('create')
   .requiredOption('--name <name>', 'Rule display name')
   .option('--priority <number>', 'Rule priority (lower = runs first)', parseInt)
   .option('--disable', 'Create rule in disabled state')
+  .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   // Conditions
   .option('--bodyContains <text>', 'Condition: body contains text')
@@ -248,16 +341,21 @@ const createCmd = new Command('create')
   .option('--stopProcessingRules', 'Action: stop processing more rules')
   .action(async (opts) => {
     const auth = await resolveGraphAuth({ token: opts.token });
-    if (!auth.success) { console.error(`Error: ${auth.error}`); process.exit(1); }
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
 
     const conditions = conditionsFromOpts(opts as Record<string, unknown>);
     const actions = actionsFromOpts(opts as Record<string, unknown>);
 
     if (!conditions) {
-      console.error('Error: at least one condition is required.'); process.exit(1);
+      console.error('Error: at least one condition is required.');
+      process.exit(1);
     }
     if (Object.keys(actions).length === 0) {
-      console.error('Error: at least one action is required.'); process.exit(1);
+      console.error('Error: at least one action is required.');
+      process.exit(1);
     }
 
     const payload: CreateMessageRulePayload = {
@@ -277,12 +375,15 @@ const createCmd = new Command('create')
 
     const result = await createMessageRule(auth.token!, payload);
     if (!result.ok) {
-      console.error(`Error: ${result.error?.message}`); process.exit(1);
+      console.error(`Error: ${result.error?.message}`);
+      process.exit(1);
     }
 
-    console.log(opts.json
-      ? JSON.stringify(result.data, null, 2)
-      : `\u2713 Rule created: ${result.data!.displayName} (${result.data!.id})`);
+    console.log(
+      opts.json
+        ? JSON.stringify(result.data, null, 2)
+        : `\u2713 Rule created: ${result.data!.displayName} (${result.data!.id})`
+    );
   });
 
 // ---------------------------------------------------------------------------
@@ -295,6 +396,7 @@ const updateCmd = new Command('update')
   .option('--priority <number>', 'New rule priority', parseInt)
   .option('--enable', 'Enable the rule')
   .option('--disable', 'Disable the rule')
+  .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   // Conditions (replace all)
   .option('--bodyContains <text>', 'Condition: body contains text')
@@ -319,7 +421,10 @@ const updateCmd = new Command('update')
   .option('--stopProcessingRules', 'Action: stop processing more rules')
   .action(async (opts) => {
     const auth = await resolveGraphAuth({ token: opts.token });
-    if (!auth.success) { console.error(`Error: ${auth.error}`); process.exit(1); }
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
 
     const conditions = conditionsFromOpts(opts as Record<string, unknown>);
     const actions = actionsFromOpts(opts as Record<string, unknown>);
@@ -334,11 +439,12 @@ const updateCmd = new Command('update')
 
     console.log(`Updating rule ${opts.id}…`);
     const result = await updateMessageRule(auth.token!, opts.id, payload);
-    if (!result.ok) { console.error(`Error: ${result.error?.message}`); process.exit(1); }
+    if (!result.ok) {
+      console.error(`Error: ${result.error?.message}`);
+      process.exit(1);
+    }
 
-    console.log(opts.json
-      ? JSON.stringify(result.data, null, 2)
-      : `\u2713 Rule updated: ${result.data!.displayName}`);
+    console.log(opts.json ? JSON.stringify(result.data, null, 2) : `\u2713 Rule updated: ${result.data!.displayName}`);
   });
 
 // ---------------------------------------------------------------------------
@@ -351,14 +457,18 @@ const deleteCmd = new Command('delete')
   .option('--json', 'Output as JSON')
   .action(async (ruleId, opts) => {
     const auth = await resolveGraphAuth({ token: opts.token });
-    if (!auth.success) { console.error(`Error: ${auth.error}`); process.exit(1); }
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
 
     const result = await deleteMessageRule(auth.token!, ruleId);
-    if (!result.ok) { console.error(`Error: ${result.error?.message}`); process.exit(1); }
+    if (!result.ok) {
+      console.error(`Error: ${result.error?.message}`);
+      process.exit(1);
+    }
 
-    console.log(opts.json
-      ? JSON.stringify({ deleted: ruleId })
-      : `\u2713 Rule deleted: ${ruleId}`);
+    console.log(opts.json ? JSON.stringify({ deleted: ruleId }) : `\u2713 Rule deleted: ${ruleId}`);
   });
 
 // ---------------------------------------------------------------------------

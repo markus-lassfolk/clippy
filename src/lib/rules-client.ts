@@ -76,14 +76,18 @@ export interface UpdateMessageRulePayload {
   isEnabled?: boolean;
   conditions?: MessageRuleCondition;
   actions?: MessageRuleAction;
-  exceptionConditions?: MessageRuleAction;
+  exceptionConditions?: MessageRuleCondition;
 }
 
 /** List all inbox message rules */
 export async function listMessageRules(token: string): Promise<GraphResponse<MessageRule[]>> {
   const result = await callGraph<MessageRuleListResponse>(token, '/me/mailFolders/inbox/messageRules');
   if (!result.ok || !result.data) {
-    return graphError(result.error?.message || 'Failed to list message rules', result.error?.code, result.error?.status);
+    return graphError(
+      result.error?.message || 'Failed to list message rules',
+      result.error?.code,
+      result.error?.status
+    );
   }
   return graphResult(result.data.value || []);
 }

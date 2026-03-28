@@ -18,6 +18,9 @@ import { forwardEventCommand } from './commands/forward-event.js';
 import { counterCommand } from './commands/counter.js';
 import { scheduleCommand } from './commands/schedule.js';
 import { suggestCommand } from './commands/suggest.js';
+import { subscribeCommand } from './commands/subscribe.js';
+import { subscriptionsCommand } from './commands/subscriptions.js';
+import { serveCommand } from './commands/serve.js';
 import { delegatesCommand } from './commands/delegates.js';
 import { rulesCommand } from './commands/rules.js';
 
@@ -43,6 +46,9 @@ program.addCommand(forwardEventCommand);
 program.addCommand(counterCommand);
 program.addCommand(scheduleCommand);
 program.addCommand(suggestCommand);
+program.addCommand(subscribeCommand);
+program.addCommand(subscriptionsCommand);
+program.addCommand(serveCommand);
 program.addCommand(delegatesCommand);
 program.addCommand(rulesCommand);
 
