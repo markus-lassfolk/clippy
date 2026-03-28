@@ -13,6 +13,27 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/**
+ * Convert a local-midnight Date to a UTC ISO string for EWS CalendarView.
+ *
+ * EWS CalendarView StartDate/EndDate are UTC-datetime strings.
+ * CalendarView is exclusive on EndDate, so we set end = next day's local midnight.
+ *
+ * Example for UTC-5 (EST) on March 15:
+ *   start = 2024-03-15T00:00 local = 2024-03-15T05:00:00Z
+ *   end   = 2024-03-16T00:00 local = 2024-03-16T05:00:00Z
+ */
+function toEWSRange(localMidnight: Date): { start: string; end: string } {
+  const start = new Date(localMidnight);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  end.setHours(0, 0, 0, 0);
+
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 function getDateRange(startDay: string, endDay?: string): { start: string; end: string; label: string } {
   const now = new Date();
 
@@ -26,9 +47,8 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
       start.setDate(start.getDate() + diff);
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return { start: start.toISOString(), end: end.toISOString(), label: 'This Week' };
+      end.setDate(end.getDate() + 7); // exclusive end = next Monday midnight
+      return { ...toEWSRange(start), end: end.toISOString(), label: 'This Week' };
     }
     case 'lastweek': {
       const start = new Date(now);
@@ -37,9 +57,8 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
       start.setDate(start.getDate() + diff);
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return { start: start.toISOString(), end: end.toISOString(), label: 'Last Week' };
+      end.setDate(end.getDate() + 7); // exclusive end = next Monday midnight
+      return { ...toEWSRange(start), end: end.toISOString(), label: 'Last Week' };
     }
     case 'nextweek': {
       const start = new Date(now);
@@ -48,9 +67,8 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
       start.setDate(start.getDate() + diff);
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return { start: start.toISOString(), end: end.toISOString(), label: 'Next Week' };
+      end.setDate(end.getDate() + 7); // exclusive end = next Monday midnight
+      return { ...toEWSRange(start), end: end.toISOString(), label: 'Next Week' };
     }
   }
 
@@ -59,21 +77,23 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
   startDate.setHours(0, 0, 0, 0);
 
   if (endDay) {
-    // Date range - use forwardOnly for end date
+    // Date range - use nearestForward for end date
     const endDate = parseDay(endDay, { baseDate: startDate, weekdayDirection: 'nearestForward' });
-    endDate.setHours(23, 59, 59, 999);
+    endDate.setHours(0, 0, 0, 0);
+    // Exclusive end: next day's midnight
+    const endExclusive = new Date(endDate);
+    endExclusive.setDate(endExclusive.getDate() + 1);
 
     const label = `${formatDate(startDate.toISOString())} - ${formatDate(endDate.toISOString())}`;
-    return { start: startDate.toISOString(), end: endDate.toISOString(), label };
+    return { start: startDate.toISOString(), end: endExclusive.toISOString(), label };
   }
 
-  // Single day
-  const endDate = new Date(startDate);
-  endDate.setHours(23, 59, 59, 999);
+  // Single day — use toEWSRange for consistent UTC conversion
+  const { end: endISO } = toEWSRange(startDate);
 
   return {
     start: startDate.toISOString(),
-    end: endDate.toISOString(),
+    end: endISO,
     label: formatDate(startDate.toISOString())
   };
 }
