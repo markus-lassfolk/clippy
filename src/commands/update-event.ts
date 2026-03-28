@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { getCalendarEvents, updateEvent, searchRooms, getRooms } from '../lib/ews-client.js';
-import { parseDay, parseTimeToDate, toLocalISOString } from '../lib/dates.js';
+import { parseDay, parseTimeToDate, toUTCISOString } from '../lib/dates.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -227,12 +227,12 @@ export const updateEventCommand = new Command('update-event')
 
         if (options.start) {
           const newStart = parseTimeToDate(options.start, eventDate);
-          updateOptions.start = toLocalISOString(newStart);
+          updateOptions.start = toUTCISOString(newStart);
         }
 
         if (options.end) {
           const newEnd = parseTimeToDate(options.end, eventDate);
-          updateOptions.end = toLocalISOString(newEnd);
+          updateOptions.end = toUTCISOString(newEnd);
         }
       }
 

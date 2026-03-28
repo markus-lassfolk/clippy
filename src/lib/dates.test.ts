@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { parseDay, parseTimeToDate, toLocalISOString } from './dates.js';
+import { parseDay, parseTimeToDate, toUTCISOString } from './dates.js';
 
 describe('dates helpers', () => {
   it('parseTimeToDate handles HH:MM and am/pm inputs', () => {
@@ -11,9 +11,9 @@ describe('dates helpers', () => {
     expect(parseTimeToDate('12am', base).getHours()).toBe(0);
   });
 
-  it('toLocalISOString formats as UTC with Z suffix', () => {
+  it('toUTCISOString formats as UTC with Z suffix', () => {
     const date = new Date(Date.UTC(2026, 2, 27, 9, 5, 7));
-    const result = toLocalISOString(date);
+    const result = toUTCISOString(date);
     expect(result).toBe('2026-03-27T09:05:07.000Z');
   });
 

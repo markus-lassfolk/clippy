@@ -9,7 +9,7 @@ import {
   type RecurrencePattern,
   type RecurrenceRange
 } from '../lib/ews-client.js';
-import { parseDay, parseTimeToDate, toLocalISOString } from '../lib/dates.js';
+import { parseDay, parseTimeToDate, toUTCISOString } from '../lib/dates.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -280,8 +280,8 @@ export const createEventCommand = new Command('create-event')
       const result = await createEvent({
         token: authResult.token!,
         subject: title,
-        start: toLocalISOString(start),
-        end: toLocalISOString(end),
+        start: toUTCISOString(start),
+        end: toUTCISOString(end),
         body: options.description,
         location: roomName,
         attendees: attendees.length > 0 ? attendees : undefined,

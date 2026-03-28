@@ -28,7 +28,7 @@ export function parseTimeToDate(timeStr: string, baseDate: Date = new Date()): D
   return result;
 }
 
-export function toLocalISOString(date: Date): string {
+export function toUTCISOString(date: Date): string {
   return date.toISOString();
 }
 
