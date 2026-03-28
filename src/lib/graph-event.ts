@@ -1,9 +1,9 @@
 import { callGraph, type GraphResponse } from './graph-client.js';
 
 export interface Recipient {
-  emailAddress: {
-    address: string;
-    name?: string;
+  EmailAddress: {
+    Address: string;
+    Name?: string;
   };
 }
 

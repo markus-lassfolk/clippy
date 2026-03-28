@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { resolveAuth } from '../lib/auth.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { forwardEvent } from '../lib/graph-event.js';
 
 export const forwardEventCommand = new Command('forward-event')
@@ -15,7 +15,7 @@ export const forwardEventCommand = new Command('forward-event')
       recipients: string[],
       options: { comment?: string; token?: string }
     ) => {
-      const authResult = await resolveAuth({ token: options.token });
+      const authResult = await resolveGraphAuth({ token: options.token });
       if (!authResult.success) {
         console.error(`Error: ${authResult.error}`);
         process.exit(1);

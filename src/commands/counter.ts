@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { resolveAuth } from '../lib/auth.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { proposeNewTime } from '../lib/graph-event.js';
 import { parseDay, parseTimeToDate } from '../lib/dates.js';
 
@@ -12,7 +12,7 @@ export const counterCommand = new Command('counter')
   .option('--day <day>', 'Day for the proposed time (today, tomorrow, YYYY-MM-DD)', 'today')
   .option('--token <token>', 'Use a specific token')
   .action(async (eventId: string, startTime: string, endTime: string, options: { day: string; token?: string }) => {
-    const authResult = await resolveAuth({ token: options.token });
+    const authResult = await resolveGraphAuth({ token: options.token });
     if (!authResult.success) {
       console.error(`Error: ${authResult.error}`);
       process.exit(1);
