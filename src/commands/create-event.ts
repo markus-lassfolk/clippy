@@ -256,9 +256,7 @@ export const createEventCommand = new Command('create-event')
         }
 
         // Build range — use local date to avoid UTC shift for late-evening events
-        const localDate = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }).format(start);
+        const localDate = toLocalISOString(start).split('T')[0];
         const range: RecurrenceRange = {
           Type: 'NoEnd',
           StartDate: localDate
