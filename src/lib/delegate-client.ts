@@ -1,7 +1,19 @@
 // Delegate management via EWS SOAP (AddDelegate / GetDelegate / UpdateDelegate / RemoveDelegate)
 // No Microsoft Graph equivalent — only available via EWS.
 
-import { callEws, soapEnvelope, extractBlocks, extractSelfClosingOrBlock, extractTag, extractAttribute, xmlEscape, ewsResult, ewsError, EWS_ENDPOINT, EWS_USERNAME } from './ews-client.js';
+import {
+  callEws,
+  soapEnvelope,
+  extractBlocks,
+  extractSelfClosingOrBlock,
+  extractTag,
+  extractAttribute,
+  xmlEscape,
+  ewsResult,
+  ewsError,
+  EWS_ENDPOINT,
+  EWS_USERNAME
+} from './ews-client.js';
 
 // ─── Types ───
 
@@ -16,7 +28,11 @@ export type DelegateFolderPermissionLevel =
   | 'NonEditingAuthor'
   | 'FolderVisible';
 
-export type DeliverMeetingRequests = 'DelegatesAndMe' | 'DelegatesOnly' | 'DelegatesAndSendToMe' | 'None';
+export type DeliverMeetingRequests =
+  | 'DelegatesAndMe'
+  | 'DelegatesOnly'
+  | 'DelegatesAndSendInformationToMe'
+  | 'NoForward';
 
 export interface DelegatePermissions {
   calendar?: DelegateFolderPermissionLevel;
@@ -71,31 +87,24 @@ const FOLDER_MAP: Record<string, string> = {
 };
 
 function buildDelegatePermissionsXml(permissions: DelegatePermissions): string {
-  const entries = Object.entries(permissions).filter(
-    ([, level]) => level !== undefined
-  );
+  const entries = Object.entries(permissions).filter(([, level]) => level !== undefined);
 
   if (entries.length === 0) return '';
 
   return entries
     .map(([folder, level]) => {
-      const folderId = FOLDER_MAP[folder];
-      if (!folderId) return '';
-      return `
-      <t:DelegateFolderPermission>
-        <t:FolderId>
-          <t:DistinguishedFolderId Id="${folder}" />
-        </t:FolderId>
-        <t:PermissionLevel>${level}</t:PermissionLevel>
-      </t:DelegateFolderPermission>`;
+      const folderName = FOLDER_MAP[folder];
+      if (!folderName) return '';
+      return `<t:${folderName}FolderPermissionLevel>${level}</t:${folderName}FolderPermissionLevel>`;
     })
-    .join('');
+    .join('\n          ');
 }
 
 function parseDelegateInfo(block: string): DelegateInfo {
-  const userId = extractTag(block, 'UserId') || extractTag(block, 'SmtpAddress') || '';
-  const displayName = extractTag(block, 'DisplayName') || undefined;
-  const primaryEmail = extractTag(block, 'PrimarySmtpAddress') || undefined;
+  const userIdBlock = extractSelfClosingOrBlock(block, 'UserId');
+  const userId = extractTag(userIdBlock, 'PrimarySmtpAddress') || extractTag(userIdBlock, 'SmtpAddress') || '';
+  const displayName = extractTag(userIdBlock, 'DisplayName') || undefined;
+  const primaryEmail = extractTag(userIdBlock, 'PrimarySmtpAddress') || undefined;
 
   const viewPrivateStr = extractTag(block, 'ViewPrivateItems').toLowerCase();
   const viewPrivateItems = viewPrivateStr === 'true';
@@ -103,16 +112,11 @@ function parseDelegateInfo(block: string): DelegateInfo {
   const deliverStr = extractTag(block, 'DeliverMeetingRequests');
   const deliverMeetingRequests = (deliverStr || 'DelegatesAndMe') as DeliverMeetingRequests;
 
-  // Parse per-folder permissions
   const permissions: DelegatePermissions = {};
-  const permBlocks = extractBlocks(block, 'DelegateFolderPermission');
-  for (const pb of permBlocks) {
-    const level = extractTag(pb, 'PermissionLevel') as DelegateFolderPermissionLevel | '';
-    const folderIdBlock = extractSelfClosingOrBlock(pb, 'FolderId');
-    const distinguishedId = extractAttribute(folderIdBlock, 'DistinguishedFolderId', 'Id');
-
-    if (level && distinguishedId && FOLDER_MAP[distinguishedId]) {
-      (permissions as Record<string, string>)[FOLDER_MAP[distinguishedId].toLowerCase()] = level;
+  for (const [key, folderName] of Object.entries(FOLDER_MAP)) {
+    const level = extractTag(block, `${folderName}FolderPermissionLevel`) as DelegateFolderPermissionLevel | '';
+    if (level) {
+      (permissions as Record<string, string>)[key] = level;
     }
   }
 
@@ -132,14 +136,17 @@ function parseDelegateInfo(block: string): DelegateInfo {
  * Get all delegates (and their permissions) on a mailbox.
  * https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/getdelegate-operation
  */
-export async function getDelegates(token: string, mailbox?: string): Promise<{ ok: boolean; status: number; data?: DelegateInfo[]; error?: { code: string; message: string } }> {
+export async function getDelegates(
+  token: string,
+  mailbox?: string
+): Promise<{ ok: boolean; status: number; data?: DelegateInfo[]; error?: { code: string; message: string } }> {
   try {
     const address = mailbox || EWS_USERNAME;
     const envelope = soapEnvelope(`
-    <m:GetDelegate>
+    <m:GetDelegate IncludePermissions="true">
       <m:Mailbox>
         <t:EmailAddress>${xmlEscape(address)}</t:EmailAddress>
-      </t:Mailbox>
+      </m:Mailbox>
       <m:UserIds />
     </m:GetDelegate>`);
 
@@ -158,9 +165,19 @@ export async function getDelegates(token: string, mailbox?: string): Promise<{ o
  * Add a delegate with per-folder permissions.
  * https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/adddelegate-operation
  */
-export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: boolean; status: number; data?: DelegateInfo; error?: { code: string; message: string } }> {
+export async function addDelegate(
+  options: AddDelegateOptions
+): Promise<{ ok: boolean; status: number; data?: DelegateInfo; error?: { code: string; message: string } }> {
   try {
-    const { token, delegateEmail, delegateName, permissions, viewPrivateItems = false, deliverMeetingRequests = 'DelegatesAndMe', mailbox } = options;
+    const {
+      token,
+      delegateEmail,
+      delegateName,
+      permissions,
+      viewPrivateItems = false,
+      deliverMeetingRequests = 'DelegatesAndMe',
+      mailbox
+    } = options;
 
     const address = mailbox || EWS_USERNAME;
 
@@ -174,7 +191,6 @@ export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: bo
           ${buildDelegatePermissionsXml(permissions)}
         </t:DelegatePermissions>
         <t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>
-        <t:DeliverMeetingRequests>${deliverMeetingRequests}</t:DeliverMeetingRequests>
       </t:DelegateUser>`.trim();
 
     const envelope = soapEnvelope(`
@@ -185,6 +201,7 @@ export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: bo
       <m:DelegateUsers>
         ${delegateUserXml}
       </m:DelegateUsers>
+      <m:DeliverMeetingRequests>${deliverMeetingRequests}</m:DeliverMeetingRequests>
     </m:AddDelegate>`);
 
     const xml = await callEws(token, envelope, address);
@@ -200,34 +217,30 @@ export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: bo
  * Update an existing delegate's permissions.
  * https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/updatedelegate-operation
  */
-export async function updateDelegate(options: UpdateDelegateOptions): Promise<{ ok: boolean; status: number; data?: DelegateInfo; error?: { code: string; message: string } }> {
+export async function updateDelegate(
+  options: UpdateDelegateOptions
+): Promise<{ ok: boolean; status: number; data?: DelegateInfo; error?: { code: string; message: string } }> {
   try {
     const { token, delegateEmail, permissions, viewPrivateItems, deliverMeetingRequests, mailbox } = options;
 
     const address = mailbox || EWS_USERNAME;
 
-    // Build update elements — only include fields that are defined
-    const updateParts: string[] = [];
+    const delegateUserParts: string[] = [];
 
     if (permissions !== undefined) {
       const permXml = buildDelegatePermissionsXml(permissions);
       if (permXml) {
-        updateParts.push(`
-        <t:DelegateFolderPermission>
+        delegateUserParts.push(`<t:DelegatePermissions>
           ${permXml}
-        </t:DelegateFolderPermission>`);
+        </t:DelegatePermissions>`);
       }
     }
 
     if (viewPrivateItems !== undefined) {
-      updateParts.push(`<t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>`);
+      delegateUserParts.push(`<t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>`);
     }
 
-    if (deliverMeetingRequests !== undefined) {
-      updateParts.push(`<t:DeliverMeetingRequests>${deliverMeetingRequests}</t:DeliverMeetingRequests>`);
-    }
-
-    if (updateParts.length === 0) {
+    if (delegateUserParts.length === 0 && deliverMeetingRequests === undefined) {
       return { ok: false, status: 400, error: { code: 'NO_UPDATES', message: 'No fields to update' } };
     }
 
@@ -236,19 +249,23 @@ export async function updateDelegate(options: UpdateDelegateOptions): Promise<{ 
         <t:UserId>
           <t:PrimarySmtpAddress>${xmlEscape(delegateEmail)}</t:PrimarySmtpAddress>
         </t:UserId>
-        <t:DelegatePermissions>
-          ${updateParts.join('\n')}
-        </t:DelegatePermissions>
+        ${delegateUserParts.join('\n        ')}
       </t:DelegateUser>`.trim();
+
+    const deliverMeetingRequestsXml =
+      deliverMeetingRequests !== undefined
+        ? `<m:DeliverMeetingRequests>${deliverMeetingRequests}</m:DeliverMeetingRequests>`
+        : '';
 
     const envelope = soapEnvelope(`
     <m:UpdateDelegate>
       <m:Mailbox>
         <t:EmailAddress>${xmlEscape(address)}</t:EmailAddress>
-      </t:Mailbox>
+      </m:Mailbox>
       <m:DelegateUsers>
         ${delegateUserXml}
       </m:DelegateUsers>
+      ${deliverMeetingRequestsXml}
     </m:UpdateDelegate>`);
 
     const xml = await callEws(token, envelope, address);
@@ -264,7 +281,9 @@ export async function updateDelegate(options: UpdateDelegateOptions): Promise<{ 
  * Remove a delegate from a mailbox.
  * https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/removedelegate-operation
  */
-export async function removeDelegate(options: RemoveDelegateOptions): Promise<{ ok: boolean; status: number; error?: { code: string; message: string } }> {
+export async function removeDelegate(
+  options: RemoveDelegateOptions
+): Promise<{ ok: boolean; status: number; error?: { code: string; message: string } }> {
   try {
     const { token, delegateEmail, mailbox } = options;
     const address = mailbox || EWS_USERNAME;

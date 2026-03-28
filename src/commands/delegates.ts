@@ -11,21 +11,19 @@ import {
   type DeliverMeetingRequests
 } from '../lib/delegate-client.js';
 
-const VALID_PERMISSIONS = ['None', 'Owner', 'PublishingEditor', 'Editor', 'PublishingAuthor', 'Author', 'Reviewer', 'NonEditingAuthor', 'FolderVisible'] as const;
+const VALID_PERMISSIONS = [
+  'None',
+  'Owner',
+  'PublishingEditor',
+  'Editor',
+  'PublishingAuthor',
+  'Author',
+  'Reviewer',
+  'NonEditingAuthor',
+  'FolderVisible'
+] as const;
 const VALID_FOLDERS = ['calendar', 'inbox', 'contacts', 'tasks', 'notes'] as const;
-const VALID_DELIVER = ['DelegatesAndMe', 'DelegatesOnly', 'DelegatesAndSendToMe', 'None'] as const;
-
-function parsePermissions(entries: string[]): DelegatePermissions {
-  const perms: DelegatePermissions = {};
-  for (const entry of entries) {
-    const [folder, level] = entry.split('=').map((s) => s.trim());
-    if (!folder || !level) continue;
-    if (!VALID_FOLDERS.includes(folder as typeof VALID_FOLDERS[number])) continue;
-    if (!VALID_PERMISSIONS.includes(level as typeof VALID_PERMISSIONS[number])) continue;
-    (perms as Record<string, string>)[folder] = level;
-  }
-  return perms;
-}
+const VALID_DELIVER = ['DelegatesAndMe', 'DelegatesOnly', 'DelegatesAndSendInformationToMe', 'NoForward'] as const;
 
 function formatPermissionLevel(level: string | undefined): string {
   return level ?? 'None';
@@ -99,10 +97,10 @@ addCommand
     // Validate permission levels
     const perms: DelegatePermissions = {};
     for (const folder of VALID_FOLDERS) {
-      const key = folder as typeof VALID_FOLDERS[number];
+      const key = folder as (typeof VALID_FOLDERS)[number];
       const level = opts[key] as string | undefined;
       if (level) {
-        if (!VALID_PERMISSIONS.includes(level as typeof VALID_PERMISSIONS[number])) {
+        if (!VALID_PERMISSIONS.includes(level as (typeof VALID_PERMISSIONS)[number])) {
           console.error(`Invalid permission level "${level}" for ${folder}. Valid: ${VALID_PERMISSIONS.join(', ')}`);
           process.exit(1);
         }
@@ -145,15 +143,14 @@ addCommand
 
 const updateCommand = new Command('update');
 updateCommand
-  .description('Update an existing delegate\'s permissions')
+  .description("Update an existing delegate's permissions")
   .requiredOption('--email <email>', 'delegate email address')
   .option('--calendar <level>', `Calendar permission level (${VALID_PERMISSIONS.join('|')})`)
   .option('--inbox <level>', `Inbox permission level (${VALID_PERMISSIONS.join('|')})`)
   .option('--contacts <level>', `Contacts permission level (${VALID_PERMISSIONS.join('|')})`)
   .option('--tasks <level>', `Tasks permission level (${VALID_PERMISSIONS.join('|')})`)
   .option('--notes <level>', `Notes permission level (${VALID_PERMISSIONS.join('|')})`)
-  .option('--view-private', 'allow delegate to view private items')
-  .option('--no-view-private', 'deny delegate from viewing private items')
+  .option('--view-private [value]', 'allow delegate to view private items (true/false)')
   .option('--deliver <mode>', `deliver meeting requests (${VALID_DELIVER.join('|')})`)
   .option('--mailbox <email>', 'mailbox (shared/alternative primary)')
   .action(async (opts) => {
@@ -162,10 +159,10 @@ updateCommand
     let hasPerms = false;
 
     for (const folder of VALID_FOLDERS) {
-      const key = folder as typeof VALID_FOLDERS[number];
+      const key = folder as (typeof VALID_FOLDERS)[number];
       const level = opts[key] as string | undefined;
       if (level !== undefined) {
-        if (!VALID_PERMISSIONS.includes(level as typeof VALID_PERMISSIONS[number])) {
+        if (!VALID_PERMISSIONS.includes(level as (typeof VALID_PERMISSIONS)[number])) {
           console.error(`Invalid permission level "${level}" for ${folder}. Valid: ${VALID_PERMISSIONS.join(', ')}`);
           process.exit(1);
         }
@@ -186,11 +183,20 @@ updateCommand
       process.exit(1);
     }
 
+    let viewPrivateItems: boolean | undefined = undefined;
+    if (opts.viewPrivate !== undefined) {
+      if (typeof opts.viewPrivate === 'boolean') {
+        viewPrivateItems = opts.viewPrivate;
+      } else if (typeof opts.viewPrivate === 'string') {
+        viewPrivateItems = opts.viewPrivate.toLowerCase() === 'true';
+      }
+    }
+
     const result = await updateDelegate({
       token: auth.token,
       delegateEmail: opts.email,
       permissions: hasPerms ? permsOut : undefined,
-      viewPrivateItems: opts.viewPrivate === undefined ? undefined : opts.viewPrivate,
+      viewPrivateItems,
       deliverMeetingRequests: deliver,
       mailbox: opts.mailbox
     });
