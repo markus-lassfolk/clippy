@@ -197,7 +197,9 @@ print(f"NEEDS_TRIAGE={len(needs_triage)}")
 print(f"FORGE_CANDIDATE={forge_cand or ''}")
 ')
 
-  eval "$ANALYSIS"
+  while IFS='=' read -r key value; do
+    declare "$key=$value"
+  done <<< "$ANALYSIS"
 
   log "Loop: open=$OPEN enriched=$ENRICHED unenriched=$UNENRICHED forge_cand=${FORGE_CANDIDATE:-none} budget=${BUDGET}s"
 
