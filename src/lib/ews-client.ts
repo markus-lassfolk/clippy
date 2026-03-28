@@ -2054,10 +2054,7 @@ export interface AutoReplyRule {
   endTime?: Date;
 }
 
-export async function getAutoReplyRule(
-  token: string,
-  mailbox?: string
-): Promise<OwaResponse<AutoReplyRule | null>> {
+export async function getAutoReplyRule(token: string, mailbox?: string): Promise<OwaResponse<AutoReplyRule | null>> {
   try {
     const address = mailbox || EWS_USERNAME;
     const envelope = soapEnvelope(`
@@ -2110,12 +2107,17 @@ export async function getAutoReplyRule(
           </m:ItemIds>
         </m:GetItem>
       `);
-      
+
       try {
         const itemXml = await callEws(token, getTemplateEnvelope, address);
         const bodyMatch = itemXml.match(/<t:Body[^>]*>(.*?)<\/t:Body>/s);
         if (bodyMatch) {
-          messageText = bodyMatch[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+          messageText = bodyMatch[1]
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'")
+            .replace(/&amp;/g, '&');
           // remove HTML tags if it's HTML, or just return as is?
           // Since it's a template, maybe it's HTML. We can do a basic strip
           // or just return the raw text if it's plain text.
@@ -2131,7 +2133,6 @@ export async function getAutoReplyRule(
       startTime: startStr ? new Date(startStr) : undefined,
       endTime: endStr ? new Date(endStr) : undefined
     });
-
   } catch (err) {
     return ewsError(err);
   }
@@ -2148,7 +2149,46 @@ export async function setAutoReplyRule(
   try {
     const address = mailbox || EWS_USERNAME;
 
-    // 1. Create a draft message for the template
+    // 1. See if the rule exists and extract the old template ID
+    const getRulesEnvelope = soapEnvelope(`
+      <m:GetInboxRules>
+        <m:MailboxSmtpAddress>${xmlEscape(address)}</m:MailboxSmtpAddress>
+      </m:GetInboxRules>
+    `);
+    const rulesXml = await callEws(token, getRulesEnvelope, address);
+
+    let ruleIdStr = '';
+    let oldTemplateId = '';
+    const rulesRegex = /<t:Rule>(.*?)<\/t:Rule>/gs;
+    let match;
+    while ((match = rulesRegex.exec(rulesXml)) !== null) {
+      if (match[1].includes('<t:DisplayName>AutoReplyTemplate</t:DisplayName>')) {
+        const idMatch = match[1].match(/<t:RuleId>(.*?)<\/t:RuleId>/);
+        if (idMatch) {
+          ruleIdStr = idMatch[1];
+        }
+        oldTemplateId = extractAttribute(match[1], 'ItemId', 'Id');
+        break;
+      }
+    }
+
+    // 2. Delete the old template draft if it exists
+    if (oldTemplateId) {
+      try {
+        const deleteTemplateEnvelope = soapEnvelope(`
+          <m:DeleteItem DeleteType="HardDelete">
+            <m:ItemIds>
+              <t:ItemId Id="${xmlEscape(oldTemplateId)}" />
+            </m:ItemIds>
+          </m:DeleteItem>
+        `);
+        await callEws(token, deleteTemplateEnvelope, address);
+      } catch (err) {
+        // Old template might already be deleted, continue
+      }
+    }
+
+    // 3. Create a draft message for the template
     const draftEnvelope = soapEnvelope(`
       <m:CreateItem MessageDisposition="SaveOnly">
         <m:Items>
@@ -2159,34 +2199,13 @@ export async function setAutoReplyRule(
         </m:Items>
       </m:CreateItem>
     `);
-    
+
     const draftXml = await callEws(token, draftEnvelope, address);
     const templateId = extractAttribute(draftXml, 'ItemId', 'Id');
     const templateChangeKey = extractAttribute(draftXml, 'ItemId', 'ChangeKey');
 
     if (!templateId) {
       throw new Error('Failed to create template message');
-    }
-
-    // 2. See if the rule exists to delete it
-    const getRulesEnvelope = soapEnvelope(`
-      <m:GetInboxRules>
-        <m:MailboxSmtpAddress>${xmlEscape(address)}</m:MailboxSmtpAddress>
-      </m:GetInboxRules>
-    `);
-    const rulesXml = await callEws(token, getRulesEnvelope, address);
-    
-    let ruleIdStr = '';
-    const rulesRegex = /<t:Rule>(.*?)<\/t:Rule>/gs;
-    let match;
-    while ((match = rulesRegex.exec(rulesXml)) !== null) {
-      if (match[1].includes('<t:DisplayName>AutoReplyTemplate</t:DisplayName>')) {
-        const idMatch = match[1].match(/<t:RuleId>(.*?)<\/t:RuleId>/);
-        if (idMatch) {
-          ruleIdStr = idMatch[1];
-        }
-        break;
-      }
     }
 
     let deleteOp = '';
@@ -2198,7 +2217,7 @@ export async function setAutoReplyRule(
       `;
     }
 
-    // 3. Create the new rule
+    // 4. Create the new rule
     let dateRangeXml = '';
     if (startTime || endTime) {
       dateRangeXml = '<t:WithinDateRange>';
@@ -2235,7 +2254,6 @@ export async function setAutoReplyRule(
     await callEws(token, setRulesEnvelope, address);
 
     return ewsResult(undefined);
-
   } catch (err) {
     return ewsError(err);
   }
