@@ -102,7 +102,6 @@ export type {
 } from './lib/graph-client.js';
 
 export {
-<<<<<<< HEAD
   searchPeople,
   searchUsers,
   searchGroups,
@@ -114,7 +113,6 @@ export type {
   User,
   Group
 } from './lib/graph-directory.js';
-<<<<<<< HEAD
 
 export { getSchedule, findMeetingTimes } from './lib/graph-schedule.js';
 export type {
@@ -127,8 +125,8 @@ export type {
   TimeConstraint,
   AttendeeBase
 } from './lib/graph-schedule.js';
-=======
-=======
+
+export {
   createSubscription,
   listSubscriptions,
   deleteSubscription,
@@ -136,5 +134,3 @@ export type {
 } from './lib/graph-subscriptions.js';
 
 export type { Subscription } from './lib/graph-subscriptions.js';
->>>>>>> 2e6d497 (feat: add Graph subscription support for real-time push notifications (#84))
->>>>>>> 81c2666 (fix: resolve cli.ts and index.ts conflicts - include all new commands)
