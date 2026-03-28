@@ -16,14 +16,15 @@ import { draftsCommand } from './commands/drafts.js';
 import { filesCommand } from './commands/files.js';
 import { forwardEventCommand } from './commands/forward-event.js';
 import { counterCommand } from './commands/counter.js';
-<<<<<<< HEAD
 import { scheduleCommand } from './commands/schedule.js';
 import { suggestCommand } from './commands/suggest.js';
-=======
 import { subscribeCommand } from './commands/subscribe.js';
 import { subscriptionsCommand } from './commands/subscriptions.js';
 import { serveCommand } from './commands/serve.js';
->>>>>>> 81c2666 (fix: resolve cli.ts and index.ts conflicts - include all new commands)
+import { roomsCommand } from './commands/rooms.js';
+import { oofCommand } from './commands/oof.js';
+import { delegatesCommand } from './commands/delegates.js';
+import { todoCommand } from './commands/todo.js';
 
 const program = new Command();
 
@@ -45,13 +46,14 @@ program.addCommand(draftsCommand);
 program.addCommand(filesCommand);
 program.addCommand(forwardEventCommand);
 program.addCommand(counterCommand);
-<<<<<<< HEAD
 program.addCommand(scheduleCommand);
 program.addCommand(suggestCommand);
-=======
 program.addCommand(subscribeCommand);
 program.addCommand(subscriptionsCommand);
 program.addCommand(serveCommand);
->>>>>>> 81c2666 (fix: resolve cli.ts and index.ts conflicts - include all new commands)
+program.addCommand(roomsCommand);
+program.addCommand(oofCommand);
+program.addCommand(delegatesCommand);
+program.addCommand(todoCommand);
 
 program.parse();
