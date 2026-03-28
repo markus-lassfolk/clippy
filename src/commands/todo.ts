@@ -323,7 +323,8 @@ todoCommand
       process.exit(1);
     }
     const { listId } = await resolveListId(auth.token!, opts.list);
-    const now = new Date().toISOString();
+    // dateTime should not include Z/offset - keep dateTime and timeZone separate
+    const now = new Date().toISOString().replace('Z', '');
     const r = await updateTask(auth.token!, listId, opts.task, { status: 'completed', completedDateTime: now });
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);

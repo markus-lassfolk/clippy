@@ -7,7 +7,7 @@ set -euo pipefail
 
 REPO="markus-lassfolk/clippy"
 BRANCH="dev"
-WORKSPACE="/home/markus/.openclaw/workspace/markus-lassfolk-clippy"
+WORKSPACE="$HOME/.openclaw/workspace/markus-lassfolk-clippy"
 GOALS_FILE="$WORKSPACE/docs/GOALS.md"
 LOG_DIR="$HOME/.openclaw/workspace/ralph/logs"
 LOG_FILE="$LOG_DIR/clippy-$(date +%Y-%m-%d).md"
