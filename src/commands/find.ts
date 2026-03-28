@@ -52,7 +52,8 @@ export const findCommand = new Command('find')
                 name: p.displayName,
                 email: p.userPrincipalName || p.scoredEmailAddresses?.[0]?.address,
                 title: p.jobTitle,
-                department: (p as any).department
+                department: p.department,
+                userPrincipalName: p.userPrincipalName
               }))
             );
           } else if (peopleRes.error) {
@@ -63,14 +64,22 @@ export const findCommand = new Command('find')
           if (usersRes.ok && usersRes.data) {
             for (const u of usersRes.data) {
               const userEmail = u.mail || u.userPrincipalName;
-              if (!results.find((r) => r.email && userEmail && r.email.toLowerCase() === userEmail.toLowerCase())) {
+              const userUpn = u.userPrincipalName;
+              if (
+                !results.find(
+                  (r) =>
+                    (r.userPrincipalName && userUpn && r.userPrincipalName.toLowerCase() === userUpn.toLowerCase()) ||
+                    (r.email && userEmail && r.email.toLowerCase() === userEmail.toLowerCase())
+                )
+              ) {
                 results.push({
                   id: u.id,
                   type: 'Person',
                   name: u.displayName,
                   email: userEmail,
                   title: u.jobTitle,
-                  department: (u as any).department
+                  department: u.department,
+                  userPrincipalName: u.userPrincipalName
                 });
               }
             }

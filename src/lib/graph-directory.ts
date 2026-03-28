@@ -8,6 +8,7 @@ export interface Person {
   jobTitle?: string;
   scoredEmailAddresses?: { address: string; name?: string }[];
   userPrincipalName?: string;
+  department?: string;
 }
 
 export interface User {
@@ -18,6 +19,7 @@ export interface User {
   jobTitle?: string;
   mail?: string;
   userPrincipalName?: string;
+  department?: string;
 }
 
 export interface Group {
