@@ -91,7 +91,10 @@ export async function expandGroup(token: string, groupId: string): Promise<Graph
     path = result.data['@odata.nextLink']
       ? (() => {
           const nextUrl = new URL(result.data['@odata.nextLink']);
-          return nextUrl.pathname + nextUrl.search;
+          // Strip the API version prefix (/v1.0 or /beta) since callGraph
+          // already prepends GRAPH_BASE_URL which includes it
+          const relativePath = nextUrl.pathname.replace(/^\/v1\.0/, '');
+          return relativePath + nextUrl.search;
         })()
       : '';
   }
