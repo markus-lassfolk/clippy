@@ -75,6 +75,33 @@ function emailUrl(id: string): string {
   return `https://outlook.office365.com/mail/${encodeURIComponent(id)}`;
 }
 
+async function resolveListId(token: string, nameOrId: string): Promise<{ listId: string; listDisplay: string }> {
+  const listsR = await getTodoLists(token);
+  if (!listsR.ok || !listsR.data) {
+    console.error(`Error: ${listsR.error?.message}`);
+    process.exit(1);
+  }
+
+  const matched = listsR.data.find(
+    (l) =>
+      l.id === nameOrId ||
+      l.displayName.toLowerCase() === nameOrId.toLowerCase() ||
+      l.wellknownListName?.toLowerCase() === nameOrId.toLowerCase()
+  );
+
+  if (matched) {
+    return { listId: matched.id, listDisplay: matched.displayName };
+  }
+
+  const s = await getTodoList(token, nameOrId);
+  if (!s.ok || !s.data) {
+    console.error(`List not found: "${nameOrId}".`);
+    console.error('Use "clippy todo lists".');
+    process.exit(1);
+  }
+  return { listId: s.data.id, listDisplay: s.data.displayName };
+}
+
 export const todoCommand = new Command('todo').description('Manage Microsoft To-Do tasks');
 
 todoCommand
@@ -137,33 +164,7 @@ todoCommand
       }
 
       const listName = opts.list || 'Tasks';
-      const listsR = await getTodoLists(auth.token!);
-      if (!listsR.ok || !listsR.data) {
-        console.error(`Error: ${listsR.error?.message}`);
-        process.exit(1);
-      }
-
-      const matched = listsR.data.find(
-        (l) =>
-          l.id === listName ||
-          l.displayName.toLowerCase() === listName.toLowerCase() ||
-          l.wellknownListName?.toLowerCase() === listName.toLowerCase()
-      );
-
-      let listId: string, listDisplay: string;
-      if (matched) {
-        listId = matched.id;
-        listDisplay = matched.displayName;
-      } else {
-        const s = await getTodoList(auth.token!, listName);
-        if (!s.ok || !s.data) {
-          console.error(`List not found: "${listName}".`);
-          console.error('Use "clippy todo lists".');
-          process.exit(1);
-        }
-        listId = s.data.id;
-        listDisplay = s.data.displayName;
-      }
+      const { listId, listDisplay } = await resolveListId(auth.token!, listName);
 
       if (opts.task) {
         const r = await getTask(auth.token!, listId, opts.task);
@@ -265,30 +266,8 @@ todoCommand
         process.exit(1);
       }
 
-      const listsR = await getTodoLists(auth.token!);
-      if (!listsR.ok || !listsR.data) {
-        console.error(`Error: ${listsR.error?.message}`);
-        process.exit(1);
-      }
       const listName = opts.list || 'Tasks';
-      let listId: string;
-      const matched = listsR.data.find(
-        (l) =>
-          l.id === listName ||
-          l.displayName.toLowerCase() === listName.toLowerCase() ||
-          l.wellknownListName?.toLowerCase() === listName.toLowerCase()
-      );
-      if (matched) {
-        listId = matched.id;
-      } else {
-        const s = await getTodoList(auth.token!, listName);
-        if (!s.ok || !s.data) {
-          console.error(`List not found: "${listName}".`);
-          console.error('Use "clippy todo lists".');
-          process.exit(1);
-        }
-        listId = s.data.id;
-      }
+      const { listId } = await resolveListId(auth.token!, listName);
 
       let linkedResources;
       if (opts.link) {
@@ -343,29 +322,7 @@ todoCommand
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const listsR = await getTodoLists(auth.token!);
-    if (!listsR.ok || !listsR.data) {
-      console.error(`Error: ${listsR.error?.message}`);
-      process.exit(1);
-    }
-    const matched = listsR.data.find(
-      (l) =>
-        l.id === opts.list ||
-        l.displayName.toLowerCase() === opts.list.toLowerCase() ||
-        l.wellknownListName?.toLowerCase() === opts.list.toLowerCase()
-    );
-    let listId: string;
-    if (matched) {
-      listId = matched.id;
-    } else {
-      const s = await getTodoList(auth.token!, opts.list);
-      if (!s.ok || !s.data) {
-        console.error(`List not found: "${opts.list}".`);
-        console.error('Use "clippy todo lists".');
-        process.exit(1);
-      }
-      listId = s.data.id;
-    }
+    const { listId } = await resolveListId(auth.token!, opts.list);
     const now = new Date().toISOString();
     const r = await updateTask(auth.token!, listId, opts.task, { status: 'completed', completedDateTime: now });
     if (!r.ok || !r.data) {
@@ -389,31 +346,7 @@ todoCommand
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const listsR = await getTodoLists(auth.token!);
-    if (!listsR.ok || !listsR.data) {
-      console.error(`Error: ${listsR.error?.message}`);
-      process.exit(1);
-    }
-    const matched = listsR.data.find(
-      (l) =>
-        l.id === opts.list ||
-        l.displayName.toLowerCase() === opts.list.toLowerCase() ||
-        l.wellknownListName?.toLowerCase() === opts.list.toLowerCase()
-    );
-    let listId: string, listName: string;
-    if (matched) {
-      listId = matched.id;
-      listName = matched.displayName;
-    } else {
-      const s = await getTodoList(auth.token!, opts.list);
-      if (!s.ok || !s.data) {
-        console.error(`List not found: "${opts.list}".`);
-        console.error('Use "clippy todo lists".');
-        process.exit(1);
-      }
-      listId = s.data.id;
-      listName = s.data.displayName;
-    }
+    const { listId, listDisplay: listName } = await resolveListId(auth.token!, opts.list);
     const taskR = await getTask(auth.token!, listId, opts.task);
     if (!taskR.ok || !taskR.data) {
       console.error(`Task not found: ${taskR.error?.message}`);
@@ -446,29 +379,7 @@ todoCommand
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const listsR = await getTodoLists(auth.token!);
-    if (!listsR.ok || !listsR.data) {
-      console.error(`Error: ${listsR.error?.message}`);
-      process.exit(1);
-    }
-    const matched = listsR.data.find(
-      (l) =>
-        l.id === opts.list ||
-        l.displayName.toLowerCase() === opts.list.toLowerCase() ||
-        l.wellknownListName?.toLowerCase() === opts.list.toLowerCase()
-    );
-    let listId: string;
-    if (matched) {
-      listId = matched.id;
-    } else {
-      const s = await getTodoList(auth.token!, opts.list);
-      if (!s.ok || !s.data) {
-        console.error(`List not found: "${opts.list}".`);
-        console.error('Use "clippy todo lists".');
-        process.exit(1);
-      }
-      listId = s.data.id;
-    }
+    const { listId } = await resolveListId(auth.token!, opts.list);
     const r = await addChecklistItem(auth.token!, listId, opts.task, opts.name);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
