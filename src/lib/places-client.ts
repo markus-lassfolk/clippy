@@ -70,7 +70,7 @@ export async function listPlaceRoomLists(options?: { token?: string }): Promise<
 }
 
 export async function listRoomsInRoomList(
-  roomListId: string,
+  roomListEmail: string,
   options?: { token?: string }
 ): Promise<{
   ok: boolean;
@@ -80,7 +80,7 @@ export async function listRoomsInRoomList(
   return withAuth<Place[]>(async (token) => {
     const result = await callGraph<PlacesApiResponse<Place>>(
       token,
-      `/places/${encodeURIComponent(roomListId)}/microsoft.graph.roomlist/rooms`
+      `/places/${encodeURIComponent(roomListEmail)}/microsoft.graph.roomlist/rooms`
     );
     if (!result.ok || !result.data) {
       return graphError(
@@ -141,7 +141,12 @@ export async function findRooms(
   }, options);
 }
 
-export async function isRoomFree(token: string, roomEmail: string, startISO: string, endISO: string): Promise<boolean> {
+export async function isRoomFree(
+  token: string,
+  roomEmail: string,
+  startISO: string,
+  endISO: string
+): Promise<boolean | null> {
   const result = await callGraph<{ value: unknown[] }>(
     token,
     `/users/${encodeURIComponent(roomEmail)}/calendar/calendarView?startDateTime=${encodeURIComponent(
@@ -150,7 +155,7 @@ export async function isRoomFree(token: string, roomEmail: string, startISO: str
   );
 
   if (!result.ok || !result.data) {
-    return false;
+    return null;
   }
 
   return result.data.value.length === 0;

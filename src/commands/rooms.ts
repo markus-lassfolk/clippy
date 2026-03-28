@@ -31,7 +31,7 @@ function parseEquipmentFilter(value: string | undefined): string[] | undefined {
 export const roomsCommand = new Command('rooms')
   .description('Discover rooms and room lists via Microsoft Graph Places API')
   .argument('[action]', 'Action: lists, rooms, or find')
-  .argument('[roomListId]', 'Room list ID (required for rooms action)')
+  .argument('[roomListEmail]', 'Room list email address (required for rooms action)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--building <name>', 'Filter by building name (for find action)')
@@ -42,7 +42,7 @@ export const roomsCommand = new Command('rooms')
   .action(
     async (
       action: string,
-      roomListId: string | undefined,
+      roomListEmail: string | undefined,
       options: {
         json?: boolean;
         token?: string;
@@ -84,18 +84,18 @@ export const roomsCommand = new Command('rooms')
           console.log('');
         }
         console.log('-'.repeat(70));
-        console.log('\nTip: Use "clippy rooms rooms <listId>" to see rooms.\n');
+        console.log('\nTip: Use "clippy rooms rooms <email>" to see rooms.\n');
         return;
       }
 
       if (action === 'rooms') {
-        if (!roomListId) {
-          console.error('Error: rooms action requires a room list ID.');
+        if (!roomListEmail) {
+          console.error('Error: rooms action requires a room list email address.');
           console.error('Use "clippy rooms lists" to see available room lists.');
           process.exit(1);
         }
-        console.log(`Fetching rooms from list: ${roomListId}...`);
-        const result = await listRoomsInRoomList(roomListId, { token: authResult.token });
+        console.log(`Fetching rooms from list: ${roomListEmail}...`);
+        const result = await listRoomsInRoomList(roomListEmail, { token: authResult.token });
         if (!result.ok || !result.data) {
           console.error(`Error: ${result.error?.message || 'Failed to fetch rooms'}`);
           process.exit(1);
@@ -152,13 +152,23 @@ export const roomsCommand = new Command('rooms')
         let availableRooms = result.data;
         if (options.start && options.end) {
           const freeRooms: Place[] = [];
+          let availabilityCheckFailed = false;
           for (const room of availableRooms) {
             if (room.emailAddress) {
               const free = await isRoomFree(authResult.token!, room.emailAddress, options.start, options.end);
-              if (free) freeRooms.push(room);
+              if (free === null) {
+                availabilityCheckFailed = true;
+              } else if (free) {
+                freeRooms.push(room);
+              }
             }
           }
           availableRooms = freeRooms;
+          if (availabilityCheckFailed) {
+            console.warn(
+              'Warning: Could not check availability for some rooms (insufficient permissions or API error).'
+            );
+          }
         }
         if (options.json) {
           console.log(JSON.stringify({ rooms: availableRooms }, null, 2));
