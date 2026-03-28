@@ -1,6 +1,4 @@
-import type { GraphResponse } from './graph-client.js';
-
-const GRAPH_BASE_URL = process.env.GRAPH_BASE_URL || 'https://graph.microsoft.com/v1.0';
+import { callGraph, type GraphResponse } from './graph-client.js';
 
 export interface Person {
   id: string;
@@ -31,79 +29,47 @@ export interface Group {
 }
 
 export async function searchPeople(token: string, query: string): Promise<GraphResponse<Person[]>> {
-  try {
-    const url = new URL(`${GRAPH_BASE_URL}/me/people`);
-    url.searchParams.set('$search', `"${query}"`);
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) {
-      return { ok: false, error: { status: res.status, message: res.statusText } };
-    }
-    const data = await res.json();
-    return { ok: true, data: data.value as Person[] };
-  } catch (err: any) {
-    return { ok: false, error: { message: err.message } };
+  const escapedQuery = query.replace(/"/g, '\\"');
+  const searchParam = encodeURIComponent(`"${escapedQuery}"`);
+  const result = await callGraph<{ value: Person[] }>(token, `/me/people?$search=${searchParam}`);
+  if (!result.ok || !result.data) {
+    return { ok: false, error: result.error };
   }
+  return { ok: true, data: result.data.value };
 }
 
 export async function searchUsers(token: string, query: string): Promise<GraphResponse<User[]>> {
-  try {
-    const url = new URL(`${GRAPH_BASE_URL}/users`);
-    const escapedQuery = query.replace(/'/g, "''");
-    url.searchParams.set('$filter', `startsWith(displayName,'${escapedQuery}')`);
-    url.searchParams.set('$count', 'true');
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ConsistencyLevel: 'eventual'
-      }
-    });
-    if (!res.ok) {
-      return { ok: false, error: { status: res.status, message: res.statusText } };
+  const escapedQuery = query.replace(/'/g, "''");
+  const filter = encodeURIComponent(`startsWith(displayName,'${escapedQuery}')`);
+  const result = await callGraph<{ value: User[] }>(token, `/users?$filter=${filter}&$count=true`, {
+    headers: {
+      ConsistencyLevel: 'eventual'
     }
-    const data = await res.json();
-    return { ok: true, data: data.value as User[] };
-  } catch (err: any) {
-    return { ok: false, error: { message: err.message } };
+  });
+  if (!result.ok || !result.data) {
+    return { ok: false, error: result.error };
   }
+  return { ok: true, data: result.data.value };
 }
 
 export async function searchGroups(token: string, query: string): Promise<GraphResponse<Group[]>> {
-  try {
-    const url = new URL(`${GRAPH_BASE_URL}/groups`);
-    const escapedQuery = query.replace(/'/g, "''");
-    url.searchParams.set('$filter', `startsWith(displayName,'${escapedQuery}')`);
-    url.searchParams.set('$count', 'true');
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ConsistencyLevel: 'eventual'
-      }
-    });
-    if (!res.ok) {
-      return { ok: false, error: { status: res.status, message: res.statusText } };
+  const escapedQuery = query.replace(/'/g, "''");
+  const filter = encodeURIComponent(`startsWith(displayName,'${escapedQuery}')`);
+  const result = await callGraph<{ value: Group[] }>(token, `/groups?$filter=${filter}&$count=true`, {
+    headers: {
+      ConsistencyLevel: 'eventual'
     }
-    const data = await res.json();
-    return { ok: true, data: data.value as Group[] };
-  } catch (err: any) {
-    return { ok: false, error: { message: err.message } };
+  });
+  if (!result.ok || !result.data) {
+    return { ok: false, error: result.error };
   }
+  return { ok: true, data: result.data.value };
 }
 
 export async function expandGroup(token: string, groupId: string): Promise<GraphResponse<User[]>> {
-  try {
-    const url = new URL(`${GRAPH_BASE_URL}/groups/${groupId}/members`);
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) {
-      return { ok: false, error: { status: res.status, message: res.statusText } };
-    }
-    const data = await res.json();
-    return { ok: true, data: data.value as User[] };
-  } catch (err: any) {
-    return { ok: false, error: { message: err.message } };
+  const result = await callGraph<{ value: User[] }>(token, `/groups/${encodeURIComponent(groupId)}/members`);
+  if (!result.ok || !result.data) {
+    return { ok: false, error: result.error };
   }
+  return { ok: true, data: result.data.value };
 }

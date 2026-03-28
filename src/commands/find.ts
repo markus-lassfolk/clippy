@@ -62,12 +62,13 @@ export const findCommand = new Command('find')
           const usersRes = await searchUsers(token, query);
           if (usersRes.ok && usersRes.data) {
             for (const u of usersRes.data) {
-              if (!results.find((r) => r.id === u.id)) {
+              const userEmail = u.mail || u.userPrincipalName;
+              if (!results.find((r) => r.email && userEmail && r.email.toLowerCase() === userEmail.toLowerCase())) {
                 results.push({
                   id: u.id,
                   type: 'Person',
                   name: u.displayName,
-                  email: u.mail || u.userPrincipalName,
+                  email: userEmail,
                   title: u.jobTitle,
                   department: (u as any).department
                 });
