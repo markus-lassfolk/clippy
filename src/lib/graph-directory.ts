@@ -42,7 +42,7 @@ export async function searchPeople(token: string, query: string): Promise<GraphR
 
 export async function searchUsers(token: string, query: string): Promise<GraphResponse<User[]>> {
   const escapedQuery = query.replace(/'/g, "''");
-  const filter = encodeURIComponent(`startsWith(displayName,'${escapedQuery}')`);
+  const filter = encodeURIComponent(`startswith(displayName,'${escapedQuery}')`);
   const result = await callGraph<{ value: User[] }>(token, `/users?$filter=${filter}&$count=true`, {
     headers: {
       ConsistencyLevel: 'eventual'
@@ -56,7 +56,7 @@ export async function searchUsers(token: string, query: string): Promise<GraphRe
 
 export async function searchGroups(token: string, query: string): Promise<GraphResponse<Group[]>> {
   const escapedQuery = query.replace(/'/g, "''");
-  const filter = encodeURIComponent(`startsWith(displayName,'${escapedQuery}')`);
+  const filter = encodeURIComponent(`startswith(displayName,'${escapedQuery}')`);
   const result = await callGraph<{ value: Group[] }>(token, `/groups?$filter=${filter}&$count=true`, {
     headers: {
       ConsistencyLevel: 'eventual'
@@ -88,17 +88,12 @@ export async function expandGroup(token: string, groupId: string): Promise<Graph
     }) as User[];
 
     members.push(...userMembers);
-    if (result.data['@odata.nextLink']) {
-      const nextUrl = new URL(result.data['@odata.nextLink']);
-      const baseUrl = new URL(GRAPH_BASE_URL);
-      const relativePath =
-        nextUrl.pathname.startsWith(baseUrl.pathname) && baseUrl.pathname !== '/'
-          ? nextUrl.pathname.slice(baseUrl.pathname.length)
-          : nextUrl.pathname;
-      path = relativePath + nextUrl.search;
-    } else {
-      path = '';
-    }
+    path = result.data['@odata.nextLink']
+      ? (() => {
+          const nextUrl = new URL(result.data['@odata.nextLink']);
+          return nextUrl.pathname + nextUrl.search;
+        })()
+      : '';
   }
 
   return { ok: true, data: members };
