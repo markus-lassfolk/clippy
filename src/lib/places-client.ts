@@ -33,11 +33,6 @@ export interface RoomList {
   emailAddress?: string;
 }
 
-export interface PlacesApiResponse<T> {
-  value: T[];
-  '@odata.nextLink'?: string;
-}
-
 async function withAuth<T>(
   fn: (
     token: string
