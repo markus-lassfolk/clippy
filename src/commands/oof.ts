@@ -228,8 +228,20 @@ export const oofCommand = new Command('oof')
         console.log(`  Status: (unchanged)`);
       }
       if (status === 'scheduled' || (status === undefined && (scheduledStartDateTime || scheduledEndDateTime))) {
-        if (scheduledStartDateTime) console.log(`  Start: ${scheduledStartDateTime}`);
-        if (scheduledEndDateTime) console.log(`  End:   ${scheduledEndDateTime}`);
+        if (scheduledStartDateTime) {
+          const startStr =
+            typeof scheduledStartDateTime === 'string'
+              ? scheduledStartDateTime
+              : `${scheduledStartDateTime.dateTime} (${scheduledStartDateTime.timeZone})`;
+          console.log(`  Start: ${startStr}`);
+        }
+        if (scheduledEndDateTime) {
+          const endStr =
+            typeof scheduledEndDateTime === 'string'
+              ? scheduledEndDateTime
+              : `${scheduledEndDateTime.dateTime} (${scheduledEndDateTime.timeZone})`;
+          console.log(`  End:   ${endStr}`);
+        }
       }
       if (options.internalMessage) console.log(`  Internal message: ${options.internalMessage}`);
       if (options.externalMessage) console.log(`  External message: ${options.externalMessage}`);
