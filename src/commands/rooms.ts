@@ -138,7 +138,11 @@ export const roomsCommand = new Command('rooms')
           console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
           process.exit(1);
         }
-        const hasFilters = !!(filters.building || filters.capacityMin !== undefined || filters.equipment);
+        const hasFilters = !!(
+          filters.building ||
+          filters.capacityMin !== undefined ||
+          (filters.equipment && filters.equipment.length > 0)
+        );
         if (!hasFilters) {
           console.error('Error: find action requires at least one filter (--building, --capacity, or --equipment).');
           process.exit(1);

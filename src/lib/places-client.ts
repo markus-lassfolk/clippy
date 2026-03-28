@@ -57,15 +57,28 @@ export async function listPlaceRoomLists(options?: { token?: string }): Promise<
   error?: { message: string; code?: string; status?: number };
 }> {
   return withAuth<RoomList[]>(async (token) => {
-    const result = await callGraph<PlacesApiResponse<RoomList>>(token, '/places/microsoft.graph.roomList');
-    if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || 'Failed to list room lists',
-        result.error?.code,
-        result.error?.status
-      ) as ReturnType<typeof graphError>;
+    const roomLists: RoomList[] = [];
+    let path = '/places/microsoft.graph.roomList';
+
+    while (path) {
+      const result = await callGraph<PlacesApiResponse<RoomList>>(token, path);
+      if (!result.ok || !result.data) {
+        return graphError(
+          result.error?.message || 'Failed to list room lists',
+          result.error?.code,
+          result.error?.status
+        ) as ReturnType<typeof graphError>;
+      }
+      roomLists.push(...(result.data.value || []));
+      path = result.data['@odata.nextLink']
+        ? (() => {
+            const nextUrl = new URL(result.data['@odata.nextLink']);
+            const relativePath = nextUrl.pathname.replace(/^\/v1\.0/, '');
+            return relativePath + nextUrl.search;
+          })()
+        : '';
     }
-    return graphResult(result.data.value || []);
+    return graphResult(roomLists);
   }, options);
 }
 
@@ -78,18 +91,28 @@ export async function listRoomsInRoomList(
   error?: { message: string; code?: string; status?: number };
 }> {
   return withAuth<Place[]>(async (token) => {
-    const result = await callGraph<PlacesApiResponse<Place>>(
-      token,
-      `/places/${encodeURIComponent(roomListEmail)}/microsoft.graph.roomlist/rooms`
-    );
-    if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || 'Failed to list rooms',
-        result.error?.code,
-        result.error?.status
-      ) as ReturnType<typeof graphError>;
+    const rooms: Place[] = [];
+    let path = `/places/${encodeURIComponent(roomListEmail)}/microsoft.graph.roomlist/rooms`;
+
+    while (path) {
+      const result = await callGraph<PlacesApiResponse<Place>>(token, path);
+      if (!result.ok || !result.data) {
+        return graphError(
+          result.error?.message || 'Failed to list rooms',
+          result.error?.code,
+          result.error?.status
+        ) as ReturnType<typeof graphError>;
+      }
+      rooms.push(...(result.data.value || []));
+      path = result.data['@odata.nextLink']
+        ? (() => {
+            const nextUrl = new URL(result.data['@odata.nextLink']);
+            const relativePath = nextUrl.pathname.replace(/^\/v1\.0/, '');
+            return relativePath + nextUrl.search;
+          })()
+        : '';
     }
-    return graphResult(result.data.value || []);
+    return graphResult(rooms);
   }, options);
 }
 
@@ -108,16 +131,29 @@ export async function findRooms(
   error?: { message: string; code?: string; status?: number };
 }> {
   return withAuth<Place[]>(async (token) => {
-    const result = await callGraph<PlacesApiResponse<Place>>(token, '/places/microsoft.graph.room');
-    if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || 'Failed to find rooms',
-        result.error?.code,
-        result.error?.status
-      ) as ReturnType<typeof graphError>;
+    let allRooms: Place[] = [];
+    let path = '/places/microsoft.graph.room';
+
+    while (path) {
+      const result = await callGraph<PlacesApiResponse<Place>>(token, path);
+      if (!result.ok || !result.data) {
+        return graphError(
+          result.error?.message || 'Failed to find rooms',
+          result.error?.code,
+          result.error?.status
+        ) as ReturnType<typeof graphError>;
+      }
+      allRooms.push(...(result.data.value || []));
+      path = result.data['@odata.nextLink']
+        ? (() => {
+            const nextUrl = new URL(result.data['@odata.nextLink']);
+            const relativePath = nextUrl.pathname.replace(/^\/v1\.0/, '');
+            return relativePath + nextUrl.search;
+          })()
+        : '';
     }
 
-    let rooms = result.data.value || [];
+    let rooms = allRooms;
 
     if (filters?.building) {
       const buildingLower = filters.building.toLowerCase();
