@@ -7,6 +7,7 @@ export function startWebhookServer(port: number = 3000) {
     async fetch(req) {
       const url = new URL(req.url);
       if (url.pathname === '/webhooks/clippy') {
+        // Microsoft Graph sends validationToken as a query param on POST (not GET)
         const validationToken = url.searchParams.get('validationToken');
         if (validationToken) {
           console.log(`[${new Date().toISOString()}] Received validation token request. Replaying token...`);
@@ -18,6 +19,21 @@ export function startWebhookServer(port: number = 3000) {
         if (req.method === 'POST') {
           try {
             const body = await req.json();
+
+            // Validate clientState if configured
+            const expectedClientState = process.env.GRAPH_CLIENT_STATE;
+            const notifications = Array.isArray((body as any).value) ? (body as any).value : null;
+            if (expectedClientState) {
+              const allClientStatesValid =
+                !!notifications &&
+                notifications.length > 0 &&
+                notifications.every((n: any) => n && n.clientState === expectedClientState);
+              if (!allClientStatesValid) {
+                console.warn(`[${new Date().toISOString()}] Received Graph notification with invalid or missing clientState.`);
+                return new Response('Invalid clientState', { status: 401 });
+              }
+            }
+
             console.log(`[${new Date().toISOString()}] Received Graph notification:`);
             console.log(JSON.stringify(body, null, 2));
             return new Response('Accepted', { status: 202 });

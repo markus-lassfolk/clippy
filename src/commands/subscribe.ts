@@ -26,11 +26,17 @@ export const subscribeCommand = new Command('subscribe')
         case 'contact':
           return 'me/contacts';
         case 'todotask':
+          // Note: Todo subscriptions require a specific list ID.
+          // Use the format: me/todo/lists/{listId}/tasks
+          // For the default Tasks list, use: me/todo/lists/Tasks/tasks
           return 'me/todo/lists/Tasks/tasks';
         default:
           return res;
       }
     };
+
+    // Generate clientState for subscription validation (if GRAPH_CLIENT_STATE env is set)
+    const clientState = process.env.GRAPH_CLIENT_STATE;
 
     const graphResource = mapResource(resource);
 
@@ -46,7 +52,7 @@ export const subscribeCommand = new Command('subscribe')
 
     try {
       console.log(`Creating subscription for ${graphResource}...`);
-      const sub = await createSubscription(graphResource, options.changeType, options.url, expiry);
+      const sub = await createSubscription(graphResource, options.changeType, options.url, expiry, clientState);
       console.log('Subscription created successfully!');
       console.log(JSON.stringify(sub, null, 2));
     } catch (err) {

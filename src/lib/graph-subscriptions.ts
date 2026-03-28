@@ -18,12 +18,12 @@ async function fetchGraph(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(auth.error || 'Failed to authenticate to Graph API');
   }
 
+  const headers = new Headers(options.headers);
+  headers.set('Content-Type', 'application/json');
+
   return fetchGraphRaw(auth.token, endpoint, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+    headers
   });
 }
 
@@ -31,16 +31,22 @@ export async function createSubscription(
   resource: string,
   changeType: string,
   notificationUrl: string,
-  expirationDateTime: string
+  expirationDateTime: string,
+  clientState?: string
 ): Promise<Subscription> {
+  const body: Record<string, string> = {
+    changeType,
+    notificationUrl,
+    resource,
+    expirationDateTime
+  };
+  if (clientState) {
+    body.clientState = clientState;
+  }
+
   const response = await fetchGraph('/subscriptions', {
     method: 'POST',
-    body: JSON.stringify({
-      changeType,
-      notificationUrl,
-      resource,
-      expirationDateTime
-    })
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {
