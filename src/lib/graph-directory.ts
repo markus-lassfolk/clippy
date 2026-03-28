@@ -1,4 +1,4 @@
-import { GraphResponse } from './graph-client.js';
+import type { GraphResponse } from './graph-client.js';
 
 const GRAPH_BASE_URL = process.env.GRAPH_BASE_URL || 'https://graph.microsoft.com/v1.0';
 
@@ -7,8 +7,8 @@ export interface Person {
   displayName: string;
   givenName?: string;
   surname?: string;
-  title?: string;
-  emailAddresses?: { address: string; name?: string }[];
+  jobTitle?: string;
+  scoredEmailAddresses?: { address: string; name?: string }[];
   userPrincipalName?: string;
 }
 
@@ -50,10 +50,12 @@ export async function searchPeople(token: string, query: string): Promise<GraphR
 export async function searchUsers(token: string, query: string): Promise<GraphResponse<User[]>> {
   try {
     const url = new URL(`${GRAPH_BASE_URL}/users`);
-    url.searchParams.set('$filter', `startsWith(displayName,'${query}')`);
-    
+    const escapedQuery = query.replace(/'/g, "''");
+    url.searchParams.set('$filter', `startsWith(displayName,'${escapedQuery}')`);
+    url.searchParams.set('$count', 'true');
+
     const res = await fetch(url.toString(), {
-      headers: { 
+      headers: {
         Authorization: `Bearer ${token}`,
         ConsistencyLevel: 'eventual'
       }
@@ -71,9 +73,11 @@ export async function searchUsers(token: string, query: string): Promise<GraphRe
 export async function searchGroups(token: string, query: string): Promise<GraphResponse<Group[]>> {
   try {
     const url = new URL(`${GRAPH_BASE_URL}/groups`);
-    url.searchParams.set('$filter', `startsWith(displayName,'${query}')`);
+    const escapedQuery = query.replace(/'/g, "''");
+    url.searchParams.set('$filter', `startsWith(displayName,'${escapedQuery}')`);
+    url.searchParams.set('$count', 'true');
     const res = await fetch(url.toString(), {
-      headers: { 
+      headers: {
         Authorization: `Bearer ${token}`,
         ConsistencyLevel: 'eventual'
       }

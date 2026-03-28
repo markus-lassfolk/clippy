@@ -45,14 +45,16 @@ export const findCommand = new Command('find')
         if (searchAll || options.people) {
           const peopleRes = await searchPeople(token, query);
           if (peopleRes.ok && peopleRes.data) {
-            results.push(...peopleRes.data.map((p: any) => ({
-              id: p.id,
-              type: 'Person',
-              name: p.displayName,
-              email: p.userPrincipalName || (p.scoredEmailAddresses && p.scoredEmailAddresses[0]?.address) || (p.emailAddresses && p.emailAddresses[0]?.address),
-              title: p.jobTitle || p.title,
-              department: p.department
-            })));
+            results.push(
+              ...peopleRes.data.map((p) => ({
+                id: p.id,
+                type: 'Person',
+                name: p.displayName,
+                email: p.userPrincipalName || p.scoredEmailAddresses?.[0]?.address,
+                title: p.jobTitle,
+                department: (p as any).department
+              }))
+            );
           } else if (peopleRes.error) {
             errors.push(`People search failed: ${peopleRes.error.message || peopleRes.error.status}`);
           }
@@ -60,7 +62,7 @@ export const findCommand = new Command('find')
           const usersRes = await searchUsers(token, query);
           if (usersRes.ok && usersRes.data) {
             for (const u of usersRes.data) {
-              if (!results.find(r => r.id === u.id)) {
+              if (!results.find((r) => r.id === u.id)) {
                 results.push({
                   id: u.id,
                   type: 'Person',
@@ -87,7 +89,7 @@ export const findCommand = new Command('find')
                 email: g.mail,
                 description: g.description
               };
-              
+
               if (options.expand) {
                 const membersRes = await expandGroup(token, g.id);
                 if (membersRes.ok && membersRes.data) {
@@ -114,7 +116,7 @@ export const findCommand = new Command('find')
 
         if (errors.length > 0) {
           console.error(`Warnings:`);
-          errors.forEach(e => console.error(` - ${e}`));
+          errors.forEach((e) => console.error(` - ${e}`));
         }
 
         if (results.length === 0) {
