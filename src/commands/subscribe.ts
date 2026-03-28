@@ -26,7 +26,7 @@ export const subscribeCommand = new Command('subscribe')
         case 'contact':
           return 'me/contacts';
         case 'todotask':
-          return 'me/todo/lists/tasks/tasks';
+          return 'me/todo/lists/Tasks/tasks';
         default:
           return res;
       }

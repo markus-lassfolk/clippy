@@ -7,17 +7,15 @@ export function startWebhookServer(port: number = 3000) {
     async fetch(req) {
       const url = new URL(req.url);
       if (url.pathname === '/webhooks/clippy') {
-        if (req.method === 'GET') {
-          const validationToken = url.searchParams.get('validationToken');
-          if (validationToken) {
-            console.log(`[${new Date().toISOString()}] Received validation token request. Replaying token...`);
-            return new Response(validationToken, {
-              status: 200,
-              headers: { 'Content-Type': 'text/plain' }
-            });
-          }
-          return new Response('Missing validationToken', { status: 400 });
-        } else if (req.method === 'POST') {
+        const validationToken = url.searchParams.get('validationToken');
+        if (validationToken) {
+          console.log(`[${new Date().toISOString()}] Received validation token request. Replaying token...`);
+          return new Response(validationToken, {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        }
+        if (req.method === 'POST') {
           try {
             const body = await req.json();
             console.log(`[${new Date().toISOString()}] Received Graph notification:`);
