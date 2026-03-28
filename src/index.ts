@@ -181,7 +181,7 @@ export {
   deleteTask,
   addChecklistItem,
   deleteChecklistItem
-} from "./lib/todo-client.js";
+} from './lib/todo-client.js';
 
 export type {
   TodoImportance,
@@ -192,4 +192,4 @@ export type {
   TodoList,
   CreateTaskOptions,
   UpdateTaskOptions
-} from "./lib/todo-client.js";
+} from './lib/todo-client.js';

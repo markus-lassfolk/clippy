@@ -1,32 +1,32 @@
 #!/usr/bin/env bun
-import { Command } from "commander";
-import { whoamiCommand } from "./commands/whoami.js";
-import { autoReplyCommand } from "./commands/auto-reply.js";
-import { calendarCommand } from "./commands/calendar.js";
-import { findtimeCommand } from "./commands/findtime.js";
-import { respondCommand } from "./commands/respond.js";
-import { createEventCommand } from "./commands/create-event.js";
-import { deleteEventCommand } from "./commands/delete-event.js";
-import { findCommand } from "./commands/find.js";
-import { updateEventCommand } from "./commands/update-event.js";
-import { mailCommand } from "./commands/mail.js";
-import { foldersCommand } from "./commands/folders.js";
-import { sendCommand } from "./commands/send.js";
-import { draftsCommand } from "./commands/drafts.js";
-import { filesCommand } from "./commands/files.js";
-import { forwardEventCommand } from "./commands/forward-event.js";
-import { counterCommand } from "./commands/counter.js";
-import { scheduleCommand } from "./commands/schedule.js";
-import { suggestCommand } from "./commands/suggest.js";
-import { subscribeCommand } from "./commands/subscribe.js";
-import { subscriptionsCommand } from "./commands/subscriptions.js";
-import { serveCommand } from "./commands/serve.js";
-import { roomsCommand } from "./commands/rooms.js";
-import { todoCommand } from "./commands/todo.js";
+import { Command } from 'commander';
+import { whoamiCommand } from './commands/whoami.js';
+import { autoReplyCommand } from './commands/auto-reply.js';
+import { calendarCommand } from './commands/calendar.js';
+import { findtimeCommand } from './commands/findtime.js';
+import { respondCommand } from './commands/respond.js';
+import { createEventCommand } from './commands/create-event.js';
+import { deleteEventCommand } from './commands/delete-event.js';
+import { findCommand } from './commands/find.js';
+import { updateEventCommand } from './commands/update-event.js';
+import { mailCommand } from './commands/mail.js';
+import { foldersCommand } from './commands/folders.js';
+import { sendCommand } from './commands/send.js';
+import { draftsCommand } from './commands/drafts.js';
+import { filesCommand } from './commands/files.js';
+import { forwardEventCommand } from './commands/forward-event.js';
+import { counterCommand } from './commands/counter.js';
+import { scheduleCommand } from './commands/schedule.js';
+import { suggestCommand } from './commands/suggest.js';
+import { subscribeCommand } from './commands/subscribe.js';
+import { subscriptionsCommand } from './commands/subscriptions.js';
+import { serveCommand } from './commands/serve.js';
+import { roomsCommand } from './commands/rooms.js';
+import { todoCommand } from './commands/todo.js';
 
 const program = new Command();
 
-program.name("clippy").description("CLI for Microsoft 365/EWS").version("0.1.0");
+program.name('clippy').description('CLI for Microsoft 365/EWS').version('0.1.0');
 
 program.addCommand(whoamiCommand);
 program.addCommand(autoReplyCommand);
