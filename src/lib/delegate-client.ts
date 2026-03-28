@@ -16,7 +16,7 @@ export type DelegateFolderPermissionLevel =
   | 'NonEditingAuthor'
   | 'FolderVisible';
 
-export type DeliverMeetingRequests = 'DelegatesAndMe' | 'DelegatesOnly' | 'DelegatesAndSendToMe' | 'None';
+export type DeliverMeetingRequests = 'DelegatesAndMe' | 'DelegatesOnly' | 'DelegatesAndSendInformationToMe' | 'NoForward';
 
 export interface DelegatePermissions {
   calendar?: DelegateFolderPermissionLevel;
@@ -70,6 +70,14 @@ const FOLDER_MAP: Record<string, string> = {
   notes: 'Notes'
 };
 
+const FOLDER_PERMISSION_ELEMENT_MAP: Record<string, string> = {
+  calendar: 'CalendarFolderPermissionLevel',
+  inbox: 'InboxFolderPermissionLevel',
+  contacts: 'ContactsFolderPermissionLevel',
+  tasks: 'TasksFolderPermissionLevel',
+  notes: 'NotesFolderPermissionLevel'
+};
+
 function buildDelegatePermissionsXml(permissions: DelegatePermissions): string {
   const entries = Object.entries(permissions).filter(
     ([, level]) => level !== undefined
@@ -79,23 +87,18 @@ function buildDelegatePermissionsXml(permissions: DelegatePermissions): string {
 
   return entries
     .map(([folder, level]) => {
-      const folderId = FOLDER_MAP[folder];
-      if (!folderId) return '';
-      return `
-      <t:DelegateFolderPermission>
-        <t:FolderId>
-          <t:DistinguishedFolderId Id="${folder}" />
-        </t:FolderId>
-        <t:PermissionLevel>${level}</t:PermissionLevel>
-      </t:DelegateFolderPermission>`;
+      const elementName = FOLDER_PERMISSION_ELEMENT_MAP[folder];
+      if (!elementName) return '';
+      return `<t:${elementName}>${level}</t:${elementName}>`;
     })
-    .join('');
+    .join('\n          ');
 }
 
 function parseDelegateInfo(block: string): DelegateInfo {
-  const userId = extractTag(block, 'UserId') || extractTag(block, 'SmtpAddress') || '';
-  const displayName = extractTag(block, 'DisplayName') || undefined;
   const primaryEmail = extractTag(block, 'PrimarySmtpAddress') || undefined;
+  const smtpAddress = extractTag(block, 'SmtpAddress') || undefined;
+  const userId = primaryEmail || smtpAddress || '';
+  const displayName = extractTag(block, 'DisplayName') || undefined;
 
   const viewPrivateStr = extractTag(block, 'ViewPrivateItems').toLowerCase();
   const viewPrivateItems = viewPrivateStr === 'true';
@@ -174,7 +177,6 @@ export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: bo
           ${buildDelegatePermissionsXml(permissions)}
         </t:DelegatePermissions>
         <t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>
-        <t:DeliverMeetingRequests>${deliverMeetingRequests}</t:DeliverMeetingRequests>
       </t:DelegateUser>`.trim();
 
     const envelope = soapEnvelope(`
@@ -185,6 +187,7 @@ export async function addDelegate(options: AddDelegateOptions): Promise<{ ok: bo
       <m:DelegateUsers>
         ${delegateUserXml}
       </m:DelegateUsers>
+      <m:DeliverMeetingRequests>${deliverMeetingRequests}</m:DeliverMeetingRequests>
     </m:AddDelegate>`);
 
     const xml = await callEws(token, envelope, address);
@@ -207,38 +210,42 @@ export async function updateDelegate(options: UpdateDelegateOptions): Promise<{ 
     const address = mailbox || EWS_USERNAME;
 
     // Build update elements — only include fields that are defined
-    const updateParts: string[] = [];
+    const permissionsParts: string[] = [];
+    const delegateUserParts: string[] = [];
+    let deliverMeetingRequestsXml = '';
 
     if (permissions !== undefined) {
       const permXml = buildDelegatePermissionsXml(permissions);
       if (permXml) {
-        updateParts.push(`
-        <t:DelegateFolderPermission>
-          ${permXml}
-        </t:DelegateFolderPermission>`);
+        permissionsParts.push(permXml);
       }
     }
 
     if (viewPrivateItems !== undefined) {
-      updateParts.push(`<t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>`);
+      delegateUserParts.push(`<t:ViewPrivateItems>${viewPrivateItems}</t:ViewPrivateItems>`);
     }
 
     if (deliverMeetingRequests !== undefined) {
-      updateParts.push(`<t:DeliverMeetingRequests>${deliverMeetingRequests}</t:DeliverMeetingRequests>`);
+      deliverMeetingRequestsXml = `<m:DeliverMeetingRequests>${deliverMeetingRequests}</m:DeliverMeetingRequests>`;
     }
 
-    if (updateParts.length === 0) {
+    if (permissionsParts.length === 0 && delegateUserParts.length === 0 && !deliverMeetingRequestsXml) {
       return { ok: false, status: 400, error: { code: 'NO_UPDATES', message: 'No fields to update' } };
     }
+
+    const delegatePermissionsXml = permissionsParts.length > 0
+      ? `<t:DelegatePermissions>
+          ${permissionsParts.join('\n')}
+        </t:DelegatePermissions>`
+      : '';
 
     const delegateUserXml = `
       <t:DelegateUser>
         <t:UserId>
           <t:PrimarySmtpAddress>${xmlEscape(delegateEmail)}</t:PrimarySmtpAddress>
         </t:UserId>
-        <t:DelegatePermissions>
-          ${updateParts.join('\n')}
-        </t:DelegatePermissions>
+        ${delegatePermissionsXml}
+        ${delegateUserParts.join('\n        ')}
       </t:DelegateUser>`.trim();
 
     const envelope = soapEnvelope(`
@@ -249,6 +256,7 @@ export async function updateDelegate(options: UpdateDelegateOptions): Promise<{ 
       <m:DelegateUsers>
         ${delegateUserXml}
       </m:DelegateUsers>
+      ${deliverMeetingRequestsXml}
     </m:UpdateDelegate>`);
 
     const xml = await callEws(token, envelope, address);

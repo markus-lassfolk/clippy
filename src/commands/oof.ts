@@ -87,9 +87,17 @@ export const oofCommand = new Command('oof')
         console.log('Out-of-Office Settings:');
         console.log(`  Status: ${formatStatus(oof.status)}`);
         if (oof.status === 'scheduled') {
-          console.log(
-            `  Scheduled: ${oof.scheduledStartDateTime ?? '?'} → ${oof.scheduledEndDateTime ?? '?'}`
-          );
+          const startStr = oof.scheduledStartDateTime
+            ? typeof oof.scheduledStartDateTime === 'string'
+              ? oof.scheduledStartDateTime
+              : `${oof.scheduledStartDateTime.dateTime} (${oof.scheduledStartDateTime.timeZone})`
+            : '?';
+          const endStr = oof.scheduledEndDateTime
+            ? typeof oof.scheduledEndDateTime === 'string'
+              ? oof.scheduledEndDateTime
+              : `${oof.scheduledEndDateTime.dateTime} (${oof.scheduledEndDateTime.timeZone})`
+            : '?';
+          console.log(`  Scheduled: ${startStr} → ${endStr}`);
         }
         if (oof.internalReplyMessage) {
           console.log(`\n  Internal Reply:\n    ${oof.internalReplyMessage}`);

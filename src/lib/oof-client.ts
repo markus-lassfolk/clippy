@@ -2,12 +2,17 @@ import { callGraph, graphResult, graphError } from './graph-client.js';
 
 export type OofStatus = 'alwaysEnabled' | 'scheduled' | 'disabled';
 
+export interface DateTimeTimeZone {
+  dateTime: string;
+  timeZone: string;
+}
+
 export interface AutomaticRepliesSetting {
   status: OofStatus;
   internalReplyMessage?: string;
   externalReplyMessage?: string;
-  scheduledStartDateTime?: string; // ISO 8601
-  scheduledEndDateTime?: string;   // ISO 8601
+  scheduledStartDateTime?: DateTimeTimeZone;
+  scheduledEndDateTime?: DateTimeTimeZone;
 }
 
 export interface MailboxSettings {
@@ -28,7 +33,10 @@ export async function getMailboxSettings(token: string): Promise<{
 
 export async function setMailboxSettings(
   token: string,
-  settings: Partial<AutomaticRepliesSetting>
+  settings: Partial<AutomaticRepliesSetting> & {
+    scheduledStartDateTime?: string | DateTimeTimeZone;
+    scheduledEndDateTime?: string | DateTimeTimeZone;
+  }
 ): Promise<{
   ok: boolean;
   error?: { message: string; code?: string; status?: number };
@@ -43,10 +51,20 @@ export async function setMailboxSettings(
         ? { externalReplyMessage: settings.externalReplyMessage }
         : {}),
       ...(settings.scheduledStartDateTime !== undefined
-        ? { scheduledStartDateTime: settings.scheduledStartDateTime }
+        ? {
+            scheduledStartDateTime:
+              typeof settings.scheduledStartDateTime === 'string'
+                ? { dateTime: settings.scheduledStartDateTime, timeZone: 'UTC' }
+                : settings.scheduledStartDateTime
+          }
         : {}),
       ...(settings.scheduledEndDateTime !== undefined
-        ? { scheduledEndDateTime: settings.scheduledEndDateTime }
+        ? {
+            scheduledEndDateTime:
+              typeof settings.scheduledEndDateTime === 'string'
+                ? { dateTime: settings.scheduledEndDateTime, timeZone: 'UTC' }
+                : settings.scheduledEndDateTime
+          }
         : {})
     }
   };

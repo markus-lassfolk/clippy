@@ -13,19 +13,7 @@ import {
 
 const VALID_PERMISSIONS = ['None', 'Owner', 'PublishingEditor', 'Editor', 'PublishingAuthor', 'Author', 'Reviewer', 'NonEditingAuthor', 'FolderVisible'] as const;
 const VALID_FOLDERS = ['calendar', 'inbox', 'contacts', 'tasks', 'notes'] as const;
-const VALID_DELIVER = ['DelegatesAndMe', 'DelegatesOnly', 'DelegatesAndSendToMe', 'None'] as const;
-
-function parsePermissions(entries: string[]): DelegatePermissions {
-  const perms: DelegatePermissions = {};
-  for (const entry of entries) {
-    const [folder, level] = entry.split('=').map((s) => s.trim());
-    if (!folder || !level) continue;
-    if (!VALID_FOLDERS.includes(folder as typeof VALID_FOLDERS[number])) continue;
-    if (!VALID_PERMISSIONS.includes(level as typeof VALID_PERMISSIONS[number])) continue;
-    (perms as Record<string, string>)[folder] = level;
-  }
-  return perms;
-}
+const VALID_DELIVER = ['DelegatesAndMe', 'DelegatesOnly', 'DelegatesAndSendInformationToMe', 'NoForward'] as const;
 
 function formatPermissionLevel(level: string | undefined): string {
   return level ?? 'None';
