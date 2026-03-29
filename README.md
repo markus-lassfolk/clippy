@@ -101,7 +101,37 @@ All commands support these global options:
 ```bash
 --json              # Output as JSON (for scripting)
 --token <token>     # Use a specific access token (overrides cached token)
+--read-only         # Run in read-only mode, blocking any mutating operations
 ```
+
+### Read-Only Mode
+
+You can run `m365-agent-cli` in a strict Read-Only mode to prevent accidental mutations (such as sending emails, deleting events, or updating files). When enabled, commands that perform mutating operations will be blocked and the CLI will gracefully exit with an error message before any network request is made.
+
+**Mutating operations that are blocked include:**
+- Creating, updating, or deleting calendar events
+- Sending emails or managing drafts (create, edit, send, delete)
+- Email operations: flagging/unflagging, marking read/unread, moving, replying, forwarding, changing sensitivity
+- File operations: uploading, restoring files
+- Planner operations: creating or updating tasks
+- SharePoint operations: creating or updating list items, updating or publishing pages
+- Auto-reply configuration changes
+- Meeting response actions (accept, decline, tentative)
+
+You can enable Read-Only mode in two ways:
+
+1. **Global Flag**: Pass `--read-only` to any command.
+   ```bash
+   m365-agent-cli create-event "Test" 09:00 10:00 --read-only
+   # Error: Command blocked. The CLI is running in read-only mode.
+   ```
+
+2. **Environment Variable**: Set `READ_ONLY_MODE=true` in your environment or `.env` file.
+   ```bash
+   export READ_ONLY_MODE=true
+   m365-agent-cli planner update-task <taskId> --title "New"
+   # Error: Command blocked. The CLI is running in read-only mode.
+   ```
 
 ---
 

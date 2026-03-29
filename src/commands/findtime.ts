@@ -89,7 +89,8 @@ export const findtimeCommand = new Command('findtime')
         solo?: boolean;
         json?: boolean;
         token?: string;
-      }
+      },
+      _cmd: any
     ) => {
       const authResult = await resolveAuth({
         token: options.token

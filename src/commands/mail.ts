@@ -17,6 +17,7 @@ import {
   updateEmail
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
+import { checkReadOnly } from '../lib/utils.js';
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -110,8 +111,24 @@ export const mailCommand = new Command('mail')
         draft?: boolean;
         mailbox?: string;
         identity?: string;
-      }
+      },
+      cmd: any
     ) => {
+      const isMutating =
+        options.flag ||
+        options.unflag ||
+        options.markRead ||
+        options.markUnread ||
+        options.complete ||
+        options.sensitivity ||
+        options.move ||
+        options.reply ||
+        options.replyAll ||
+        options.forward;
+
+      if (isMutating) {
+        checkReadOnly(cmd);
+      }
       const authResult = await resolveAuth({
         token: options.token,
         identity: options.identity

@@ -36,6 +36,8 @@ const program = new Command();
 
 program.name('m365-agent-cli').description('CLI for Microsoft 365/EWS').version('0.1.0');
 
+program.option('--read-only', 'Run in read-only mode, blocking any mutating operations');
+
 program.addCommand(whoamiCommand);
 program.addCommand(loginCommand);
 program.addCommand(sitePagesCommand);
