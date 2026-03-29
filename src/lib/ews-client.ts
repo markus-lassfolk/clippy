@@ -414,10 +414,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   );
 
   // Extract timezone info — EWS returns StartTimeZone/EndTimeZone elements
-  const startTimeZone =
-    extractTag(block, 'StartTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
-  const endTimeZone =
-    extractTag(block, 'EndTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const startTimeZone = extractTag(block, 'StartTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const endTimeZone = extractTag(block, 'EndTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
 
   return {
     Id: id,
@@ -769,7 +767,20 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
 
 export async function createEvent(options: CreateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox, isAllDay, timezone } = options;
+    const {
+      token,
+      subject,
+      start,
+      end,
+      body,
+      location,
+      attendees,
+      isOnlineMeeting,
+      recurrence,
+      mailbox,
+      isAllDay,
+      timezone
+    } = options;
 
     let attendeesXml = '';
     if (attendees && attendees.length > 0) {
@@ -821,7 +832,6 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${attendeesXml}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
           ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
-          ${timezone ? `<t:TimeZone>${xmlEscape(timezone)}</t:TimeZone>` : ''}
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
         </t:CalendarItem>
       </m:Items>
@@ -846,7 +856,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
 export async function updateEvent(options: UpdateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox, isAllDay, timezone } = options;
+    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox, isAllDay, timezone } =
+      options;
 
     const updates: string[] = [];
 
@@ -882,10 +893,10 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     }
     if (timezone !== undefined) {
       updates.push(
-        `<t:SetItemField><t:FieldURI FieldURI="calendar:StartTimeZone" /><t:CalendarItem><t:StartTimeZone>${xmlEscape(timezone)}</t:StartTimeZone></t:CalendarItem></t:SetItemField>`
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:StartTimeZone" /><t:CalendarItem><t:StartTimeZone Id="${xmlEscape(timezone)}" /></t:CalendarItem></t:SetItemField>`
       );
       updates.push(
-        `<t:SetItemField><t:FieldURI FieldURI="calendar:EndTimeZone" /><t:CalendarItem><t:EndTimeZone>${xmlEscape(timezone)}</t:EndTimeZone></t:CalendarItem></t:SetItemField>`
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:EndTimeZone" /><t:CalendarItem><t:EndTimeZone Id="${xmlEscape(timezone)}" /></t:CalendarItem></t:SetItemField>`
       );
     }
     if (attendees !== undefined) {
@@ -1941,34 +1952,30 @@ export async function searchRooms(token: string, query: string = 'room'): Promis
  */
 function buildEWSTimeZoneXml(): string {
   const now = new Date();
-  // offset in minutes: positive for west of UTC, negative for east
-  const offsetMinutes = -now.getTimezoneOffset();
-  const pad = (n: number) => String(n).padStart(2, '0');
+  const offsetMinutes = now.getTimezoneOffset();
 
-  // Approximate standard time bias using January (typically standard time month)
   const jan = new Date(now.getFullYear(), 0, 1);
-  const janOffsetMinutes = -jan.getTimezoneOffset();
-  const janStdBias = janOffsetMinutes - offsetMinutes; // diff between standard and current
+  const janOffsetMinutes = jan.getTimezoneOffset();
+  const janStdBias = janOffsetMinutes - offsetMinutes;
 
-  // Approximate daylight time bias using July (typically DST month)
   const jul = new Date(now.getFullYear(), 6, 1);
-  const julOffsetMinutes = -jul.getTimezoneOffset();
-  const julDstBias = julOffsetMinutes - offsetMinutes; // diff between DST and current
+  const julOffsetMinutes = jul.getTimezoneOffset();
+  const julDstBias = julOffsetMinutes - offsetMinutes;
 
   return `<t:TimeZone>
         <t:Bias>${offsetMinutes}</t:Bias>
         <t:StandardTime>
           <t:Bias>${janStdBias}</t:Bias>
-          <t:Time>03:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>10</t:Month>
+          <t:Time>00:00:00</t:Time>
+          <t:DayOrder>1</t:DayOrder>
+          <t:Month>1</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:StandardTime>
         <t:DaylightTime>
           <t:Bias>${julDstBias}</t:Bias>
-          <t:Time>02:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>3</t:Month>
+          <t:Time>00:00:00</t:Time>
+          <t:DayOrder>1</t:DayOrder>
+          <t:Month>1</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:DaylightTime>
       </t:TimeZone>`;
