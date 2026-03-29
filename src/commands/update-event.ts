@@ -234,12 +234,12 @@ export const updateEventCommand = new Command('update-event')
 
         if (options.start) {
           const newStart = parseTimeToDate(options.start, eventDate);
-          updateOptions.start = options.timezone ? toNaiveISOString(newStart) : toUTCISOString(newStart);
+          updateOptions.start = options.timezone || options.allDay ? toNaiveISOString(newStart) : toUTCISOString(newStart);
         }
 
         if (options.end) {
           const newEnd = parseTimeToDate(options.end, eventDate);
-          updateOptions.end = options.timezone ? toNaiveISOString(newEnd) : toUTCISOString(newEnd);
+          updateOptions.end = options.timezone || options.allDay ? toNaiveISOString(newEnd) : toUTCISOString(newEnd);
         }
       }
 
@@ -257,6 +257,9 @@ export const updateEventCommand = new Command('update-event')
       if (options.timezone !== undefined) {
         updateOptions.startTimeZone = options.timezone;
         updateOptions.endTimeZone = options.timezone;
+      } else if (options.allDay) {
+        updateOptions.startTimeZone = 'UTC';
+        updateOptions.endTimeZone = 'UTC';
       }
 
       // Handle room
