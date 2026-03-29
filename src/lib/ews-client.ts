@@ -207,6 +207,7 @@ export interface CreateEventOptions {
   isOnlineMeeting?: boolean;
   recurrence?: Recurrence;
   mailbox?: string;
+  isAllDay?: boolean;
 }
 
 export interface CreatedEvent {
@@ -230,6 +231,7 @@ export interface UpdateEventOptions {
   attendees?: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   isOnlineMeeting?: boolean;
   mailbox?: string;
+  isAllDay?: boolean;
 }
 
 export interface ScheduleInfo {
@@ -409,12 +411,18 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     (b) => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, ''))
   );
 
+  // Extract timezone info (EWS may return StartTimeZone/EndTimeZone or a TimeZone block)
+  const startTimeZone =
+    extractTag(block, 'StartTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const endTimeZone =
+    extractTag(block, 'EndTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+
   return {
     Id: id,
     ChangeKey: changeKey,
     Subject: subject,
-    Start: { DateTime: start, TimeZone: 'UTC' },
-    End: { DateTime: end, TimeZone: 'UTC' },
+    Start: { DateTime: start, TimeZone: startTimeZone },
+    End: { DateTime: end, TimeZone: endTimeZone },
     Location: location ? { DisplayName: location } : undefined,
     Organizer: { EmailAddress: { Name: organizerName, Address: organizerEmail } },
     Attendees: attendees.length > 0 ? attendees : undefined,
@@ -759,7 +767,7 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
 
 export async function createEvent(options: CreateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox } = options;
+    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox, isAllDay } = options;
 
     let attendeesXml = '';
     if (attendees && attendees.length > 0) {
@@ -810,6 +818,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${location ? `<t:Location>${xmlEscape(location)}</t:Location>` : ''}
           ${attendeesXml}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
+          ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
         </t:CalendarItem>
       </m:Items>
@@ -834,7 +843,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
 export async function updateEvent(options: UpdateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox } = options;
+    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox, isAllDay } = options;
 
     const updates: string[] = [];
 
@@ -861,6 +870,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     if (location !== undefined) {
       updates.push(
         `<t:SetItemField><t:FieldURI FieldURI="calendar:Location" /><t:CalendarItem><t:Location>${xmlEscape(location)}</t:Location></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (isAllDay !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:IsAllDayEvent" /><t:CalendarItem><t:IsAllDayEvent>${isAllDay}</t:IsAllDayEvent></t:CalendarItem></t:SetItemField>`
       );
     }
     if (attendees !== undefined) {

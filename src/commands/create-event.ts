@@ -41,6 +41,7 @@ export const createEventCommand = new Command('create-event')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--mailbox <email>', 'Create event in shared mailbox calendar')
+  .option('--all-day', 'Create as an all-day event (banner in Outlook calendar)')
   .action(
     async (
       title: string,
@@ -62,6 +63,7 @@ export const createEventCommand = new Command('create-event')
         json?: boolean;
         token?: string;
         mailbox?: string;
+        allDay?: boolean;
       }
     ) => {
       const authResult = await resolveAuth({
@@ -287,7 +289,8 @@ export const createEventCommand = new Command('create-event')
         attendees: attendees.length > 0 ? attendees : undefined,
         isOnlineMeeting: options.teams,
         recurrence,
-        mailbox: options.mailbox
+        mailbox: options.mailbox,
+        isAllDay: options.allDay
       });
 
       if (!result.ok || !result.data) {

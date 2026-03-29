@@ -35,6 +35,8 @@ export const updateEventCommand = new Command('update-event')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--mailbox <email>', 'Update event in shared mailbox calendar')
+  .option('--all-day', 'Mark as all-day event')
+  .option('--no-all-day', 'Remove all-day flag')
   .action(
     async (
       _eventIndex: string | undefined,
@@ -49,6 +51,7 @@ export const updateEventCommand = new Command('update-event')
         room?: string;
         location?: string;
         teams?: boolean;
+        allDay?: boolean;
         json?: boolean;
         token?: string;
         mailbox?: string;
@@ -305,6 +308,11 @@ export const updateEventCommand = new Command('update-event')
       // Handle Teams
       if (options.teams !== undefined) {
         updateOptions.isOnlineMeeting = options.teams;
+      }
+
+      // Handle all-day
+      if (options.allDay !== undefined) {
+        updateOptions.isAllDay = options.allDay;
       }
 
       console.log(`\nUpdating: ${targetEvent.Subject}`);
