@@ -32,6 +32,8 @@ export const updateEventCommand = new Command('update-event')
   .option('--location <text>', 'Set location text')
   .option('--teams', 'Make it a Teams meeting')
   .option('--no-teams', 'Remove Teams meeting')
+  .option('--all-day', 'Mark as an all-day event')
+  .option('--no-all-day', 'Remove all-day flag')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--mailbox <email>', 'Update event in shared mailbox calendar')
@@ -49,6 +51,8 @@ export const updateEventCommand = new Command('update-event')
         room?: string;
         location?: string;
         teams?: boolean;
+        allDay?: boolean;
+        noAllDay?: boolean;
         json?: boolean;
         token?: string;
         mailbox?: string;
@@ -239,6 +243,11 @@ export const updateEventCommand = new Command('update-event')
       // Handle location
       if (options.location) {
         updateOptions.location = options.location;
+      }
+
+      // Handle all-day
+      if (options.allDay !== undefined) {
+        updateOptions.isAllDay = options.allDay;
       }
 
       // Handle room

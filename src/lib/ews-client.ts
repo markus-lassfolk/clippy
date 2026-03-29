@@ -206,6 +206,7 @@ export interface CreateEventOptions {
   attendees?: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   isOnlineMeeting?: boolean;
   recurrence?: Recurrence;
+  isAllDay?: boolean;
   mailbox?: string;
 }
 
@@ -229,6 +230,7 @@ export interface UpdateEventOptions {
   location?: string;
   attendees?: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   isOnlineMeeting?: boolean;
+  isAllDay?: boolean;
   mailbox?: string;
 }
 
@@ -759,7 +761,7 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
 
 export async function createEvent(options: CreateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox } = options;
+    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, isAllDay, mailbox } = options;
 
     let attendeesXml = '';
     if (attendees && attendees.length > 0) {
@@ -807,6 +809,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${body ? `<t:Body BodyType="Text">${xmlEscape(body)}</t:Body>` : ''}
           <t:Start>${xmlEscape(start)}</t:Start>
           <t:End>${xmlEscape(end)}</t:End>
+          ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
           ${location ? `<t:Location>${xmlEscape(location)}</t:Location>` : ''}
           ${attendeesXml}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
@@ -834,7 +837,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
 export async function updateEvent(options: UpdateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox } = options;
+    const { token, eventId, changeKey, subject, start, end, body, location, attendees, isAllDay, mailbox } = options;
 
     const updates: string[] = [];
 
@@ -861,6 +864,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     if (location !== undefined) {
       updates.push(
         `<t:SetItemField><t:FieldURI FieldURI="calendar:Location" /><t:CalendarItem><t:Location>${xmlEscape(location)}</t:Location></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (isAllDay !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:IsAllDayEvent" /><t:CalendarItem><t:IsAllDayEvent>${isAllDay}</t:IsAllDayEvent></t:CalendarItem></t:SetItemField>`
       );
     }
     if (attendees !== undefined) {

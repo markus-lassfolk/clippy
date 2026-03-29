@@ -31,6 +31,7 @@ export const createEventCommand = new Command('create-event')
   .option('--attendees <emails>', 'Comma-separated list of attendee emails')
   .option('--room <room>', 'Meeting room (use --list-rooms to see available)')
   .option('--teams', 'Create as Teams meeting')
+  .option('--all-day', 'Create as an all-day event (no time slots)')
   .option('--list-rooms', 'List available meeting rooms')
   .option('--find-room', 'Find an available room for the time slot')
   .option('--repeat <type>', 'Recurrence: daily, weekly, monthly, yearly')
@@ -52,6 +53,7 @@ export const createEventCommand = new Command('create-event')
         attendees?: string;
         room?: string;
         teams?: boolean;
+        allDay?: boolean;
         listRooms?: boolean;
         findRoom?: boolean;
         repeat?: string;
@@ -286,6 +288,7 @@ export const createEventCommand = new Command('create-event')
         location: roomName,
         attendees: attendees.length > 0 ? attendees : undefined,
         isOnlineMeeting: options.teams,
+        isAllDay: options.allDay,
         recurrence,
         mailbox: options.mailbox
       });
