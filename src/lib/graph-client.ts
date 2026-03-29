@@ -815,6 +815,14 @@ export async function getFileAnalytics(token: string, itemId: string): Promise<G
     analytics.lastSevenDays = lastSevenDaysResult.value.data.lastSevenDays;
   }
 
+  if (allTimeResult.status === 'rejected' && lastSevenDaysResult.status === 'rejected') {
+    const error = allTimeResult.reason;
+    if (error instanceof GraphApiError) {
+      return graphError(error.message, error.code, error.status);
+    }
+    return graphError(error instanceof Error ? error.message : 'Failed to get file analytics');
+  }
+
   return graphResult(analytics);
 }
 
