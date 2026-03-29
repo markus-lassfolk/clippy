@@ -64,6 +64,7 @@ export {
   getEmail,
   getEmails,
   getFreeBusy,
+  getMyCalendarEvents,
   getMailFolders,
   getOwaUserInfo,
   getRoomLists,

@@ -235,6 +235,16 @@ function buildItemPath(reference?: DriveItemReference): string {
   return `${drivePrefix}/items/${encodeURIComponent(reference.id)}`;
 }
 
+/**
+ * Encode a query string for Graph Drive search.
+ *
+ * encodeURIComponent encodes most characters, but Graph's search(q='...') URL parameter
+ * uses single-quoted strings in the URL path. Apostrophes, parentheses, and exclamation marks
+ * must therefore also be re-encoded to prevent query syntax injection or truncation.
+ *
+ * @param query - Raw search query string
+ * @returns Percent-encoded query safe for use in Graph search URLs
+ */
 function encodeGraphSearchQuery(query: string): string {
   return encodeURIComponent(query).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
 }
