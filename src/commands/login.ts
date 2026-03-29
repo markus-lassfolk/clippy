@@ -28,9 +28,9 @@ async function performDeviceCodeFlow(clientId: string, tenant: string, scope: st
   console.log(deviceCodeJson.message);
   console.log('=========================================================\n');
 
-  let deviceCode = deviceCodeJson.device_code;
-  let interval = (deviceCodeJson.interval || 5) * 1000;
-  let expiresAt = Date.now() + (deviceCodeJson.expires_in || 900) * 1000;
+  const deviceCode = deviceCodeJson.device_code;
+  const interval = (deviceCodeJson.interval || 5) * 1000;
+  const expiresAt = Date.now() + (deviceCodeJson.expires_in || 900) * 1000;
 
   let authenticated = false;
   let refreshToken = '';
