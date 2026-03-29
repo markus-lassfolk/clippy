@@ -45,24 +45,29 @@ export const whoamiCommand = new Command('whoami')
     }
 
     const { displayName, email } = userInfo.data;
-    const identity = options.identity || 'default';
 
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            displayName,
-            email,
-            identity,
-            authenticated: true
-          },
-          null,
-          2
-        )
-      );
+      const result: { displayName: string; email: string; authenticated: boolean; identity?: string } = {
+        displayName,
+        email,
+        authenticated: true
+      };
+
+      // Only include identity if token-based auth was not used
+      if (!options.token) {
+        result.identity = options.identity || 'default';
+      }
+
+      console.log(JSON.stringify(result, null, 2));
     } else {
       console.log('\u2713 Authenticated');
-      console.log(`  Identity: ${identity}`);
+
+      // Only display identity if token-based auth was not used
+      if (!options.token) {
+        const identity = options.identity || 'default';
+        console.log(`  Identity: ${identity}`);
+      }
+
       console.log(`  Name: ${displayName}`);
       console.log(`  Email: ${email}`);
     }
