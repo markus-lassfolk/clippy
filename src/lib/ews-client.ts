@@ -1051,12 +1051,12 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${body ? `<t:Body BodyType="Text">${xmlEscape(body)}</t:Body>` : ''}
           <t:Start>${xmlEscape(start)}</t:Start>
           <t:End>${xmlEscape(end)}</t:End>
-          ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}"/><t:EndTimeZone Id="${xmlEscape(timezone)}"/>` : ''}
           ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
           ${location ? `<t:Location>${xmlEscape(location)}</t:Location>` : ''}
           ${attendeesXml}
-          ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
+          ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}"/><t:EndTimeZone Id="${xmlEscape(timezone)}"/>` : ''}
+          ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
         </t:CalendarItem>
       </m:Items>
     </m:CreateItem>`);
@@ -1563,12 +1563,12 @@ export async function sendEmail(
         ${savedItemFolderIdXml}
         <m:Items>
           <t:Message>
-            ${fromXml}
             <t:Subject>${xmlEscape(options.subject)}</t:Subject>
             <t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body>
             <t:ToRecipients>${toXml}</t:ToRecipients>
             ${ccXml}
             ${bccXml}
+            ${fromXml}
           </t:Message>
         </m:Items>
       </m:CreateItem>`);
@@ -1672,9 +1672,9 @@ export async function forwardEmail(
     <m:CreateItem MessageDisposition="SendAndSaveCopy">
       <m:Items>
         <t:ForwardItem>
+          <t:ToRecipients>${toXml}</t:ToRecipients>
           <t:ReferenceItemId Id="${xmlEscape(messageId)}" />
           ${comment ? `<t:NewBodyContent BodyType="Text">${xmlEscape(comment)}</t:NewBodyContent>` : ''}
-          <t:ToRecipients>${toXml}</t:ToRecipients>
         </t:ForwardItem>
       </m:Items>
     </m:CreateItem>`);
