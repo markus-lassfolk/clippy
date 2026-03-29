@@ -178,6 +178,7 @@ export interface CalendarAttendee {
 }
 
 export interface CalendarEvent {
+  Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   Id: string;
   ChangeKey?: string;
   Subject: string;
@@ -238,6 +239,7 @@ export interface CreateEventOptions {
   isOnlineMeeting?: boolean;
   recurrence?: Recurrence;
   isAllDay?: boolean;
+  sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   mailbox?: string;
 }
 
@@ -265,6 +267,7 @@ export interface UpdateEventOptions {
   /** Use OccurrenceItemId for a specific occurrence, ItemId for the series master */
   occurrenceItemId?: string;
   isAllDay?: boolean;
+  sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   mailbox?: string;
 }
 
@@ -303,6 +306,7 @@ export interface EmailAddress {
 }
 
 export interface EmailMessage {
+  Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   Id: string;
   ChangeKey?: string;
   Subject?: string;
@@ -317,7 +321,11 @@ export interface EmailMessage {
   IsDraft?: boolean;
   HasAttachments?: boolean;
   Importance?: 'Low' | 'Normal' | 'High';
-  Flag?: { FlagStatus?: 'NotFlagged' | 'Flagged' | 'Complete' };
+  Flag?: {
+    FlagStatus?: 'NotFlagged' | 'Flagged' | 'Complete';
+    StartDate?: { DateTime: string; TimeZone: string };
+    DueDate?: { DateTime: string; TimeZone: string };
+  };
 }
 
 export interface EmailListResponse {
@@ -1057,6 +1065,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
           ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}"/><t:EndTimeZone Id="${xmlEscape(timezone)}"/>` : ''}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
+          ${options.sensitivity ? `<t:Sensitivity>${xmlEscape(options.sensitivity)}</t:Sensitivity>` : ''}
         </t:CalendarItem>
       </m:Items>
     </m:CreateItem>`);
@@ -1104,6 +1113,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
       occurrenceItemId,
       timezone,
       isAllDay,
+      sensitivity,
       mailbox
     } = options;
 
@@ -1143,6 +1153,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     if (isAllDay !== undefined) {
       updates.push(
         `<t:SetItemField><t:FieldURI FieldURI="calendar:IsAllDayEvent" /><t:CalendarItem><t:IsAllDayEvent>${isAllDay}</t:IsAllDayEvent></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (sensitivity !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="item:Sensitivity" /><t:CalendarItem><t:Sensitivity>${xmlEscape(sensitivity)}</t:Sensitivity></t:CalendarItem></t:SetItemField>`
       );
     }
     let hasAttendeeUpdates = false;
@@ -1691,7 +1706,12 @@ export async function updateEmail(
   messageId: string,
   updates: {
     IsRead?: boolean;
-    Flag?: { FlagStatus: 'NotFlagged' | 'Flagged' | 'Complete' };
+    Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
+    Flag?: { 
+      FlagStatus: 'NotFlagged' | 'Flagged' | 'Complete';
+      StartDate?: { DateTime: string; TimeZone: string };
+      DueDate?: { DateTime: string; TimeZone: string };
+    };
   }
 ): Promise<OwaResponse<EmailMessage>> {
   try {
@@ -1705,11 +1725,26 @@ export async function updateEmail(
       </t:SetItemField>`);
     }
 
+    if (updates.Sensitivity !== undefined) {
+      setFields.push(`
+      <t:SetItemField>
+        <t:FieldURI FieldURI="item:Sensitivity" />
+        <t:Message><t:Sensitivity>${xmlEscape(updates.Sensitivity)}</t:Sensitivity></t:Message>
+      </t:SetItemField>`);
+    }
+
     if (updates.Flag) {
+      let flagXml = `<t:FlagStatus>${xmlEscape(updates.Flag.FlagStatus)}</t:FlagStatus>`;
+      if (updates.Flag.StartDate) {
+        flagXml += `<t:StartDate>${xmlEscape(updates.Flag.StartDate.DateTime)}</t:StartDate>`;
+      }
+      if (updates.Flag.DueDate) {
+        flagXml += `<t:DueDate>${xmlEscape(updates.Flag.DueDate.DateTime)}</t:DueDate>`;
+      }
       setFields.push(`
       <t:SetItemField>
         <t:FieldURI FieldURI="item:Flag" />
-        <t:Message><t:Flag><t:FlagStatus>${xmlEscape(updates.Flag.FlagStatus)}</t:FlagStatus></t:Flag></t:Message>
+        <t:Message><t:Flag>${flagXml}</t:Flag></t:Message>
       </t:SetItemField>`);
     }
 

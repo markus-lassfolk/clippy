@@ -33,6 +33,7 @@ export const createEventCommand = new Command('create-event')
   .option('--room <room>', 'Meeting room (use --list-rooms to see available)')
   .option('--teams', 'Create as Teams meeting')
   .option('--all-day', 'Create as an all-day event (no time slots)')
+  .option('--sensitivity <level>', 'Sensitivity: normal, personal, private, confidential', 'normal')
   .option('--list-rooms', 'List available meeting rooms')
   .option('--find-room', 'Find an available room for the time slot')
   .option('--repeat <type>', 'Recurrence: daily, weekly, monthly, yearly')
@@ -56,6 +57,7 @@ export const createEventCommand = new Command('create-event')
         room?: string;
         teams?: boolean;
         allDay?: boolean;
+        sensitivity?: string;
         listRooms?: boolean;
         findRoom?: boolean;
         repeat?: string;
@@ -337,6 +339,19 @@ export const createEventCommand = new Command('create-event')
         recurrence = { Pattern: pattern, Range: range };
       }
 
+      const sensitivityMap: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
+        normal: 'Normal',
+        personal: 'Personal',
+        private: 'Private',
+        confidential: 'Confidential'
+      };
+      const sensitivity = options.sensitivity ? sensitivityMap[options.sensitivity.toLowerCase()] : undefined;
+
+      if (options.sensitivity && !sensitivity) {
+        console.error(`Invalid sensitivity: ${options.sensitivity}`);
+        process.exit(1);
+      }
+
       // Create the event
       const result = await createEvent({
         token: authResult.token!,
@@ -348,6 +363,7 @@ export const createEventCommand = new Command('create-event')
         attendees: attendees.length > 0 ? attendees : undefined,
         isOnlineMeeting: options.teams,
         isAllDay: options.allDay,
+        sensitivity,
         recurrence,
         mailbox: options.mailbox,
         timezone: options.timezone

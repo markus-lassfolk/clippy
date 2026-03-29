@@ -47,6 +47,7 @@ export const updateEventCommand = new Command('update-event')
   .option('--no-teams', 'Remove Teams meeting')
   .option('--all-day', 'Mark as an all-day event')
   .option('--no-all-day', 'Remove all-day flag')
+  .option('--sensitivity <level>', 'Set sensitivity: normal, personal, private, confidential')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--mailbox <email>', 'Update event in shared mailbox calendar')
@@ -69,6 +70,7 @@ export const updateEventCommand = new Command('update-event')
         instance?: string;
         teams?: boolean;
         allDay?: boolean;
+        sensitivity?: string;
         json?: boolean;
         token?: string;
         mailbox?: string;
@@ -260,7 +262,8 @@ export const updateEventCommand = new Command('update-event')
         options.location ||
         options.timezone ||
         options.teams !== undefined ||
-        options.allDay !== undefined;
+        options.allDay !== undefined ||
+        options.sensitivity;
 
       if (!hasUpdates) {
         // Show current event details
@@ -346,6 +349,21 @@ export const updateEventCommand = new Command('update-event')
       // Handle all-day
       if (options.allDay !== undefined) {
         updateOptions.isAllDay = options.allDay;
+      }
+
+      if (options.sensitivity) {
+        const sensitivityMap: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
+          normal: 'Normal',
+          personal: 'Personal',
+          private: 'Private',
+          confidential: 'Confidential'
+        };
+        const sensitivity = sensitivityMap[options.sensitivity.toLowerCase()];
+        if (!sensitivity) {
+          console.error(`Invalid sensitivity: ${options.sensitivity}`);
+          process.exit(1);
+        }
+        updateOptions.sensitivity = sensitivity;
       }
 
       // Handle room
