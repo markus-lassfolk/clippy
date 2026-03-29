@@ -391,14 +391,18 @@ export async function downloadFile(
     return graphError('Download URL has unsupported scheme. Only HTTPS is permitted.');
   }
 
-  const allowedHosts = new Set([
+  // Allowed Microsoft domains for download URLs (supports both exact and suffix matching)
+  const allowedDomains = [
     'onedrive.live.com',
     'sharepoint.com',
     'graph.microsoft.com',
     'www.sharepoint.com',
-    'explorerfiles.wikisp.com'
-  ]);
-  if (!allowedHosts.has(url.hostname)) {
+    'files.1drv.com'
+  ];
+
+  const isAllowedHost = allowedDomains.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
+
+  if (!isAllowedHost) {
     return graphError(`Download URL hostname '${url.hostname}' is not in the allowlist.`);
   }
 
