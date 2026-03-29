@@ -394,6 +394,37 @@ export async function downloadFile(
     return graphError('Download URL missing from Graph metadata response.');
   }
 
+  // Security: validate downloadUrl before fetching to prevent SSRF and token exfiltration
+  let url: URL;
+  try {
+    url = new URL(downloadUrl);
+  } catch {
+    return graphError('Download URL is not a valid URL.');
+  }
+
+  if (url.protocol !== 'https:') {
+    return graphError('Download URL has unsupported scheme. Only HTTPS is permitted.');
+  }
+
+  // Allowed Microsoft domains for download URLs (supports both exact and suffix matching)
+  // Includes sovereign cloud domains: .us (GCC High/DoD), .cn (China/21Vianet)
+  const allowedDomains = [
+    'onedrive.live.com',
+    'sharepoint.com',
+    'sharepoint.us',
+    'sharepoint.cn',
+    'graph.microsoft.com',
+    'graph.microsoft.us',
+    'microsoftgraph.chinacloudapi.cn',
+    'files.1drv.com'
+  ];
+
+  const isAllowedHost = allowedDomains.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
+
+  if (!isAllowedHost) {
+    return graphError(`Download URL hostname '${url.hostname}' is not in the allowlist.`);
+  }
+
   targetPath = resolve(outputPath || defaultDownloadPath(basename(resolvedItem.name || itemId)));
   await mkdir(dirname(targetPath), { recursive: true });
 
@@ -403,7 +434,12 @@ export async function downloadFile(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(downloadUrl);
+      const response = await fetch(url.toString(), { redirect: 'manual' });
+
+      // Reject redirects to prevent SSRF bypass
+      if (response.status >= 300 && response.status < 400) {
+        return graphError('Download failed: redirects are not permitted for security reasons');
+      }
 
       if (!response.ok) {
         // Non-transient HTTP errors: don't retry
