@@ -69,10 +69,14 @@ echo "Setup Complete!"
 echo "Client ID (EWS_CLIENT_ID): $APP_ID"
 echo "Tenant ID: Common (since audience is AzureADandPersonalMicrosoftAccount)"
 echo ""
+
+echo "EWS_CLIENT_ID=$APP_ID" >> .env
+echo "Appended EWS_CLIENT_ID to .env file in the current directory."
+
+echo ""
 echo "Next steps:"
 echo "1. Go to the Azure Portal (https://entra.microsoft.com/) to grant admin consent"
 echo "   for the scopes if required by your tenant."
-echo "2. Copy the Client ID above to your .env file as EWS_CLIENT_ID."
-echo "3. Run your application to start the interactive login flow and get the"
+echo "2. Run 'm365-agent-cli login' to start the interactive login flow and get the"
 echo "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
 echo "=================================================================================="
