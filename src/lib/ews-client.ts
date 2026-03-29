@@ -366,8 +366,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const subject = extractTag(block, 'Subject');
   const start = extractTag(block, 'Start');
   const end = extractTag(block, 'End');
-  const startTimeZone = extractTag(block, 'StartTimeZone') || 'UTC';
-  const endTimeZone = extractTag(block, 'EndTimeZone') || 'UTC';
+  const startTimeZone = extractAttribute(block, 'StartTimeZone', 'Id') || 'UTC';
+  const endTimeZone = extractAttribute(block, 'EndTimeZone', 'Id') || 'UTC';
   const location = extractTag(block, 'Location');
   const isAllDay = extractTag(block, 'IsAllDayEvent').toLowerCase() === 'true';
   const isCancelled = extractTag(block, 'IsCancelled').toLowerCase() === 'true';
@@ -430,8 +430,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const firstOccBlock = extractSelfClosingOrBlock(block, 'FirstOccurrence');
   const firstOccStart = extractTag(firstOccBlock, 'Start');
   const firstOccEnd = extractTag(firstOccBlock, 'End');
-  const firstOccStartTz = extractTag(firstOccBlock, 'StartTimeZone') || 'UTC';
-  const firstOccEndTz = extractTag(firstOccBlock, 'EndTimeZone') || 'UTC';
+  const firstOccStartTz = extractAttribute(firstOccBlock, 'StartTimeZone', 'Id') || 'UTC';
+  const firstOccEndTz = extractAttribute(firstOccBlock, 'EndTimeZone', 'Id') || 'UTC';
   const FirstOccurrence =
     firstOccStart && firstOccEnd
       ? {
@@ -443,8 +443,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const lastOccBlock = extractSelfClosingOrBlock(block, 'LastOccurrence');
   const lastOccStart = extractTag(lastOccBlock, 'Start');
   const lastOccEnd = extractTag(lastOccBlock, 'End');
-  const lastOccStartTz = extractTag(lastOccBlock, 'StartTimeZone') || 'UTC';
-  const lastOccEndTz = extractTag(lastOccBlock, 'EndTimeZone') || 'UTC';
+  const lastOccStartTz = extractAttribute(lastOccBlock, 'StartTimeZone', 'Id') || 'UTC';
+  const lastOccEndTz = extractAttribute(lastOccBlock, 'EndTimeZone', 'Id') || 'UTC';
   const LastOccurrence =
     lastOccStart && lastOccEnd
       ? {
@@ -460,9 +460,9 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
       ? modifiedOccBlocks.map((occ) => {
           const occStart = extractTag(occ, 'Start');
           const occEnd = extractTag(occ, 'End');
-          const occStartTz = extractTag(occ, 'StartTimeZone') || 'UTC';
-          const occEndTz = extractTag(occ, 'EndTimeZone') || 'UTC';
-          const occOrigId = extractAttribute(occ, 'OriginalItemId', 'Id') || '';
+          const occStartTz = extractAttribute(occ, 'StartTimeZone', 'Id') || 'UTC';
+          const occEndTz = extractAttribute(occ, 'EndTimeZone', 'Id') || 'UTC';
+          const occOrigId = extractAttribute(occ, 'ItemId', 'Id') || '';
           return {
             OriginalItemId: occOrigId,
             Start: { DateTime: occStart || '', TimeZone: occStartTz },
@@ -478,7 +478,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     deletedOccBlocks.length > 0
       ? deletedOccBlocks.map((occ) => {
           const occStart = extractTag(occ, 'Start');
-          const occStartTz = extractTag(occ, 'StartTimeZone') || 'UTC';
+          const occStartTz = extractAttribute(occ, 'StartTimeZone', 'Id') || 'UTC';
           return {
             Start: { DateTime: occStart || '', TimeZone: occStartTz }
           };
@@ -899,8 +899,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${body ? `<t:Body BodyType="Text">${xmlEscape(body)}</t:Body>` : ''}
           <t:Start>${xmlEscape(start)}</t:Start>
           <t:End>${xmlEscape(end)}</t:End>
-          ${startTimeZone ? `<t:StartTimeZone>${xmlEscape(startTimeZone)}</t:StartTimeZone>` : ''}
-          ${endTimeZone ? `<t:EndTimeZone>${xmlEscape(endTimeZone)}</t:EndTimeZone>` : ''}
+          ${startTimeZone ? `<t:StartTimeZone Id="${xmlEscape(startTimeZone)}" />` : ''}
+          ${endTimeZone ? `<t:EndTimeZone Id="${xmlEscape(endTimeZone)}" />` : ''}
           ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
           ${location ? `<t:Location>${xmlEscape(location)}</t:Location>` : ''}
           ${attendeesXml}
@@ -955,12 +955,12 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     }
     if (startTimeZone !== undefined) {
       updates.push(
-        `<t:SetItemField><t:FieldURI FieldURI="calendar:StartTimeZone" /><t:CalendarItem><t:StartTimeZone>${xmlEscape(startTimeZone)}</t:StartTimeZone></t:CalendarItem></t:SetItemField>`
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:StartTimeZone" /><t:CalendarItem><t:StartTimeZone Id="${xmlEscape(startTimeZone)}" /></t:CalendarItem></t:SetItemField>`
       );
     }
     if (endTimeZone !== undefined) {
       updates.push(
-        `<t:SetItemField><t:FieldURI FieldURI="calendar:EndTimeZone" /><t:CalendarItem><t:EndTimeZone>${xmlEscape(endTimeZone)}</t:EndTimeZone></t:CalendarItem></t:SetItemField>`
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:EndTimeZone" /><t:CalendarItem><t:EndTimeZone Id="${xmlEscape(endTimeZone)}" /></t:CalendarItem></t:SetItemField>`
       );
     }
     if (location !== undefined) {
