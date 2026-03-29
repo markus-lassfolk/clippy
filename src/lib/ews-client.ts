@@ -289,7 +289,7 @@ export interface EmailMessage {
  * All fields are optional; undefined fields are omitted from the restriction.
  */
 export interface EmailFilter {
-  /** Show only unread (true) or read (false) emails. Omit for no restriction. */
+  /** Filter by read status: true for read emails, false for unread. Omit for no restriction. */
   isRead?: boolean;
   /** Show only emails with this flag status. */
   flagStatus?: 'NotFlagged' | 'Flagged' | 'Complete';
@@ -303,7 +303,7 @@ function buildRestrictionXml(filter: EmailFilter): string {
   if (filter.isRead !== undefined) {
     restrictions.push(`<t:IsEqualTo>
       <t:FieldURI FieldURI="message:IsRead"/>
-      <t:FieldURIOrConstant><t:Constant Value="${filter.isRead ? 'false' : 'true'}"/></t:FieldURIOrConstant>
+      <t:FieldURIOrConstant><t:Constant Value="${filter.isRead ? 'true' : 'false'}"/></t:FieldURIOrConstant>
     </t:IsEqualTo>`);
   }
 
