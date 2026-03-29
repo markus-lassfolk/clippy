@@ -15,6 +15,16 @@ You can run this PA setup in two distinct ways:
 1. **Direct Access (Your Own Mailbox):** Give the AI access to your own personal M365 account. It will monitor your direct inbox, read your unread emails, and draft replies straight into your Drafts folder for you to review and send.
 2. **Dedicated PA User (Shared Mailbox / Service Account):** Create a completely separate Microsoft 365 user account or Shared Mailbox (e.g., `assistant@yourcompany.com`). The AI acts as an independent entity, fielding requests sent to its address, managing your calendar via delegation, and sending emails on your behalf as the assistant. Both modes are fully supported out-of-the-box (use the `--mailbox` flag to operate on shared mailboxes).
 
+### Highly Recommended Ecosystem
+
+To get the absolute best performance out of the Personal Assistant persona, we strongly recommend combining `clippy` with the following plugins and skills:
+
+- **[openclaw-hybrid-memory](https://github.com/markus-lassfolk/openclaw-hybrid-memory)**: Provides the PA with persistent, long-term semantic memory. This allows it to learn your voice, track project statuses, remember facts about your contacts, and function as a true Chief of Staff over time.
+
+- **[humanizer](https://github.com/brandonwise/humanizer)**: A skill that refines the PA's writing style to be vastly more natural and human-like when drafting emails for you.
+
+- **[Anthropic's Office Skills](https://github.com/anthropics/skills/tree/main/skills)**: Install the `doc-coauthoring`, `pptx`, `docx`, and `xlsx` skills so your PA can read and manipulate Office attachments natively alongside `clippy`.
+
 ---
 
 ## Installation
