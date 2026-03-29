@@ -101,6 +101,10 @@ export const loginCommand = new Command('login')
       if (tokenRes.ok) {
         authenticated = true;
         refreshToken = tokenJson.refresh_token;
+        if (!refreshToken) {
+          console.error('\nFailed to obtain refresh token. Ensure the offline_access scope is granted.');
+          process.exit(1);
+        }
       } else if (tokenJson.error === 'authorization_pending') {
         // Continue polling
       } else if (tokenJson.error === 'slow_down') {

@@ -66,8 +66,8 @@ try {
     # Update or append EWS_CLIENT_ID to .env
     if (Test-Path ".env") {
         $envContent = Get-Content -Path ".env" -Raw
-        if ($envContent -match "^EWS_CLIENT_ID=.*$") {
-            $envContent = $envContent -replace "^EWS_CLIENT_ID=.*$", "EWS_CLIENT_ID=$($App.AppId)"
+        if ($envContent -match "(?m)^EWS_CLIENT_ID=.*$") {
+            $envContent = $envContent -replace "(?m)^EWS_CLIENT_ID=.*$", "EWS_CLIENT_ID=$($App.AppId)"
             Set-Content -Path ".env" -Value $envContent.TrimEnd()
             Write-Host "Updated EWS_CLIENT_ID in .env file in the current directory."
         } else {
