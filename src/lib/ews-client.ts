@@ -207,6 +207,8 @@ export interface CreateEventOptions {
   isOnlineMeeting?: boolean;
   recurrence?: Recurrence;
   mailbox?: string;
+  isAllDay?: boolean;
+  timezone?: string;
 }
 
 export interface CreatedEvent {
@@ -230,6 +232,8 @@ export interface UpdateEventOptions {
   attendees?: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   isOnlineMeeting?: boolean;
   mailbox?: string;
+  isAllDay?: boolean;
+  timezone?: string;
 }
 
 export interface ScheduleInfo {
@@ -409,12 +413,18 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     (b) => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, ''))
   );
 
+  // Extract timezone info — EWS returns StartTimeZone/EndTimeZone elements
+  const startTimeZone =
+    extractTag(block, 'StartTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const endTimeZone =
+    extractTag(block, 'EndTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+
   return {
     Id: id,
     ChangeKey: changeKey,
     Subject: subject,
-    Start: { DateTime: start, TimeZone: 'UTC' },
-    End: { DateTime: end, TimeZone: 'UTC' },
+    Start: { DateTime: start, TimeZone: startTimeZone },
+    End: { DateTime: end, TimeZone: endTimeZone },
     Location: location ? { DisplayName: location } : undefined,
     Organizer: { EmailAddress: { Name: organizerName, Address: organizerEmail } },
     Attendees: attendees.length > 0 ? attendees : undefined,
@@ -759,7 +769,7 @@ function buildRecurrenceXml(recurrence: Recurrence): string {
 
 export async function createEvent(options: CreateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox } = options;
+    const { token, subject, start, end, body, location, attendees, isOnlineMeeting, recurrence, mailbox, isAllDay, timezone } = options;
 
     let attendeesXml = '';
     if (attendees && attendees.length > 0) {
@@ -810,6 +820,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${location ? `<t:Location>${xmlEscape(location)}</t:Location>` : ''}
           ${attendeesXml}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
+          ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
+          ${timezone ? `<t:TimeZone>${xmlEscape(timezone)}</t:TimeZone>` : ''}
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
         </t:CalendarItem>
       </m:Items>
@@ -822,8 +834,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
     return ewsResult({
       Id: id,
       Subject: subject,
-      Start: { DateTime: start, TimeZone: 'UTC' },
-      End: { DateTime: end, TimeZone: 'UTC' },
+      Start: { DateTime: start, TimeZone: timezone || 'UTC' },
+      End: { DateTime: end, TimeZone: timezone || 'UTC' },
       WebLink: undefined,
       OnlineMeetingUrl: undefined
     });
@@ -834,7 +846,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
 export async function updateEvent(options: UpdateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox } = options;
+    const { token, eventId, changeKey, subject, start, end, body, location, attendees, mailbox, isAllDay, timezone } = options;
 
     const updates: string[] = [];
 
@@ -861,6 +873,19 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     if (location !== undefined) {
       updates.push(
         `<t:SetItemField><t:FieldURI FieldURI="calendar:Location" /><t:CalendarItem><t:Location>${xmlEscape(location)}</t:Location></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (isAllDay !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:IsAllDayEvent" /><t:CalendarItem><t:IsAllDayEvent>${isAllDay}</t:IsAllDayEvent></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (timezone !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:StartTimeZone" /><t:CalendarItem><t:StartTimeZone>${xmlEscape(timezone)}</t:StartTimeZone></t:CalendarItem></t:SetItemField>`
+      );
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:EndTimeZone" /><t:CalendarItem><t:EndTimeZone>${xmlEscape(timezone)}</t:EndTimeZone></t:CalendarItem></t:SetItemField>`
       );
     }
     if (attendees !== undefined) {
@@ -945,8 +970,8 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     return ewsResult({
       Id: newId,
       Subject: subject || '',
-      Start: { DateTime: start || '', TimeZone: 'UTC' },
-      End: { DateTime: end || '', TimeZone: 'UTC' }
+      Start: { DateTime: start || '', TimeZone: timezone || 'UTC' },
+      End: { DateTime: end || '', TimeZone: timezone || 'UTC' }
     });
   } catch (err) {
     return ewsError(err);
@@ -1909,6 +1934,46 @@ export async function searchRooms(token: string, query: string = 'room'): Promis
   }
 }
 
+/**
+ * Build an EWS TimeZone element for GetUserAvailability requests.
+ * Uses the system's local timezone to compute bias, standard time offset,
+ * and daylight time offset — correcting the hardcoded CET bias from issue #78.
+ */
+function buildEWSTimeZoneXml(): string {
+  const now = new Date();
+  // offset in minutes: positive for west of UTC, negative for east
+  const offsetMinutes = -now.getTimezoneOffset();
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  // Approximate standard time bias using January (typically standard time month)
+  const jan = new Date(now.getFullYear(), 0, 1);
+  const janOffsetMinutes = -jan.getTimezoneOffset();
+  const janStdBias = janOffsetMinutes - offsetMinutes; // diff between standard and current
+
+  // Approximate daylight time bias using July (typically DST month)
+  const jul = new Date(now.getFullYear(), 6, 1);
+  const julOffsetMinutes = -jul.getTimezoneOffset();
+  const julDstBias = julOffsetMinutes - offsetMinutes; // diff between DST and current
+
+  return `<t:TimeZone>
+        <t:Bias>${offsetMinutes}</t:Bias>
+        <t:StandardTime>
+          <t:Bias>${janStdBias}</t:Bias>
+          <t:Time>03:00:00</t:Time>
+          <t:DayOrder>5</t:DayOrder>
+          <t:Month>10</t:Month>
+          <t:DayOfWeek>Sunday</t:DayOfWeek>
+        </t:StandardTime>
+        <t:DaylightTime>
+          <t:Bias>${julDstBias}</t:Bias>
+          <t:Time>02:00:00</t:Time>
+          <t:DayOrder>5</t:DayOrder>
+          <t:Month>3</t:Month>
+          <t:DayOfWeek>Sunday</t:DayOfWeek>
+        </t:DaylightTime>
+      </t:TimeZone>`;
+}
+
 // ─── Availability ───
 
 export async function getScheduleViaOutlook(
@@ -1942,23 +2007,7 @@ export async function getScheduleViaOutlook(
 
     const envelope = soapEnvelope(`
     <m:GetUserAvailabilityRequest>
-      <t:TimeZone>
-        <t:Bias>-60</t:Bias>
-        <t:StandardTime>
-          <t:Bias>0</t:Bias>
-          <t:Time>03:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>10</t:Month>
-          <t:DayOfWeek>Sunday</t:DayOfWeek>
-        </t:StandardTime>
-        <t:DaylightTime>
-          <t:Bias>-60</t:Bias>
-          <t:Time>02:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>3</t:Month>
-          <t:DayOfWeek>Sunday</t:DayOfWeek>
-        </t:DaylightTime>
-      </t:TimeZone>
+      ${buildEWSTimeZoneXml()}
       <m:MailboxDataArray>
         ${mailboxDataXml}
       </m:MailboxDataArray>
@@ -2069,23 +2118,7 @@ export async function isRoomFree(
   try {
     const envelope = soapEnvelope(`
     <m:GetUserAvailabilityRequest>
-      <t:TimeZone>
-        <t:Bias>-60</t:Bias>
-        <t:StandardTime>
-          <t:Bias>0</t:Bias>
-          <t:Time>03:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>10</t:Month>
-          <t:DayOfWeek>Sunday</t:DayOfWeek>
-        </t:StandardTime>
-        <t:DaylightTime>
-          <t:Bias>-60</t:Bias>
-          <t:Time>02:00:00</t:Time>
-          <t:DayOrder>5</t:DayOrder>
-          <t:Month>3</t:Month>
-          <t:DayOfWeek>Sunday</t:DayOfWeek>
-        </t:DaylightTime>
-      </t:TimeZone>
+      ${buildEWSTimeZoneXml()}
       <m:MailboxDataArray>
         <t:MailboxData>
           <t:Email><t:Address>${xmlEscape(roomEmail)}</t:Address></t:Email>
