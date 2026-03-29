@@ -436,6 +436,10 @@ clippy files upload ./report.docx
 # Upload to a specific folder
 clippy files upload ./report.docx --folder <folderId>
 
+# Upload a large file (>250MB, up to 4GB via chunked upload)
+clippy files upload-large ./video.mp4
+clippy files upload-large ./backup.zip --folder <folderId>
+
 # Download a file
 clippy files download <fileId>
 clippy files download <fileId> --out ./local-copy.docx

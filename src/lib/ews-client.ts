@@ -2255,8 +2255,9 @@ export async function getScheduleViaOutlook(
         // Fall back to UTC if we can't get mailbox settings
         timeZone = 'UTC';
       }
-    // SuggestionsViewOptions requires dates at midnight with no timezone offset
     }
+
+    // SuggestionsViewOptions requires dates at midnight with no timezone offset
 
     const suggestStartD = new Date(startDateTime);
     suggestStartD.setHours(0, 0, 0, 0);
@@ -2334,8 +2335,8 @@ export async function getScheduleViaOutlook(
     for (const schedule of schedules) {
       schedule.scheduleItems = freeSlots.map((slot) => ({
         status: 'Free',
-        start: { dateTime: slot.start, timeZone: 'W. Europe Standard Time' },
-        end: { dateTime: slot.end, timeZone: 'W. Europe Standard Time' }
+        start: { dateTime: slot.start, timeZone: timeZone! },
+        end: { dateTime: slot.end, timeZone: timeZone! }
       }));
     }
 
@@ -2363,8 +2364,8 @@ export async function getScheduleViaOutlook(
             if (evStart < reqEnd && evEnd > reqStart) {
               items.push({
                 status: busyType === 'Free' ? 'Free' : busyType === 'Tentative' ? 'Tentative' : 'Busy',
-                start: { dateTime: new Date(evStart).toISOString(), timeZone: 'UTC' },
-                end: { dateTime: new Date(evEnd).toISOString(), timeZone: 'UTC' }
+                start: { dateTime: new Date(evStart).toISOString(), timeZone: timeZone! },
+                end: { dateTime: new Date(evEnd).toISOString(), timeZone: timeZone! }
               });
             }
           }
@@ -2485,37 +2486,7 @@ export async function areRoomsFree(
     </m:GetUserAvailabilityRequest>`,
     `<t:TimeZoneContext><t:TimeZoneDefinition Id="${xmlEscape(timeZone)}"/></t:TimeZoneContext>`);
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), EWS_TIMEOUT_MS);
-
-      let response: Response;
-      let xml: string;
-      try {
-        response = await fetch(EWS_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'text/xml; charset=utf-8',
-            Accept: 'text/xml',
-            'X-AnchorMailbox': EWS_USERNAME
-          },
-          body: envelope,
-          signal: controller.signal
-        });
-        xml = await response.text();
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error(`EWS request timed out after ${EWS_TIMEOUT_MS / 1000}s`);
-        }
-        throw err;
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      if (!response.ok) {
-        const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');
-        throw new Error(`EWS HTTP ${response.status}${soapError ? `: ${soapError}` : ''}`);
-      }
+      const xml = await callEws(token, envelope);
 
       // Parse FreeBusyResponse blocks to correlate mailboxes with their events
       const freeBusyResponses = extractBlocks(xml, 'FreeBusyResponse');

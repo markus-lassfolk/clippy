@@ -27,7 +27,6 @@ export function validateUrl(urlString: string, name: string): string {
   }
 
   // Block bare IPv4 addresses — reject all IP literals to prevent internal network access
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   if (isIP(hostname)) {
     throw new Error(`${name} must not be an IP address (use hostname): "${urlString}"`);
   }
