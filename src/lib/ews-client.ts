@@ -252,6 +252,8 @@ export interface CalendarEvent {
   RecurrenceDescription?: string;
   FirstOccurrence?: { Start: string; End: string; Id?: string };
   LastOccurrence?: { Start: string; End: string; Id?: string };
+  ModifiedOccurrences?: Array<{ ItemId: string; Start: string; End: string; OriginalStart: string }>;
+  DeletedOccurrences?: Array<{ Start: string }>;
 }
 
 export interface RecurrencePattern {
@@ -633,6 +635,25 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   // Recurrence info
   const recurrenceInfo = parseRecurrenceFromBlock(block);
 
+  const modifiedOccurrencesBlock = extractSelfClosingOrBlock(block, 'ModifiedOccurrences');
+  let modifiedOccurrences: Array<{ ItemId: string; Start: string; End: string; OriginalStart: string }> | undefined;
+  if (modifiedOccurrencesBlock) {
+    modifiedOccurrences = extractBlocks(modifiedOccurrencesBlock, 'Occurrence').map((occ) => ({
+      ItemId: extractAttribute(occ, 'ItemId', 'Id'),
+      Start: extractTag(occ, 'Start'),
+      End: extractTag(occ, 'End'),
+      OriginalStart: extractTag(occ, 'OriginalStart')
+    }));
+  }
+
+  const deletedOccurrencesBlock = extractSelfClosingOrBlock(block, 'DeletedOccurrences');
+  let deletedOccurrences: Array<{ Start: string }> | undefined;
+  if (deletedOccurrencesBlock) {
+    deletedOccurrences = extractBlocks(deletedOccurrencesBlock, 'DeletedOccurrence').map((occ) => ({
+      Start: extractTag(occ, 'Start')
+    }));
+  }
+
   return {
     Id: id,
     ChangeKey: changeKey,
@@ -655,7 +676,9 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
       recurrenceInfo.lastOccurrence !== undefined,
     RecurrenceDescription: recurrenceInfo.description,
     FirstOccurrence: recurrenceInfo.firstOccurrence,
-    LastOccurrence: recurrenceInfo.lastOccurrence
+    LastOccurrence: recurrenceInfo.lastOccurrence,
+    ModifiedOccurrences: modifiedOccurrences && modifiedOccurrences.length > 0 ? modifiedOccurrences : undefined,
+    DeletedOccurrences: deletedOccurrences && deletedOccurrences.length > 0 ? deletedOccurrences : undefined
   };
 }
 
@@ -839,6 +862,8 @@ export async function getCalendarEvents(
           <t:FieldURI FieldURI="item:Importance" />
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:Recurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
         </t:AdditionalProperties>
@@ -884,6 +909,8 @@ export async function getCalendarEvent(
           <t:FieldURI FieldURI="item:Importance" />
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:Recurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
         </t:AdditionalProperties>
