@@ -280,8 +280,9 @@ export const mailCommand = new Command('mail')
           }
 
           let filePath = join(options.output, att.Name);
-          const ext = att.Name.includes('.') ? '.' + att.Name.split('.').pop() : '';
-          const baseName = ext ? att.Name.slice(0, -ext.length) : att.Name;
+          const lastDotIndex = att.Name.lastIndexOf('.');
+          const ext = lastDotIndex > 0 ? att.Name.slice(lastDotIndex) : '';
+          const baseName = lastDotIndex > 0 ? att.Name.slice(0, lastDotIndex) : att.Name;
           let counter = 1;
           while (true) {
             try {
