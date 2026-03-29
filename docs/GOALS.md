@@ -1,4 +1,4 @@
-# Goals: m365-agent-cli (Ralph Wiggum Pattern — Personal Assistant Edition)
+# Goals: clippy (Ralph Wiggum Pattern — Personal Assistant Edition)
 
 > Target: v1.0 PA-ready release
 > Focus: Complete PA workflow coverage, single-token auth, zero-friction Office 365 integration, real-time collaboration
@@ -7,25 +7,23 @@
 
 ## Part 1: Product & Experience Goals
 
-### 1. Vision: The Ultimate Headless M365 CLI for AI Agents
+### 1. The OpenClaw PA — Clippy as the Executive Assistant
 
-The Personal Assistant (PA) behavioral persona has been successfully spun out to its own repository (`openclaw-personal-assistant`). The goal of *this* repository is now to be the ultimate, secure, headless Microsoft 365 CLI designed specifically for AI agents. Every feature should serve this mission: providing agents with reliable, token-based, zero-friction access to email, calendars, directory, tasks, files, and SharePoint pages—all from the terminal, driven autonomously without the human lifting a finger.
+Clippy exists to make the OpenClaw agent the most capable Personal Assistant possible. Every feature should serve this mission: the PA reads email, manages calendars, finds people, searches the directory, tracks tasks, handles files, and communicates — all from the terminal, all driven by an agent, all without the human lifting a finger.
 
-The benchmark is not "can we do this in Outlook" — it is "can an AI agent do this autonomously without prompting the user." A task that requires the user to open a browser, log in, and click through a UI is not yet solved.
+The benchmark is not "can we do this in Outlook" — it is "can the agent do this autonomously without prompting the user." A task that requires the user to open a browser, log in, and click through a UI is not yet solved.
 
 ### 2. Single Authentication, Zero Re-authentication
 
-The user authenticates once. M365 Agent CLI requests all necessary scopes via Microsoft OAuth2 incremental consent. All APIs (EWS SOAP, Microsoft Graph) reuse the same token. No second Azure AD app, no separate credentials, no re-authentication flows.
+The user authenticates once. Clippy requests all necessary scopes via Microsoft OAuth2 incremental consent. All APIs (EWS SOAP, Microsoft Graph) reuse the same token. No second Azure AD app, no separate credentials, no re-authentication flows.
 
-We have successfully added automated Entra ID setup scripts (`setup-entra-app.sh` / `setup-entra-app.ps1`) to streamline initial registration, along with a `verify-token` command to instantly validate authentication state and scopes.
-
-This is not a nice-to-have — it is the foundation. If a new feature requires a separate auth mechanism, it is not compatible with M365 Agent CLI unless that is explicitly resolved first.
+This is not a nice-to-have — it is the foundation. If a new feature requires a separate auth mechanism, it is not compatible with Clippy unless that is explicitly resolved first.
 
 **Current gap:** EWS and Graph each have their own token cache. This must be consolidated into a single cache file.
 
 ### 3. Zero Hardcoded Assumptions
 
-M365 Agent CLI must never assume:
+Clippy must never assume:
 - A specific timezone (CET, UTC, etc.) — read from `/me/mailboxSettings`
 - A specific locale or language — read from `/me/mailboxSettings`
 - A specific date/time format — derive from locale
@@ -50,11 +48,10 @@ A capable PA needs to handle all of these areas. Each is tracked as a separate i
 | Room discovery | ❌ Missing | #80 — Places API integration |
 | Free/busy + meeting suggestions | ⚠️ Basic | findtime exists; getSchedule/findMeetingTimes missing (#86) |
 | Out-of-Office | ❌ Missing | #83 — automatic replies via mailboxSettings |
-| To-Do / task tracking | ✅ Implemented | Planner API integration complete |
+| To-Do / task tracking | ❌ Missing | #82 — use To-Do API, NOT Outlook Tasks (deprecated) |
 | Push notifications | ❌ Missing | #84 — Graph subscriptions |
 | Contacts / distribution lists | ❌ Missing | #85 — GAL lookup, DL expansion |
-| Office 365 Files (SharePoint + OneDrive) | ✅ Implemented | Full file lifecycle, versions, and analytics |
-| SharePoint Site Pages | ✅ Implemented | Page read/publish workflows |
+| Office 365 Files (SharePoint + OneDrive) | ❌ Missing | See Part 2 — this is critical |
 | Delegation (act on behalf of) | ❌ Missing | #79 — shared mailbox, delegate permissions |
 
 ---
@@ -79,7 +76,7 @@ The PA (agent) and the user both work in SharePoint and OneDrive. When the PA cr
 **Reference, don't copy:**
 - Emails reference a OneDrive/SharePoint URL — the PA and user both open the same file
 - Meeting invitations link to the shared document, not an attachment
-- M365 Agent CLI never uploads a file as an email attachment when a sharing link would be better
+- Clippy never uploads a file as an email attachment when a sharing link would be better
 
 **Scope:** This applies to:
 - Word (.docx), Excel (.xlsx), PowerPoint (.pptx) — full Office Online integration
@@ -104,7 +101,7 @@ The PA (agent) and the user both work in SharePoint and OneDrive. When the PA cr
 
 **Issue:** Currently EWS and Graph each have their own token cache (`token-cache-${identity}.json` and `graph-token-cache.json`). This violates the single-auth principle and causes sync issues.
 
-**Target:** One file: `~/.config/m365-agent-cli/token-cache.json`. All APIs reuse the same refresh token. Incremental scope consent adds new scopes to the token on next refresh.
+**Target:** One file: `~/.config/clippy/token-cache.json`. All APIs reuse the same refresh token. Incremental scope consent adds new scopes to the token on next refresh.
 
 **Steps:**
 1. Audit current scopes in `auth.ts` and `graph-auth.ts`
@@ -171,7 +168,7 @@ Any feature that requires PowerShell remoting (WinRM, remote Exchange management
 - Exchange Admin operations (eDiscovery, litigation hold, permission granting)
 - Any operation requiring `*-Mailbox`, `*-Recipient`, `*-ExchangeServer` PowerShell cmdlets
 
-If an operation requires PowerShell, the correct answer is: "that requires admin access and is not a M365 Agent CLI feature."
+If an operation requires PowerShell, the correct answer is: "that requires admin access and is not a Clippy feature."
 
 ---
 
@@ -200,10 +197,10 @@ Focus: To-Do integration, OOF management, push notifications, free/busy AI sugge
 A new user should be able to:
 
 1. Register an Azure AD app, set 4 environment variables
-2. Run `m365-agent-cli whoami` — authenticated, shows their profile
-3. Run `m365-agent-cli mail` — their inbox, correct locale formatting
-4. Run `m365-agent-cli calendar` — their calendar, their timezone
-5. Run `m365-agent-cli files list` — their OneDrive
+2. Run `clippy whoami` — authenticated, shows their profile
+3. Run `clippy mail` — their inbox, correct locale formatting
+4. Run `clippy calendar` — their calendar, their timezone
+5. Run `clippy files list` — their OneDrive
 6. Have the OpenClaw agent do all of the above autonomously, every morning, without prompting
 
 That is the benchmark.
@@ -222,5 +219,5 @@ That is the benchmark.
 ## References
 
 - Architecture: `docs/ARCHITECTURE.md`
-- Open issues: `github.com/markus-lassfolk/m365-agent-cli/issues`
+- Open issues: `github.com/markus-lassfolk/clippy/issues`
 - Health metrics: CI pass rate, test coverage %, security issue count
