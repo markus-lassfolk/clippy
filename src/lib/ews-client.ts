@@ -1066,9 +1066,18 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
   try {
     const { token, folder = 'inbox', top = 10, skip = 0, filter, search } = options;
 
-    // Build restriction for filters
+    // Build restriction for filters — validate against known token patterns only
     let restrictionXml = '';
     if (filter && !search) {
+      // Whitelist: only allow these tokens (escaped values are not user-controlled in mail.ts)
+      const KNOWN_FILTER_TOKENS = ["IsRead eq false", "FlagStatus", "Flagged"];
+      const unrecognised = [...filter.matchAll(/\b[\w/]+(?: eq [\'\"]?\w+[\'\"]?)?\b/g)]
+        .map((m) => m[0])
+        .filter((tok) => !KNOWN_FILTER_TOKENS.some((k) => tok.startsWith(k) || k.startsWith(tok)));
+      if (unrecognised.length > 0) {
+        return ewsError(new Error(`Unrecognised filter tokens: ${unrecognised.join(', ')}. Allowed: IsRead eq false, FlagStatus+Flagged.`));
+      }
+
       const restrictions: string[] = [];
 
       if (filter.includes('IsRead eq false')) {
@@ -2129,6 +2138,99 @@ export async function isRoomFree(
   } catch {
     return false;
   }
+}
+
+export async function areRoomsFree(
+  token: string,
+  roomEmails: string[],
+  startDateTime: string,
+  endDateTime: string
+): Promise<Map<string, boolean>> {
+  const result = new Map<string, boolean>();
+  if (roomEmails.length === 0) return result;
+
+  const envelope = soapEnvelope(`
+  <m:GetUserAvailabilityRequest>
+    <t:TimeZone>
+      <t:Bias>-60</t:Bias>
+      <t:StandardTime>
+        <t:Bias>0</t:Bias>
+        <t:Time>03:00:00</t:Time>
+        <t:DayOrder>5</t:DayOrder>
+        <t:Month>10</t:Month>
+        <t:DayOfWeek>Sunday</t:DayOfWeek>
+      </t:StandardTime>
+      <t:DaylightTime>
+        <t:Bias>-60</t:Bias>
+        <t:Time>02:00:00</t:Time>
+        <t:DayOrder>5</t:DayOrder>
+        <t:Month>3</t:Month>
+        <t:DayOfWeek>Sunday</t:DayOfWeek>
+      </t:DaylightTime>
+    </t:TimeZone>
+    <m:MailboxDataArray>
+      ${roomEmails
+        .map(
+          (email) => `
+      <t:MailboxData>
+        <t:Email><t:Address>${xmlEscape(email)}</t:Address></t:Email>
+        <t:AttendeeType>Required</t:AttendeeType>
+      </t:MailboxData>`
+        )
+        .join('')}
+    </m:MailboxDataArray>
+    <t:FreeBusyViewOptions>
+      <t:TimeWindow>
+        <t:StartTime>${xmlEscape(startDateTime)}</t:StartTime>
+        <t:EndTime>${xmlEscape(endDateTime)}</t:EndTime>
+      </t:TimeWindow>
+      <t:MergedFreeBusyIntervalInMinutes>15</t:MergedFreeBusyIntervalInMinutes>
+      <t:RequestedView>FreeBusy</t:RequestedView>
+    </t:FreeBusyViewOptions>
+  </m:GetUserAvailabilityRequest>`);
+
+  try {
+    const xml = await callEws(token, envelope);
+    const freeBusyResponses = extractBlocks(xml, 'FreeBusyResponse');
+
+    // Correlate by position: FreeBusyResponse[i] corresponds to roomEmails[i]
+    const reqStart = new Date(startDateTime).getTime();
+    const reqEnd = new Date(endDateTime).getTime();
+
+    for (let i = 0; i < roomEmails.length; i++) {
+      const fbr = freeBusyResponses[i];
+      if (!fbr) {
+        result.set(roomEmails[i], false);
+        continue;
+      }
+
+      const calendarEvents = extractBlocks(fbr, 'CalendarEvent');
+      if (calendarEvents.length === 0) {
+        result.set(roomEmails[i], true);
+        continue;
+      }
+
+      let isFree = true;
+      for (const event of calendarEvents) {
+        const busyType = extractTag(event, 'BusyType');
+        if (busyType === 'Free') continue;
+        const evStart = new Date(extractTag(event, 'StartTime') || '').getTime();
+        const evEnd = new Date(extractTag(event, 'EndTime') || '').getTime();
+        if (evStart < reqEnd && evEnd > reqStart) {
+          isFree = false;
+          break;
+        }
+      }
+      result.set(roomEmails[i], isFree);
+    }
+  } catch {
+    // On any error, conservatively mark all rooms as not-free
+    for (const email of roomEmails) {
+      result.set(email, false);
+    }
+  }
+
+  return result;
 }
 
 export interface AutoReplyRule {
