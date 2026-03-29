@@ -841,6 +841,8 @@ export async function getCalendarEvents(
           <t:FieldURI FieldURI="calendar:Recurrence" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:StartTimeZone" />
+          <t:FieldURI FieldURI="calendar:EndTimeZone" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:CalendarView StartDate="${xmlEscape(startDateTime)}" EndDate="${xmlEscape(endDateTime)}" />
@@ -886,6 +888,8 @@ export async function getCalendarEvent(
           <t:FieldURI FieldURI="calendar:Recurrence" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:StartTimeZone" />
+          <t:FieldURI FieldURI="calendar:EndTimeZone" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
