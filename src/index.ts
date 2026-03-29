@@ -95,12 +95,14 @@ export type {
   GraphError,
   GraphResponse,
   OfficeCollabLinkResult,
-  SharingLinkResult
+  SharingLinkResult,
+  UploadLargeResult
 } from './lib/graph-client.js';
 export {
   checkinFile,
   checkoutFile,
   cleanupDownloadedFile,
+  uploadLargeFile,
   createOfficeCollaborationLink,
   defaultDownloadPath,
   deleteFile,
