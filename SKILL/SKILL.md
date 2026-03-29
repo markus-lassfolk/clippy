@@ -393,3 +393,30 @@ Verify your currently configured Graph API token's scopes and permissions. Usefu
 clippy verify-token
 clippy verify-token --token <token> --json
 ```
+
+### Collaboration Scenarios
+
+When operating as an AI assistant, use `clippy` to seamlessly collaborate with the user without creating friction or redundant work.
+
+#### 1. Documents (In-Place Collaboration)
+When collaborating on a document with a user, **do not create new files (e.g., v1, v2, etc.)**. Microsoft Graph supports in-place replacement and version history.
+- **Initial Upload:** Upload the file once (`clippy files upload ./draft.docx`).
+- **Share:** Generate an edit link (`clippy files share <id> --type edit --scope anonymous`) and provide it to the user.
+- **Update:** When you need to make changes, download the latest copy (`clippy files download <id>`), edit it locally, and upload it back with the **same filename**. The Graph API automatically overwrites the content, bumps the internal version history, and **keeps the user's sharing link intact**.
+- **Version Control:** Check past iterations using `clippy files versions <id>` and restore if necessary (`clippy files restore <id> <versionId>`).
+
+#### 2. Emails (Triage and Drafting)
+Act as a gatekeeper and drafter for the user's inbox.
+- **Triage:** Read the inbox (`clippy mail --unread`) and categorize urgent vs. non-urgent items.
+- **Flagging:** Flag emails that need the user's attention (`clippy mail --flag <id> --start-date <date> --due <date>`).
+- **Drafting Replies:** Instead of sending emails on the user's behalf immediately, prepare a response for them to review using `--draft` (`clippy mail --reply <id> --message "Draft response here" --draft`).
+
+#### 3. Calendar (Negotiating Meeting Times)
+Help the user defend their schedule and arrange meetings smoothly.
+- **Finding Free Time:** Use `findtime` to negotiate meeting times across multiple attendees (`clippy findtime nextweek alice@co.com bob@co.com`).
+- **Proposing Times:** If there's a conflict or the user is double-booked, update or propose new times to the organizer (`clippy respond tentative --id <eventId> --propose-new-time 14:00`).
+
+#### 4. Planner (Task Management)
+Keep the user's tasks organized and up-to-date.
+- **Status Updates:** Update the completion status of tasks as work progresses (`clippy planner update-task <taskId> --percent 50`).
+- **Moving Tasks:** Reassign or move tasks across buckets as priorities shift (`clippy planner update-task <taskId> -b <newBucketId>`).
