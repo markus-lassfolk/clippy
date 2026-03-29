@@ -89,6 +89,11 @@ try {
     Write-Host "   for the scopes if required by your tenant."
     Write-Host "2. Run 'm365-agent-cli login' to start the interactive login flow and get the"
     Write-Host "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
+    Write-Host "3. Run 'm365-agent-cli verify-token' to verify your granted scopes!"
+    Write-Host "   - Missing 'EWS.AccessAsUser.All'? Calendar/Mail functions will fail."
+    Write-Host "   - Missing 'Files.ReadWrite.All'? OneDrive/SharePoint functions will fail."
+    Write-Host "   - Missing 'Tasks.ReadWrite'? Planner/To-Do functions will fail."
+    Write-Host "   - Missing 'Sites.ReadWrite.All'? Site Pages functions will fail."
     Write-Host "=================================================================================="
 } catch {
     Write-Error "Failed to create application. Ensure you are authenticated with Connect-MgGraph and have sufficient privileges."
