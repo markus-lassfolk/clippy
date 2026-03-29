@@ -15,10 +15,8 @@ fi
 echo "Creating Entra ID App Registration: $APP_NAME..."
 
 # Create the application allowing Microsoft accounts and Organizational accounts
-APP_JSON=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADandPersonalMicrosoftAccount)
-
-APP_ID=$(echo "$APP_JSON" | grep -oP '"appId":\s*"\K[^"]+')
-OBJECT_ID=$(echo "$APP_JSON" | grep -oP '"id":\s*"\K[^"]+' | head -n 1)
+APP_ID=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADandPersonalMicrosoftAccount --query "appId" -o tsv)
+OBJECT_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].id" -o tsv)
 
 if [ -z "$APP_ID" ]; then
     echo "Failed to create application."
@@ -28,16 +26,17 @@ fi
 echo "Successfully created App! Client ID (App ID): $APP_ID"
 echo "Object ID: $OBJECT_ID"
 
-echo "Configuring public client flows (fallbackToClientNative) and Redirect URI (http://localhost)..."
+echo "Configuring public client flows (isFallbackPublicClient) and Redirect URI (http://localhost)..."
 # Set as public client and configure Redirect URI
 az ad app update \
     --id "$OBJECT_ID" \
-    --set publicClient='{"redirectUris":["http://localhost"]}' fallbackToClientNative=true
+    --set publicClient='{"redirectUris":["http://localhost"]}' isFallbackPublicClient=true
 
 echo "Adding Required Resource Access (API Permissions) for Graph API and Exchange Online..."
 
 # Construct the requiredResourceAccess JSON for Graph API and Exchange Online scopes
-cat <<EOF > /tmp/requiredResourceAccess.json
+TEMP_JSON=$(mktemp)
+cat <<EOF > "$TEMP_JSON"
 [
   {
     "resourceAppId": "00000003-0000-0000-c000-000000000000",
@@ -61,8 +60,8 @@ cat <<EOF > /tmp/requiredResourceAccess.json
 ]
 EOF
 
-az ad app update --id "$OBJECT_ID" --required-resource-accesses @/tmp/requiredResourceAccess.json
-rm -f /tmp/requiredResourceAccess.json
+az ad app update --id "$OBJECT_ID" --required-resource-accesses @"$TEMP_JSON"
+rm -f "$TEMP_JSON"
 
 echo ""
 echo "=================================================================================="

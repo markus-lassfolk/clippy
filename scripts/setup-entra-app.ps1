@@ -50,7 +50,7 @@ try {
         DisplayName = $AppName
         SignInAudience = "AzureADandPersonalMicrosoftAccount"
         PublicClient = $PublicClient
-        FallbackToClientNative = $true
+        IsFallbackPublicClient = $true
         RequiredResourceAccess = $RequiredResourceAccess
     }
     
