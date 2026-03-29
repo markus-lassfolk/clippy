@@ -36,6 +36,8 @@ m365-agent-cli <command>
 ```
 
 ## Authentication
+> **Need help setting up the Azure AD App?** Follow our [Automated Entra ID App Setup Guide](docs/ENTRA_SETUP.md) for bash and PowerShell scripts that configure the exact permissions you need in seconds.
+
 
 Clippy uses OAuth2 with a refresh token to authenticate against Microsoft 365. You need an Azure AD app registration.
 
@@ -606,10 +608,10 @@ m365-agent-cli find "smith" --people
 echo "=== Today's Calendar ==="
 m365-agent-cli calendar
 
-echo -e "\n=== Unread Emails ==="
+echo -e "=== Unread Emails ==="
 m365-agent-cli mail --unread -n 5
 
-echo -e "\n=== Pending Invitations ==="
+echo -e "=== Pending Invitations ==="
 m365-agent-cli respond
 ```
 
