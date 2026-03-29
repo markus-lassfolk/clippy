@@ -17,8 +17,8 @@ echo "Creating Entra ID App Registration: $APP_NAME..."
 # Create the application allowing Microsoft accounts and Organizational accounts
 APP_JSON=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADandPersonalMicrosoftAccount)
 
-APP_ID=$(echo "$APP_JSON" | grep -oP '"appId":\s*"\K[^"]+')
-OBJECT_ID=$(echo "$APP_JSON" | grep -oP '"id":\s*"\K[^"]+' | head -n 1)
+APP_ID=$(echo "$APP_JSON" | sed -n 's/.*"appId":[[:space:]]*"\([^"]*\)".*/\1/p')
+OBJECT_ID=$(echo "$APP_JSON" | sed -n 's/.*"id":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
 
 if [ -z "$APP_ID" ]; then
     echo "Failed to create application."
@@ -37,7 +37,8 @@ az ad app update \
 echo "Adding Required Resource Access (API Permissions) for Graph API and Exchange Online..."
 
 # Construct the requiredResourceAccess JSON for Graph API and Exchange Online scopes
-cat <<EOF > /tmp/requiredResourceAccess.json
+TEMP_JSON=$(mktemp)
+cat <<EOF > "$TEMP_JSON"
 [
   {
     "resourceAppId": "00000003-0000-0000-c000-000000000000",
@@ -61,8 +62,8 @@ cat <<EOF > /tmp/requiredResourceAccess.json
 ]
 EOF
 
-az ad app update --id "$OBJECT_ID" --required-resource-accesses @/tmp/requiredResourceAccess.json
-rm -f /tmp/requiredResourceAccess.json
+az ad app update --id "$OBJECT_ID" --required-resource-accesses @"$TEMP_JSON"
+rm -f "$TEMP_JSON"
 
 echo ""
 echo "=================================================================================="
