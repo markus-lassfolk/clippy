@@ -29,7 +29,6 @@ import { subscriptionsCommand } from './commands/subscriptions.js';
 import { suggestCommand } from './commands/suggest.js';
 import { todoCommand } from './commands/todo.js';
 import { updateEventCommand } from './commands/update-event.js';
-import { verifyTokenCommand } from './commands/verify-token.js';
 import { whoamiCommand } from './commands/whoami.js';
 
 const program = new Command();
