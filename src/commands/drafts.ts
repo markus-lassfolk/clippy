@@ -192,6 +192,7 @@ export const draftsCommand = new Command('drafts')
           if (toList) console.log(`  To: ${toList.join(', ')}`);
           console.log();
         }
+
         return;
       }
 
