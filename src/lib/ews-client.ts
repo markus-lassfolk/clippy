@@ -415,7 +415,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
 
   // Recurrence Exceptions
   const firstOccurrenceBlock = extractSelfClosingOrBlock(block, 'FirstOccurrence');
-  let firstOccurrence;
+  let firstOccurrence: { Start: string; End: string } | undefined;
   if (firstOccurrenceBlock) {
     const st = extractTag(firstOccurrenceBlock, 'Start');
     const en = extractTag(firstOccurrenceBlock, 'End');
@@ -423,7 +423,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   }
 
   const lastOccurrenceBlock = extractSelfClosingOrBlock(block, 'LastOccurrence');
-  let lastOccurrence;
+  let lastOccurrence: { Start: string; End: string } | undefined;
   if (lastOccurrenceBlock) {
     const st = extractTag(lastOccurrenceBlock, 'Start');
     const en = extractTag(lastOccurrenceBlock, 'End');
@@ -431,7 +431,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   }
 
   const modifiedOccurrencesBlock = extractSelfClosingOrBlock(block, 'ModifiedOccurrences');
-  let modifiedOccurrences;
+  let modifiedOccurrences: Array<{ ItemId: string; Start: string; End: string; OriginalStart: string }> | undefined;
   if (modifiedOccurrencesBlock) {
     modifiedOccurrences = extractBlocks(modifiedOccurrencesBlock, 'Occurrence').map((occ) => ({
       ItemId: extractAttribute(occ, 'ItemId', 'Id'),
@@ -442,7 +442,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   }
 
   const deletedOccurrencesBlock = extractSelfClosingOrBlock(block, 'DeletedOccurrences');
-  let deletedOccurrences;
+  let deletedOccurrences: Array<{ Start: string }> | undefined;
   if (deletedOccurrencesBlock) {
     deletedOccurrences = extractBlocks(deletedOccurrencesBlock, 'DeletedOccurrence').map((occ) => ({
       Start: extractTag(occ, 'Start')
