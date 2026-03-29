@@ -379,7 +379,6 @@ export async function createLargeUploadSession(
         lastSuccessfulResponse = await fetch(uploadUrl, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Length': String(bytesRead),
             'Content-Range': contentRange
           },
