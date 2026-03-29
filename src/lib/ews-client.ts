@@ -310,14 +310,14 @@ function buildRestrictionXml(filter: EmailFilter): string {
   if (filter.flagStatus !== undefined) {
     restrictions.push(`<t:IsEqualTo>
       <t:FieldURI FieldURI="item:Flag/FlagStatus"/>
-      <t:FieldURIOrConstant><t:Constant Value="${filter.flagStatus}"/></t:FieldURIOrConstant>
+      <t:FieldURIOrConstant><t:Constant Value="${xmlEscape(filter.flagStatus)}"/></t:FieldURIOrConstant>
     </t:IsEqualTo>`);
   }
 
   if (filter.importance !== undefined) {
     restrictions.push(`<t:IsEqualTo>
       <t:FieldURI FieldURI="item:Importance"/>
-      <t:FieldURIOrConstant><t:Constant Value="${filter.importance}"/></t:FieldURIOrConstant>
+      <t:FieldURIOrConstant><t:Constant Value="${xmlEscape(filter.importance)}"/></t:FieldURIOrConstant>
     </t:IsEqualTo>`);
   }
 
