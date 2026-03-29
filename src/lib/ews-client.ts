@@ -944,6 +944,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
       body,
       location,
       attendees,
+      isOnlineMeeting,
       isAllDay,
       startTimeZone,
       endTimeZone,
@@ -990,6 +991,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     if (isAllDay !== undefined) {
       updates.push(
         `<t:SetItemField><t:FieldURI FieldURI="calendar:IsAllDayEvent" /><t:CalendarItem><t:IsAllDayEvent>${isAllDay}</t:IsAllDayEvent></t:CalendarItem></t:SetItemField>`
+      );
+    }
+    if (isOnlineMeeting !== undefined) {
+      updates.push(
+        `<t:SetItemField><t:FieldURI FieldURI="calendar:IsOnlineMeeting" /><t:CalendarItem><t:IsOnlineMeeting>${isOnlineMeeting}</t:IsOnlineMeeting></t:CalendarItem></t:SetItemField>`
       );
     }
     if (attendees !== undefined) {
