@@ -121,9 +121,44 @@ export const createEventCommand = new Command('create-event')
       }
 
       // Parse date and times
-      const baseDate = parseDay(options.day, { throwOnInvalid: true });
-      const start = parseTimeToDate(startTime, baseDate, { throwOnInvalid: true });
-      const end = parseTimeToDate(endTime, baseDate, { throwOnInvalid: true });
+      let baseDate: Date;
+      try {
+        baseDate = parseDay(options.day, { throwOnInvalid: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Invalid day value';
+        if (options.json) {
+          console.log(JSON.stringify({ error: message }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(1);
+      }
+
+      let start: Date;
+      try {
+        start = parseTimeToDate(startTime, baseDate, { throwOnInvalid: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Invalid start time';
+        if (options.json) {
+          console.log(JSON.stringify({ error: message }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(1);
+      }
+
+      let end: Date;
+      try {
+        end = parseTimeToDate(endTime, baseDate, { throwOnInvalid: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Invalid end time';
+        if (options.json) {
+          console.log(JSON.stringify({ error: message }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(1);
+      }
 
       // Parse attendees
       const attendees: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }> =

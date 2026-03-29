@@ -286,13 +286,33 @@ export const updateEventCommand = new Command('update-event')
         const eventDate = new Date(displayEvent!.Start.DateTime);
 
         if (options.start) {
-          const newStart = parseTimeToDate(options.start, eventDate, { throwOnInvalid: true });
-          updateOptions.start = toUTCISOString(newStart);
+          try {
+            const newStart = parseTimeToDate(options.start, eventDate, { throwOnInvalid: true });
+            updateOptions.start = toUTCISOString(newStart);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Invalid start time';
+            if (options.json) {
+              console.log(JSON.stringify({ error: message }, null, 2));
+            } else {
+              console.error(`Error: ${message}`);
+            }
+            process.exit(1);
+          }
         }
 
         if (options.end) {
-          const newEnd = parseTimeToDate(options.end, eventDate, { throwOnInvalid: true });
-          updateOptions.end = toUTCISOString(newEnd);
+          try {
+            const newEnd = parseTimeToDate(options.end, eventDate, { throwOnInvalid: true });
+            updateOptions.end = toUTCISOString(newEnd);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Invalid end time';
+            if (options.json) {
+              console.log(JSON.stringify({ error: message }, null, 2));
+            } else {
+              console.error(`Error: ${message}`);
+            }
+            process.exit(1);
+          }
         }
       }
 
