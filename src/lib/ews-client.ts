@@ -1073,7 +1073,7 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
       const KNOWN_FILTER_TOKENS = ['IsRead eq false', 'Flag/FlagStatus', 'FlagStatus', 'Flagged', 'and'];
       const unrecognised = [...filter.matchAll(/\b[\w/]+(?: eq [\'\"]?\w+[\'\"]?)?\b/g)]
         .map((m) => m[0])
-        .filter((tok) => !KNOWN_FILTER_TOKENS.some((k) => tok.startsWith(k) || k.startsWith(tok)));
+        .filter((tok) => !KNOWN_FILTER_TOKENS.some((k) => tok.startsWith(k)));
       if (unrecognised.length > 0) {
         return ewsError(
           new Error(
