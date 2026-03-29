@@ -2107,7 +2107,23 @@ export async function areRoomsFree(
       </t:FreeBusyViewOptions>
     </m:GetUserAvailabilityRequest>`);
 
-    const xml = await callEws(token, envelope);
+    const response = await fetch(EWS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'text/xml; charset=utf-8',
+        Accept: 'text/xml',
+        'X-AnchorMailbox': EWS_USERNAME
+      },
+      body: envelope
+    });
+
+    const xml = await response.text();
+
+    if (!response.ok) {
+      const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');
+      throw new Error(`EWS HTTP ${response.status}${soapError ? `: ${soapError}` : ''}`);
+    }
 
     // Parse FreeBusyResponse blocks to correlate mailboxes with their events
     const freeBusyResponses = extractBlocks(xml, 'FreeBusyResponse');
