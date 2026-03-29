@@ -267,6 +267,8 @@ export const mailCommand = new Command('mail')
 
         console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/\n`);
 
+        const usedPaths = new Set<string>();
+
         for (const att of attachments) {
           // Get full attachment with content
           const fullAtt = await getAttachment(authResult.token!, emailSummary.data.Id, att.Id);
@@ -279,9 +281,19 @@ export const mailCommand = new Command('mail')
 
           // Resolve the actual file path, avoiding collisions and existing files
           let filePath = join(options.output, att.Name);
-          if (!options.force) {
-            let counter = 1;
-            while (true) {
+          let counter = 1;
+          while (true) {
+            // Always check for intra-download collisions
+            if (usedPaths.has(filePath)) {
+              const ext = extname(att.Name);
+              const base = att.Name.slice(0, att.Name.length - ext.length);
+              filePath = join(options.output, `${base} (${counter})${ext}`);
+              counter++;
+              continue;
+            }
+
+            // Check for pre-existing files only if --force is not set
+            if (!options.force) {
               try {
                 await access(filePath);
                 // File exists — resolve collision with a numeric suffix
@@ -289,13 +301,17 @@ export const mailCommand = new Command('mail')
                 const base = att.Name.slice(0, att.Name.length - ext.length);
                 filePath = join(options.output, `${base} (${counter})${ext}`);
                 counter++;
+                continue;
               } catch {
                 // File doesn't exist — safe to use
-                break;
               }
             }
+
+            // Path is safe to use
+            break;
           }
 
+          usedPaths.add(filePath);
           await writeFile(filePath, content);
 
           const sizeKB = Math.round(content.length / 1024);
