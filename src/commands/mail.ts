@@ -373,7 +373,7 @@ export const mailCommand = new Command('mail')
               console.error(`Error: Invalid start date: ${err instanceof Error ? err.message : String(err)}`);
               process.exit(1);
             }
-            startDate = { DateTime: parsedStartDate.toISOString(), TimeZone: 'UTC' };
+            startDate = { DateTime: parsedStartDate.toISOString() };
           }
           if (options.due) {
             let parsedDueDate: Date;
@@ -383,7 +383,7 @@ export const mailCommand = new Command('mail')
               console.error(`Error: Invalid due date: ${err instanceof Error ? err.message : String(err)}`);
               process.exit(1);
             }
-            dueDate = { DateTime: parsedDueDate.toISOString(), TimeZone: 'UTC' };
+            dueDate = { DateTime: parsedDueDate.toISOString() };
           }
         } else if (options.complete) {
           flagStatus = 'Complete';
