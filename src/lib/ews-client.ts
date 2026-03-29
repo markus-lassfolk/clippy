@@ -1070,7 +1070,10 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
 
     const sendUpdates = attendees && attendees.length > 0 ? 'SendToAllAndSaveCopy' : 'SendToNone';
 
-    const buildEnvelope = (conflictResolution: 'AutoResolve' | 'AlwaysOverwrite', includeChangeKey: boolean): string => {
+    const buildEnvelope = (
+      conflictResolution: 'AutoResolve' | 'AlwaysOverwrite',
+      includeChangeKey: boolean
+    ): string => {
       const itemIdXml = occurrenceItemId
         ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
         : `<t:ItemId Id="${xmlEscape(eventId)}"${includeChangeKey && changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`;
@@ -1126,15 +1129,17 @@ export interface DeleteEventOptions {
   /** Scope: 'all' (default), 'this' (single occurrence), 'future' (this and all future) */
   scope?: 'all' | 'this' | 'future';
   mailbox?: string;
+  /** If true, delete without sending cancellation notices even if there are attendees */
+  forceDelete?: boolean;
 }
 
 export async function deleteEvent(options: DeleteEventOptions): Promise<OwaResponse<void>> {
   try {
-    const { token, eventId, occurrenceItemId, scope = 'all', mailbox } = options;
+    const { token, eventId, occurrenceItemId, scope = 'all', mailbox, forceDelete } = options;
 
-    // Determine send mode based on scope
+    // Determine send mode based on scope and forceDelete flag
     let sendCancellations = 'SendToNone';
-    if (scope === 'this' || scope === 'future') {
+    if (!forceDelete && (scope === 'this' || scope === 'future')) {
       sendCancellations = 'SendToAllAndSaveCopy';
     }
 

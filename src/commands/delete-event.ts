@@ -171,22 +171,25 @@ export const deleteEventCommand = new Command('delete-event')
       }
 
       if ((options.occurrence || options.instance) && scope === 'this') {
-        // Find the occurrence by index or date
+        // Find the occurrence by index or date, ensuring it matches the provided event ID
         if (options.instance) {
-          // Find occurrence matching the specific date
+          // Find occurrence matching the specific date and event ID
           const instanceDate = parseDay(options.instance);
           instanceDate.setHours(0, 0, 0, 0);
-          targetEvent = events.find((e) => {
+          const occEvent = events.find((e) => {
             const eventDate = new Date(e.Start.DateTime);
             eventDate.setHours(0, 0, 0, 0);
-            return eventDate.getTime() === instanceDate.getTime();
+            return eventDate.getTime() === instanceDate.getTime() && e.Id === options.id;
           });
-          if (!targetEvent) {
-            console.error(`No occurrence found on ${options.instance}. Try expanding the date range with --day.`);
+          if (!occEvent) {
+            console.error(
+              `No occurrence found on ${options.instance} with ID ${options.id}. Try expanding the date range with --day.`
+            );
             process.exit(1);
           }
           // For CalendarView items, the Id we get IS the occurrence ID
-          occurrenceItemId = targetEvent.Id;
+          occurrenceItemId = occEvent.Id;
+          targetEvent = occEvent;
         } else if (options.occurrence) {
           const idx = parseInt(options.occurrence, 10);
           if (isNaN(idx) || idx < 1) {
@@ -201,6 +204,10 @@ export const deleteEventCommand = new Command('delete-event')
             process.exit(1);
           }
           const occEvent = events[idx - 1];
+          if (occEvent.Id !== options.id) {
+            console.error(`Occurrence ${idx} does not match the provided event ID ${options.id}.`);
+            process.exit(1);
+          }
           occurrenceItemId = occEvent.Id;
           targetEvent = occEvent;
         }
@@ -232,7 +239,7 @@ export const deleteEventCommand = new Command('delete-event')
       let action: string;
 
       if (hasAttendees && !options.forceDelete && scope === 'all') {
-        // Use cancel to send cancellation notices
+        // Use cancel to send cancellation notices for full series
         console.log(`  Attendees: ${attendees.map((a) => a.EmailAddress?.Address).join(', ')}`);
         console.log(`  Sending cancellation notices...`);
         deleteResult = await cancelEvent({
@@ -243,13 +250,14 @@ export const deleteEventCommand = new Command('delete-event')
         });
         action = 'cancelled';
       } else {
-        // Just delete without notification
+        // Delete with or without notification based on forceDelete flag
         deleteResult = await deleteEvent({
           token: authResult.token!,
           eventId: targetEvent!.Id,
           occurrenceItemId,
           scope,
-          mailbox: options.mailbox
+          mailbox: options.mailbox,
+          forceDelete: options.forceDelete
         });
         action = 'deleted';
       }

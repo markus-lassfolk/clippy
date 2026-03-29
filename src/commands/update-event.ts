@@ -177,17 +177,19 @@ export const updateEventCommand = new Command('update-event')
       let displayEvent = targetEvent;
 
       if (options.occurrence || options.instance) {
-        // Find the specific occurrence
+        // Find the specific occurrence, ensuring it matches the provided event ID
         if (options.instance) {
           const instanceDate = parseDay(options.instance);
           instanceDate.setHours(0, 0, 0, 0);
           const occEvent = events.find((e) => {
             const eventDate = new Date(e.Start.DateTime);
             eventDate.setHours(0, 0, 0, 0);
-            return eventDate.getTime() === instanceDate.getTime();
+            return eventDate.getTime() === instanceDate.getTime() && e.Id === options.id;
           });
           if (!occEvent) {
-            console.error(`No occurrence found on ${options.instance}. Try expanding the date range with --day.`);
+            console.error(
+              `No occurrence found on ${options.instance} with ID ${options.id}. Try expanding the date range with --day.`
+            );
             process.exit(1);
           }
           occurrenceItemId = occEvent.Id;
@@ -203,6 +205,10 @@ export const updateEventCommand = new Command('update-event')
             process.exit(1);
           }
           const occEvent = events[idx - 1];
+          if (occEvent.Id !== options.id) {
+            console.error(`Occurrence ${idx} does not match the provided event ID ${options.id}.`);
+            process.exit(1);
+          }
           occurrenceItemId = occEvent.Id;
           displayEvent = occEvent;
           console.log(`\nUpdating occurrence ${idx} of: ${occEvent.Subject}`);
