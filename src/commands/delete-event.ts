@@ -157,8 +157,16 @@ export const deleteEventCommand = new Command('delete-event')
       let occurrenceItemId: string | undefined;
       let targetEvent = events.find((e) => e.Id === options.id);
 
-      // If occurrence/instance flags are provided, automatically set scope to 'this'
-      if (options.occurrence || options.instance) {
+      // Validate scope: 'future' is not currently supported by EWS
+      if (scope === 'future') {
+        console.error('Error: --scope future is not supported.');
+        console.error('EWS does not provide a native operation to delete "this and future" occurrences.');
+        console.error('Use --scope this to delete a single occurrence, or --scope all to delete the entire series.');
+        process.exit(1);
+      }
+
+      // If occurrence/instance flags are provided without explicit scope, default to 'this'
+      if ((options.occurrence || options.instance) && options.scope === 'all') {
         scope = 'this';
       }
 

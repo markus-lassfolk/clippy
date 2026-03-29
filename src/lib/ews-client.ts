@@ -1070,12 +1070,12 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
 
     const sendUpdates = attendees && attendees.length > 0 ? 'SendToAllAndSaveCopy' : 'SendToNone';
 
-    const itemIdXml = occurrenceItemId
-      ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
-      : `<t:ItemId Id="${xmlEscape(eventId)}"${changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`;
+    const buildEnvelope = (conflictResolution: 'AutoResolve' | 'AlwaysOverwrite', includeChangeKey: boolean): string => {
+      const itemIdXml = occurrenceItemId
+        ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
+        : `<t:ItemId Id="${xmlEscape(eventId)}"${includeChangeKey && changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`;
 
-    const buildEnvelope = (conflictResolution: 'AutoResolve' | 'AlwaysOverwrite'): string =>
-      soapEnvelope(`
+      return soapEnvelope(`
     <m:UpdateItem ConflictResolution="${conflictResolution}" SendMeetingInvitationsOrCancellations="${sendUpdates}">
       <m:ItemChanges>
         <t:ItemChange>
@@ -1086,10 +1086,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
         </t:ItemChange>
       </m:ItemChanges>
     </m:UpdateItem>`);
+    };
 
     let xml: string;
     try {
-      xml = await callEws(token, buildEnvelope(changeKey ? 'AutoResolve' : 'AlwaysOverwrite'), mailbox);
+      xml = await callEws(token, buildEnvelope(changeKey ? 'AutoResolve' : 'AlwaysOverwrite', true), mailbox);
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       const isConflict =
@@ -1101,7 +1102,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
         throw err;
       }
 
-      xml = await callEws(token, buildEnvelope('AlwaysOverwrite'), mailbox);
+      xml = await callEws(token, buildEnvelope('AlwaysOverwrite', false), mailbox);
     }
     const block = extractBlocks(xml, 'CalendarItem')[0] || '';
     const newId = extractAttribute(block, 'ItemId', 'Id') || eventId;
