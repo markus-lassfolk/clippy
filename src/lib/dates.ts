@@ -33,12 +33,22 @@ export function parseTimeToDate(
   if (hourMatch) {
     const rawHour = parseInt(hourMatch[1], 10);
     const isPM = hourMatch[2]?.toLowerCase() === 'pm';
-    if (throwOnInvalid && (rawHour < 1 || rawHour > 12)) {
-      throw new Error(`Invalid time: "${timeStr}" — 12-hour values must be 1–12`);
+    if (throwOnInvalid) {
+      if (hourMatch[2]) {
+        if (rawHour < 1 || rawHour > 12) {
+          throw new Error(`Invalid time: "${timeStr}" — 12-hour values must be 1–12`);
+        }
+      } else {
+        if (rawHour < 0 || rawHour > 23) {
+          throw new Error(`Invalid time: "${timeStr}" — 24-hour values must be 0–23`);
+        }
+      }
     }
     let hour = rawHour;
-    if (isPM && rawHour < 12) hour += 12;
-    if (!isPM && rawHour === 12) hour = 0;
+    if (hourMatch[2]) {
+      if (isPM && rawHour < 12) hour += 12;
+      if (!isPM && rawHour === 12) hour = 0;
+    }
     result.setHours(hour, 0, 0, 0);
     return result;
   }
