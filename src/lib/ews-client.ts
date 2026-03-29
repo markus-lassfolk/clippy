@@ -1052,6 +1052,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
         <t:CalendarItem>
           <t:Subject>${xmlEscape(subject)}</t:Subject>
           ${body ? `<t:Body BodyType="Text">${xmlEscape(body)}</t:Body>` : ''}
+          ${categories && categories.length > 0 ? `<t:Categories>${categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
           <t:Start>${xmlEscape(start)}</t:Start>
           <t:End>${xmlEscape(end)}</t:End>
           ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
@@ -1060,7 +1061,6 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
           ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}"/><t:EndTimeZone Id="${xmlEscape(timezone)}"/>` : ''}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
-          ${categories && categories.length > 0 ? `<t:Categories>${categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
         </t:CalendarItem>
       </m:Items>
     </m:CreateItem>`);
@@ -1581,8 +1581,8 @@ export async function sendEmail(
           <t:Message>
             <t:Subject>${xmlEscape(options.subject)}</t:Subject>
             <t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body>
-            <t:ToRecipients>${toXml}</t:ToRecipients>
             ${options.categories && options.categories.length > 0 ? `<t:Categories>${options.categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
+            <t:ToRecipients>${toXml}</t:ToRecipients>
             ${ccXml}
             ${bccXml}
             ${fromXml}

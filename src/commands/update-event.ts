@@ -272,7 +272,9 @@ export const updateEventCommand = new Command('update-event')
         options.location ||
         options.timezone ||
         options.teams !== undefined ||
-        options.allDay !== undefined;
+        options.allDay !== undefined ||
+        (options.category && options.category.length > 0) ||
+        options.clearCategories;
 
       if (!hasUpdates) {
         // Show current event details
