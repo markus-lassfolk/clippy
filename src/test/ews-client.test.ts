@@ -57,7 +57,7 @@ describe('ews-client safety and conflict behavior', () => {
       return new Response(okUpdateResponse, { status: 200 });
     }) as unknown as typeof fetch;
 
-    const { updateEvent } = await import('./ews-client.js');
+    const { updateEvent } = await import('../lib/ews-client.js');
     const result = await updateEvent({
       token: 'token',
       eventId: 'event-id',
@@ -97,7 +97,7 @@ describe('ews-client safety and conflict behavior', () => {
       );
     }) as unknown as typeof fetch;
 
-    const { getEmails } = await import('./ews-client.js');
+    const { getEmails } = await import('../lib/ews-client.js');
     const query = 'urgent OR from:bob@example.com AND "project x"';
     const result = await getEmails({ token: 'token', search: query });
 
@@ -113,7 +113,7 @@ describe('ews-client safety and conflict behavior', () => {
       return new Response('gateway timeout', { status: 504 });
     }) as unknown as typeof fetch;
 
-    const { getOwaUserInfo } = await import('./ews-client.js');
+    const { getOwaUserInfo } = await import('../lib/ews-client.js');
     const result = await getOwaUserInfo('token');
 
     expect(result.ok).toBe(false);
