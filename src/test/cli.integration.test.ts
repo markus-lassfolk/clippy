@@ -966,49 +966,53 @@ describe('global options', () => {
 
 describe('read-only mode', () => {
   test('--read-only blocks mutating command (create-event)', async () => {
-    const result = await runClippy('create-event "Test" 10:00 11:00 --read-only --token test-token-12345');
+    const result = await runM365AgentCli('create-event "Test" 10:00 11:00 --read-only --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only blocks mutating command (files upload)', async () => {
-    const result = await runClippy('files upload /tmp/test.txt --read-only --token test-token-12345');
+    const result = await runM365AgentCli('files upload /tmp/test.txt --read-only --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only blocks mutating draft operations (create)', async () => {
-    const result = await runClippy('drafts --create --to test@example.com --subject "Test" --read-only --token test-token-12345');
+    const result = await runM365AgentCli(
+      'drafts --create --to test@example.com --subject "Test" --read-only --token test-token-12345'
+    );
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only blocks mutating draft operations (edit)', async () => {
-    const result = await runClippy('drafts --edit draft-123 --subject "Updated" --read-only --token test-token-12345');
+    const result = await runM365AgentCli(
+      'drafts --edit draft-123 --subject "Updated" --read-only --token test-token-12345'
+    );
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only blocks mutating mail operations (flag)', async () => {
-    const result = await runClippy('mail inbox --flag msg-123 --read-only --token test-token-12345');
+    const result = await runM365AgentCli('mail inbox --flag msg-123 --read-only --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only blocks mutating mail operations (mark-read)', async () => {
-    const result = await runClippy('mail inbox --mark-read msg-123 --read-only --token test-token-12345');
+    const result = await runM365AgentCli('mail inbox --mark-read msg-123 --read-only --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });
 
   test('--read-only allows non-mutating command (calendar)', async () => {
-    const result = await runClippy('calendar today --read-only --token test-token-12345');
+    const result = await runM365AgentCli('calendar today --read-only --token test-token-12345');
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Calendar');
   });
 
   test('--read-only allows non-mutating command (findtime)', async () => {
-    const result = await runClippy('findtime nextweek user@example.com --read-only --token test-token-12345');
+    const result = await runM365AgentCli('findtime nextweek user@example.com --read-only --token test-token-12345');
     expect(result.exitCode).toBe(0);
     // findtime is read-only, should succeed
   });
@@ -1017,7 +1021,7 @@ describe('read-only mode', () => {
     const originalEnv = process.env.READ_ONLY_MODE;
     try {
       process.env.READ_ONLY_MODE = 'true';
-      const result = await runClippy('create-event "Test" 10:00 11:00 --token test-token-12345');
+      const result = await runM365AgentCli('create-event "Test" 10:00 11:00 --token test-token-12345');
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('read-only mode');
     } finally {
@@ -1033,7 +1037,7 @@ describe('read-only mode', () => {
     const originalEnv = process.env.READ_ONLY_MODE;
     try {
       process.env.READ_ONLY_MODE = 'true';
-      const result = await runClippy('calendar today --token test-token-12345');
+      const result = await runM365AgentCli('calendar today --token test-token-12345');
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Calendar');
     } finally {

@@ -90,7 +90,7 @@ export const findtimeCommand = new Command('findtime')
         json?: boolean;
         token?: string;
       },
-      cmd: any
+      _cmd: any
     ) => {
       const authResult = await resolveAuth({
         token: options.token
