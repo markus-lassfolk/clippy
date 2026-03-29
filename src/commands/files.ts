@@ -8,6 +8,8 @@ import {
   defaultDownloadPath,
   deleteFile,
   downloadFile,
+  downloadConvertedFile,
+  getFileAnalytics,
   getFileMetadata,
   listFiles,
   searchFiles,
@@ -350,4 +352,73 @@ filesCommand
     console.log(`  File: ${result.data.item.name}`);
     console.log(`  File ID: ${result.data.item.id}`);
     if (result.data.comment) console.log(`  Comment: ${result.data.comment}`);
+  });
+
+filesCommand
+  .command('convert <fileId>')
+  .description('Download a file converted to a specific format (default: pdf)')
+  .option('--format <format>', 'Target format (e.g. pdf, html, glb)', 'pdf')
+  .option('--out <path>', 'Output path')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific Graph token')
+  .action(async (fileId: string, options: { format: string; out?: string; json?: boolean; token?: string }) => {
+    const auth = await resolveGraphAuth({ token: options.token });
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
+
+    const result = await downloadConvertedFile(auth.token!, fileId, options.format, options.out);
+    if (!result.ok || !result.data) {
+      console.error(`Error: ${result.error?.message || 'Conversion download failed'}`);
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(result.data, null, 2));
+      return;
+    }
+
+    console.log(`✓ Converted file downloaded`);
+    console.log(`  Saved to: ${result.data.path}`);
+  });
+
+filesCommand
+  .command('analytics <fileId>')
+  .description('Get file analytics (access/action counts)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific Graph token')
+  .action(async (fileId: string, options: { json?: boolean; token?: string }) => {
+    const auth = await resolveGraphAuth({ token: options.token });
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
+
+    const result = await getFileAnalytics(auth.token!, fileId);
+    if (!result.ok || !result.data) {
+      console.error(`Error: ${result.error?.message || 'Failed to get file analytics'}`);
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(result.data, null, 2));
+      return;
+    }
+
+    console.log(`✓ Analytics for ${fileId}:`);
+    if (result.data.allTime?.access) {
+      console.log('  All Time:');
+      console.log(`    Actions: ${result.data.allTime.access.actionCount || 0}`);
+      console.log(`    Actors:  ${result.data.allTime.access.actorCount || 0}`);
+    }
+    if (result.data.lastSevenDays?.access) {
+      console.log('  Last 7 Days:');
+      console.log(`    Actions: ${result.data.lastSevenDays.access.actionCount || 0}`);
+      console.log(`    Actors:  ${result.data.lastSevenDays.access.actorCount || 0}`);
+    }
+    
+    if (!result.data.allTime && !result.data.lastSevenDays) {
+      console.log('  No analytics data available.');
+    }
   });
