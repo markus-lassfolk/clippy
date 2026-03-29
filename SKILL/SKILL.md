@@ -320,3 +320,10 @@ Options: `--json`, `--token`
 - Date and email input validation tightened
 - Token cache file permissions secured (owner-only read)
 - String `$pattern` replacement bug fixed (prevents injection via malformed patterns)
+
+#### `clippy verify-token`
+Verify your currently configured Graph API token's scopes and permissions. Useful for troubleshooting `403 Forbidden` errors.
+```
+clippy verify-token
+clippy verify-token --token <token> --json
+```

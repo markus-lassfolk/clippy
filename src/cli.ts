@@ -15,6 +15,7 @@ import { forwardEventCommand } from './commands/forward-event.js';
 import { mailCommand } from './commands/mail.js';
 import { oofCommand } from './commands/oof.js';
 import { plannerCommand } from './commands/planner.js';
+import { verifyTokenCommand } from './commands/verify-token.js';
 import { respondCommand } from './commands/respond.js';
 import { roomsCommand } from './commands/rooms.js';
 import { rulesCommand } from './commands/rules.js';
@@ -36,6 +37,7 @@ program.name('clippy').description('CLI for Microsoft 365/EWS').version('0.1.0')
 
 program.addCommand(whoamiCommand);
 program.addCommand(sitePagesCommand);
+program.addCommand(verifyTokenCommand);
 program.addCommand(autoReplyCommand);
 program.addCommand(calendarCommand);
 program.addCommand(findtimeCommand);
