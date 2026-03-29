@@ -62,11 +62,28 @@ try {
     Write-Host "Object ID: $($App.Id)"
     Write-Host "Tenant ID: Common (since audience is AzureADandPersonalMicrosoftAccount)"
     Write-Host ""
+    
+    # Update or append EWS_CLIENT_ID to .env
+    if (Test-Path ".env") {
+        $envContent = Get-Content -Path ".env" -Raw
+        if ($envContent -match "(?m)^EWS_CLIENT_ID=.*$") {
+            $envContent = $envContent -replace "(?m)^EWS_CLIENT_ID=.*$", "EWS_CLIENT_ID=$($App.AppId)"
+            Set-Content -Path ".env" -Value $envContent.TrimEnd()
+            Write-Host "Updated EWS_CLIENT_ID in .env file in the current directory."
+        } else {
+            Add-Content -Path ".env" -Value "EWS_CLIENT_ID=$($App.AppId)"
+            Write-Host "Appended EWS_CLIENT_ID to .env file in the current directory."
+        }
+    } else {
+        Set-Content -Path ".env" -Value "EWS_CLIENT_ID=$($App.AppId)"
+        Write-Host "Created .env file with EWS_CLIENT_ID in the current directory."
+    }
+
+    Write-Host ""
     Write-Host "Next steps:"
     Write-Host "1. Go to the Azure Portal (https://entra.microsoft.com/) to grant admin consent"
     Write-Host "   for the scopes if required by your tenant."
-    Write-Host "2. Copy the Client ID above to your .env file as EWS_CLIENT_ID."
-    Write-Host "3. Run your application to start the interactive login flow and get the"
+    Write-Host "2. Run 'clippy login' to start the interactive login flow and get the"
     Write-Host "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
     Write-Host "=================================================================================="
 } catch {
