@@ -1,4 +1,11 @@
-import { callGraph, type GraphResponse, graphResult, graphError, GraphApiError } from './graph-client.js';
+import {
+  callGraph,
+  fetchAllPages,
+  type GraphResponse,
+  graphResult,
+  graphError,
+  GraphApiError
+} from './graph-client.js';
 
 export interface PlannerPlan {
   id: string;
@@ -29,81 +36,35 @@ export interface PlannerTask {
 }
 
 export async function listUserTasks(token: string): Promise<GraphResponse<PlannerTask[]>> {
-  try {
-    const result = await callGraph<{ value: PlannerTask[] }>(token, '/me/planner/tasks');
-    if (!result.ok || !result.data) {
-      return graphError(result.error?.message || 'Failed to list tasks', result.error?.code, result.error?.status);
-    }
-    return graphResult(result.data.value);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
-    return graphError(err instanceof Error ? err.message : 'Failed to list tasks');
-  }
+  return fetchAllPages<PlannerTask>(token, '/me/planner/tasks', 'Failed to list tasks');
 }
 
 export async function listUserPlans(token: string): Promise<GraphResponse<PlannerPlan[]>> {
-  try {
-    const result = await callGraph<{ value: PlannerPlan[] }>(token, '/me/planner/plans');
-    if (!result.ok || !result.data) {
-      return graphError(result.error?.message || 'Failed to list plans', result.error?.code, result.error?.status);
-    }
-    return graphResult(result.data.value);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
-    return graphError(err instanceof Error ? err.message : 'Failed to list plans');
-  }
+  return fetchAllPages<PlannerPlan>(token, '/me/planner/plans', 'Failed to list plans');
 }
 
 export async function listGroupPlans(token: string, groupId: string): Promise<GraphResponse<PlannerPlan[]>> {
-  try {
-    const result = await callGraph<{ value: PlannerPlan[] }>(
-      token,
-      `/groups/${encodeURIComponent(groupId)}/planner/plans`
-    );
-    if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || 'Failed to list group plans',
-        result.error?.code,
-        result.error?.status
-      );
-    }
-    return graphResult(result.data.value);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
-    return graphError(err instanceof Error ? err.message : 'Failed to list group plans');
-  }
+  return fetchAllPages<PlannerPlan>(
+    token,
+    `/groups/${encodeURIComponent(groupId)}/planner/plans`,
+    'Failed to list group plans'
+  );
 }
 
 export async function listPlanBuckets(token: string, planId: string): Promise<GraphResponse<PlannerBucket[]>> {
-  try {
-    const result = await callGraph<{ value: PlannerBucket[] }>(
-      token,
-      `/planner/plans/${encodeURIComponent(planId)}/buckets`
-    );
-    if (!result.ok || !result.data) {
-      return graphError(result.error?.message || 'Failed to list buckets', result.error?.code, result.error?.status);
-    }
-    return graphResult(result.data.value);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
-    return graphError(err instanceof Error ? err.message : 'Failed to list buckets');
-  }
+  return fetchAllPages<PlannerBucket>(
+    token,
+    `/planner/plans/${encodeURIComponent(planId)}/buckets`,
+    'Failed to list buckets'
+  );
 }
 
 export async function listPlanTasks(token: string, planId: string): Promise<GraphResponse<PlannerTask[]>> {
-  try {
-    const result = await callGraph<{ value: PlannerTask[] }>(
-      token,
-      `/planner/plans/${encodeURIComponent(planId)}/tasks`
-    );
-    if (!result.ok || !result.data) {
-      return graphError(result.error?.message || 'Failed to list plan tasks', result.error?.code, result.error?.status);
-    }
-    return graphResult(result.data.value);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
-    return graphError(err instanceof Error ? err.message : 'Failed to list plan tasks');
-  }
+  return fetchAllPages<PlannerTask>(
+    token,
+    `/planner/plans/${encodeURIComponent(planId)}/tasks`,
+    'Failed to list plan tasks'
+  );
 }
 
 export async function getTask(token: string, taskId: string): Promise<GraphResponse<PlannerTask>> {
