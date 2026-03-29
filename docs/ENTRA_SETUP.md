@@ -41,7 +41,7 @@ Both scripts will output your **Client ID** (`EWS_CLIENT_ID`) upon success. Proc
 ### 1. Create the App Registration
 1. Go to the [Microsoft Entra admin center](https://entra.microsoft.com/).
 2. Navigate to **Applications** > **App registrations** > **New registration**.
-3. Name your application (e.g., "Clippy").
+3. Name your application (e.g., "m365-agent-cli").
 4. For **Supported account types**, choose **Accounts in any organizational directory and personal Microsoft accounts** (or the scope that fits your use case).
 5. Leave the Redirect URI blank for now and click **Register**.
 
@@ -84,7 +84,9 @@ The application requires specific Delegated permissions for both Microsoft Graph
 
 After completing the setup (either manually or automatically), you need to capture your credentials for the application's `.env` file:
 
-1. **`EWS_CLIENT_ID`**: If you used the manual setup, go to the **Overview** page of your App Registration and copy the **Application (client) ID**.
-2. **Refresh Tokens**: To get your initial `GRAPH_REFRESH_TOKEN` and `EWS_REFRESH_TOKEN`, use the interactive login flow provided by the app. Run the application, and it will prompt you to authenticate.
-3. Once you authenticate and accept the scopes, the application will provide or log the refresh tokens.
-4. Save the Client ID and refresh tokens into your `.env` file.
+1. **`EWS_CLIENT_ID`**: If you used the automated setup scripts, this is already appended to your `.env` file. If you used the manual setup, go to the **Overview** page of your App Registration, copy the **Application (client) ID**, and add it to your `.env` file as `EWS_CLIENT_ID=<id>`.
+2. **Refresh Tokens**: To get your initial `GRAPH_REFRESH_TOKEN` and `EWS_REFRESH_TOKEN`, use the interactive login flow provided by the CLI. Run the `login` command:
+   ```bash
+   clippy login
+   ```
+   It will prompt you to authenticate via the Device Code flow and will automatically save the refresh tokens into your `.env` file upon successful authentication.

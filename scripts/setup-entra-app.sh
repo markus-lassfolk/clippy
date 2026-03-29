@@ -4,7 +4,7 @@
 
 set -e
 
-APP_NAME="Clippy"
+APP_NAME="m365-agent-cli"
 
 echo "Checking az login status..."
 if ! az account show > /dev/null 2>&1; then
@@ -69,10 +69,20 @@ echo "Setup Complete!"
 echo "Client ID (EWS_CLIENT_ID): $APP_ID"
 echo "Tenant ID: Common (since audience is AzureADandPersonalMicrosoftAccount)"
 echo ""
+
+# Update or append EWS_CLIENT_ID to .env
+if [ -f .env ] && grep -q "^EWS_CLIENT_ID=" .env; then
+    sed -i.bak "s/^EWS_CLIENT_ID=.*/EWS_CLIENT_ID=$APP_ID/" .env && rm -f .env.bak
+    echo "Updated EWS_CLIENT_ID in .env file in the current directory."
+else
+    echo "EWS_CLIENT_ID=$APP_ID" >> .env
+    echo "Appended EWS_CLIENT_ID to .env file in the current directory."
+fi
+
+echo ""
 echo "Next steps:"
 echo "1. Go to the Azure Portal (https://entra.microsoft.com/) to grant admin consent"
 echo "   for the scopes if required by your tenant."
-echo "2. Copy the Client ID above to your .env file as EWS_CLIENT_ID."
-echo "3. Run your application to start the interactive login flow and get the"
+echo "2. Run 'clippy login' to start the interactive login flow and get the"
 echo "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
 echo "=================================================================================="

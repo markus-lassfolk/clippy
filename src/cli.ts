@@ -12,6 +12,7 @@ import { findCommand } from './commands/find.js';
 import { findtimeCommand } from './commands/findtime.js';
 import { foldersCommand } from './commands/folders.js';
 import { forwardEventCommand } from './commands/forward-event.js';
+import { loginCommand } from './commands/login.js';
 import { mailCommand } from './commands/mail.js';
 import { oofCommand } from './commands/oof.js';
 import { plannerCommand } from './commands/planner.js';
@@ -33,11 +34,12 @@ import { whoamiCommand } from './commands/whoami.js';
 
 const program = new Command();
 
-program.name('clippy').description('CLI for Microsoft 365/EWS').version('0.1.0');
+program.name('m365-agent-cli').description('CLI for Microsoft 365/EWS').version('0.1.0');
 
 program.option('--read-only', 'Run in read-only mode, blocking any mutating operations');
 
 program.addCommand(whoamiCommand);
+program.addCommand(loginCommand);
 program.addCommand(sitePagesCommand);
 program.addCommand(verifyTokenCommand);
 program.addCommand(autoReplyCommand);
