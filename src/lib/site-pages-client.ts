@@ -1,4 +1,4 @@
-import { callGraph, GraphResponse } from './graph-client.js';
+import { callGraph, GraphApiError, GraphResponse, graphError } from './graph-client.js';
 
 export interface SitePage {
   id: string;
@@ -14,11 +14,31 @@ export interface SitePage {
 }
 
 export async function listSitePages(token: string, siteId: string): Promise<GraphResponse<{ value: SitePage[] }>> {
-  return callGraph<{ value: SitePage[] }>(token, `/sites/${siteId}/pages`);
+  try {
+    return await callGraph<{ value: SitePage[] }>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/pages/microsoft.graph.sitePage`
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to list site pages');
+  }
 }
 
 export async function getSitePage(token: string, siteId: string, pageId: string): Promise<GraphResponse<SitePage>> {
-  return callGraph<SitePage>(token, `/sites/${siteId}/pages/${pageId}`);
+  try {
+    return await callGraph<SitePage>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to get site page');
+  }
 }
 
 export async function updateSitePage(
@@ -27,23 +47,37 @@ export async function updateSitePage(
   pageId: string,
   pageData: Partial<SitePage>
 ): Promise<GraphResponse<SitePage>> {
-  return callGraph<SitePage>(
-    token,
-    `/sites/${siteId}/pages/${pageId}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify(pageData)
+  try {
+    return await callGraph<SitePage>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ '@odata.type': '#microsoft.graph.sitePage', ...pageData })
+      }
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
     }
-  );
+    return graphError(err instanceof Error ? err.message : 'Failed to update site page');
+  }
 }
 
 export async function publishSitePage(token: string, siteId: string, pageId: string): Promise<GraphResponse<void>> {
-  return callGraph<void>(
-    token,
-    `/sites/${siteId}/pages/${pageId}/publish`,
-    {
-      method: 'POST'
-    },
-    false // might not return JSON, just 204 No Content
-  );
+  try {
+    return await callGraph<void>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage/publish`,
+      {
+        method: 'POST'
+      },
+      false // might not return JSON, just 204 No Content
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to publish site page');
+  }
 }
