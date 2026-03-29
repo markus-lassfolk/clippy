@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
+import { parseDay } from '../lib/dates.js';
 import {
   forwardEmail,
   getAttachment,
@@ -16,7 +17,6 @@ import {
   updateEmail
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
-import { parseDay } from '../lib/dates.js';
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
