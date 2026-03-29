@@ -392,11 +392,15 @@ export async function downloadFile(
   }
 
   // Allowed Microsoft domains for download URLs (supports both exact and suffix matching)
+  // Includes sovereign cloud domains: .us (GCC High/DoD), .cn (China/21Vianet)
   const allowedDomains = [
     'onedrive.live.com',
     'sharepoint.com',
+    'sharepoint.us',
+    'sharepoint.cn',
     'graph.microsoft.com',
-    'www.sharepoint.com',
+    'graph.microsoft.us',
+    'microsoftgraph.chinacloudapi.cn',
     'files.1drv.com'
   ];
 
