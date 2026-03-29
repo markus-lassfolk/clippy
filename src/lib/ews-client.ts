@@ -1759,6 +1759,9 @@ export async function updateEmail(
     }
 
     if (updates.Flag) {
+      if (updates.Flag.StartDate?.TimeZone || updates.Flag.DueDate?.TimeZone) {
+        console.warn('Warning: TimeZone property in Flag dates is ignored by EWS.');
+      }
       let flagXml = `<t:FlagStatus>${xmlEscape(updates.Flag.FlagStatus)}</t:FlagStatus>`;
       if (updates.Flag.StartDate) {
         flagXml += `<t:StartDate>${xmlEscape(updates.Flag.StartDate.DateTime)}</t:StartDate>`;

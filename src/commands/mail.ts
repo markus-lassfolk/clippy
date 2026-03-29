@@ -16,6 +16,7 @@ import {
   updateEmail
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
+import { parseDay } from '../lib/dates.js';
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -365,17 +366,21 @@ export const mailCommand = new Command('mail')
           actionLabel = 'Flagged';
 
           if (options.startDate) {
-            const parsedStartDate = new Date(options.startDate);
-            if (Number.isNaN(parsedStartDate.getTime())) {
-              console.error('Error: Invalid start date. Please provide a valid ISO 8601 date/time value.');
+            let parsedStartDate: Date;
+            try {
+              parsedStartDate = parseDay(options.startDate, { throwOnInvalid: true });
+            } catch (err) {
+              console.error(`Error: Invalid start date: ${err instanceof Error ? err.message : String(err)}`);
               process.exit(1);
             }
             startDate = { DateTime: parsedStartDate.toISOString(), TimeZone: 'UTC' };
           }
           if (options.due) {
-            const parsedDueDate = new Date(options.due);
-            if (Number.isNaN(parsedDueDate.getTime())) {
-              console.error('Error: Invalid due date. Please provide a valid ISO 8601 date/time value.');
+            let parsedDueDate: Date;
+            try {
+              parsedDueDate = parseDay(options.due, { throwOnInvalid: true });
+            } catch (err) {
+              console.error(`Error: Invalid due date: ${err instanceof Error ? err.message : String(err)}`);
               process.exit(1);
             }
             dueDate = { DateTime: parsedDueDate.toISOString(), TimeZone: 'UTC' };

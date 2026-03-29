@@ -35,12 +35,7 @@ export async function getLists(token: string, siteId: string): Promise<GraphResp
     }
     return graphError(err instanceof Error ? err.message : 'Failed to get lists');
   }
-  if (!res.ok) {
-    return graphError(res.error?.message ?? 'Failed to get lists', res.error?.code, res.error?.status);
-  }
-  if (!res.data || !Array.isArray(res.data.value)) {
-    return graphError('Failed to get lists');
-  }
+  if (!res.ok || !res.data?.value) return graphError('Failed to get lists: missing data');
   return graphResult(res.data.value);
 }
 

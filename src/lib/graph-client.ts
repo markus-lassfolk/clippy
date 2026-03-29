@@ -889,7 +889,37 @@ export async function downloadConvertedFile(
 
     const path = `/me/drive/items/${encodeURIComponent(itemId)}/content?format=${encodeURIComponent(format)}`;
 
-    const response = await fetchGraphRaw(token, path, { redirect: 'follow' });
+    const redirectResponse = await fetchGraphRaw(token, path, { redirect: 'manual' });
+
+    if (redirectResponse.status < 300 || redirectResponse.status >= 400) {
+      if (!redirectResponse.ok) {
+        return graphError(`Failed to convert file: HTTP ${redirectResponse.status}`);
+      }
+      return graphError('Expected a redirect for file conversion, but got a direct response.');
+    }
+
+    const location = redirectResponse.headers.get('location');
+    if (!location) {
+      return graphError('Missing redirect location for converted file');
+    }
+
+    let url: URL;
+    try {
+      url = new URL(location);
+    } catch {
+      return graphError('Redirect location is not a valid URL.');
+    }
+
+    const graphBaseOrigin = new URL(GRAPH_BASE_URL).origin;
+    if (url.origin !== graphBaseOrigin) {
+      return graphError(`Redirect origin '${url.origin}' does not match expected '${graphBaseOrigin}'.`);
+    }
+
+    const response = await fetch(url.toString(), { redirect: 'manual' });
+
+    if (response.status >= 300 && response.status < 400) {
+      return graphError('Download failed: further redirects are not permitted for security reasons');
+    }
 
     if (!response.ok) {
       return graphError(`Failed to download converted file: HTTP ${response.status}`);
