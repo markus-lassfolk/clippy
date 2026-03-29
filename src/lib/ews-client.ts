@@ -68,7 +68,7 @@ export function extractSelfClosingOrBlock(xml: string, tagName: string): string 
 }
 
 function requireNonEmpty(value: string, fieldName: string): string {
-  if (!value || !value.trim()) {
+  if (!value?.trim()) {
     throw new Error(`${fieldName} cannot be empty`);
   }
   return value.trim();
