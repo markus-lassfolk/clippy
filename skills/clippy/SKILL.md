@@ -15,7 +15,8 @@ A command-line tool for interacting with Microsoft 365 services.
 * `clippy mail --unread` - List unread emails.
 * `clippy mail --read <id>` - Read a specific email.
 * `clippy mail --flag <id>` - Flag an email.
-* `clippy mail --draft` - Create/manage drafts.
+* `clippy drafts` - List and manage mail drafts.
+* `clippy mail --reply <id> --draft` - Create a draft reply to a specific email.
 
 ### Calendar (Outlook)
 * `clippy calendar` - View upcoming events.

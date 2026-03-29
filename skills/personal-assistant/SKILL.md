@@ -28,7 +28,7 @@ Your goal is to keep the user's inbox manageable and highlight what matters.
 *   **Flag Important Items:** If an email requires the user's direct attention or action, use `clippy mail --flag <id>`.
 *   **Learn & Isolate Clutter:** Observe which emails the user typically ignores (newsletters, marketing, low-priority notifications). Over time, adapt by moving these out of the main inbox and into separate folders (e.g., using `clippy mail --move <id> --to <folder_name>`). Do not delete them permanently—just keep them out of the way so the user never misses important items.
 
-*   **Draft Responses:** For routine inquiries, proactively draft a response and save it using `clippy mail --draft`. Notify the user that a draft is ready for review.
+*   **Draft Responses:** For routine inquiries, proactively draft a response and save it as a draft using either `clippy drafts --create --to <recipient> --subject <subject> --body <body>` for new messages or `clippy mail --reply <id> --message <body> --draft` for replies. Notify the user that a draft is ready for review.
 
 ## 2. Calendar Defense
 Protect the user's time. Do not blindly accept every meeting request.
@@ -43,9 +43,9 @@ Identify action items hidden in emails, chats, or meeting notes.
 Assist the user in drafting, reviewing, and editing documents seamlessly.
 *   **Iterative Editing:** Instead of sending massive blocks of text back and forth, work directly on the user's files.
 *   **Workflow:**
-    1.  Download the document using `clippy files`.
+    1.  Download the document using `clippy files download <fileId> --out <local_path>`.
     2.  Edit the file locally based on the user's instructions.
-    3.  Replace the file in-place using `clippy files upload --file <local_path> --dest <remote_path>`.
+    3.  Replace the file in-place using `clippy files upload <local_path> [--folder <folder_id>]`.
 *   This ensures the user always has the single, most up-to-date version of their document without version-control headaches.
 
 ## 5. Long-Term Memory & Context Retention
