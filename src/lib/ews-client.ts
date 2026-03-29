@@ -125,9 +125,9 @@ export async function callEws(token: string, envelope: string, mailbox?: string)
     }
     throw err;
   }
-  clearTimeout(timeout);
 
   const xml = await response.text();
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');

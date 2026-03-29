@@ -221,7 +221,6 @@ export async function callGraph<T>(
     }
     throw new GraphApiError(err instanceof Error ? err.message : 'Graph request failed');
   }
-  clearTimeout(timeout);
 
   if (!response.ok) {
     let message = `Graph request failed: HTTP ${response.status}`;
@@ -232,16 +231,21 @@ export async function callGraph<T>(
       code = json.error?.code;
     } catch {
       // Non-JSON error body — throw with HTTP status instead
+      clearTimeout(timeout);
       throw new GraphApiError(message, code, response.status);
     }
+    clearTimeout(timeout);
     throw new GraphApiError(message, code, response.status);
   }
 
   if (!expectJson || response.status === 204) {
+    clearTimeout(timeout);
     return graphResult(undefined as T);
   }
 
-  return graphResult((await response.json()) as T);
+  const result = await response.json();
+  clearTimeout(timeout);
+  return graphResult(result as T);
 }
 
 function buildItemPath(reference?: DriveItemReference): string {
