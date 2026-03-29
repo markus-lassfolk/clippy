@@ -414,8 +414,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   );
 
   // Extract timezone info — EWS returns StartTimeZone/EndTimeZone elements
-  const startTimeZone = extractTag(block, 'StartTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
-  const endTimeZone = extractTag(block, 'EndTimeZone') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const startTimeZone = extractAttribute(block, 'StartTimeZone', 'Id') || extractTag(block, 'TimeZoneId') || 'UTC';
+  const endTimeZone = extractAttribute(block, 'EndTimeZone', 'Id') || extractTag(block, 'TimeZoneId') || 'UTC';
 
   return {
     Id: id,
@@ -832,6 +832,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${attendeesXml}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
           ${isAllDay ? '<t:IsAllDayEvent>true</t:IsAllDayEvent>' : ''}
+          ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}" />` : ''}
+          ${timezone ? `<t:EndTimeZone Id="${xmlEscape(timezone)}" />` : ''}
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
         </t:CalendarItem>
       </m:Items>
@@ -1968,14 +1970,14 @@ function buildEWSTimeZoneXml(): string {
           <t:Bias>${janStdBias}</t:Bias>
           <t:Time>00:00:00</t:Time>
           <t:DayOrder>1</t:DayOrder>
-          <t:Month>1</t:Month>
+          <t:Month>10</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:StandardTime>
         <t:DaylightTime>
           <t:Bias>${julDstBias}</t:Bias>
           <t:Time>00:00:00</t:Time>
           <t:DayOrder>1</t:DayOrder>
-          <t:Month>1</t:Month>
+          <t:Month>3</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:DaylightTime>
       </t:TimeZone>`;
