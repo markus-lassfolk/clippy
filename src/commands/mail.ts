@@ -12,7 +12,8 @@ import {
   moveEmail,
   replyToEmail,
   replyToEmailDraft,
-  updateEmail
+  updateEmail,
+  SENSITIVITY_MAP
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
 
@@ -54,8 +55,12 @@ export const mailCommand = new Command('mail')
   .option('--mark-read <id>', 'Mark email as read (by ID)')
   .option('--mark-unread <id>', 'Mark email as unread (by ID)')
   .option('--flag <id>', 'Flag email (by ID)')
+  .option('--start-date <date>', 'Start date for flag (YYYY-MM-DD)')
+  .option('--due <date>', 'Due date for flag (YYYY-MM-DD)')
   .option('--unflag <id>', 'Remove flag (by ID)')
   .option('--complete <id>', 'Mark flagged email as complete (by ID)')
+  .option('--sensitivity <id>', 'Set sensitivity on email (normal, personal, private, confidential) by ID')
+  .option('--level <level>', 'Sensitivity level (normal, personal, private, confidential)', 'normal')
   .option('--move <id>', 'Move email to folder (use with --to)')
   .option('--to <folder>', 'Destination folder for move (inbox, archive, deleted, junk)')
   .option('--reply <id>', 'Reply to email by ID')
@@ -85,8 +90,12 @@ export const mailCommand = new Command('mail')
         markRead?: string;
         markUnread?: string;
         flag?: string;
+        startDate?: string;
+        due?: string;
         unflag?: string;
         complete?: string;
+        sensitivity?: string;
+        level?: string;
         move?: string;
         to?: string;
         reply?: string;
@@ -348,10 +357,29 @@ export const mailCommand = new Command('mail')
         const id = (options.flag || options.unflag || options.complete)?.trim();
         let flagStatus: 'NotFlagged' | 'Flagged' | 'Complete';
         let actionLabel: string;
+        let startDate: { DateTime: string; TimeZone: string } | undefined;
+        let dueDate: { DateTime: string; TimeZone: string } | undefined;
 
         if (options.flag) {
           flagStatus = 'Flagged';
           actionLabel = 'Flagged';
+
+          if (options.startDate) {
+            const parsedStartDate = new Date(options.startDate);
+            if (Number.isNaN(parsedStartDate.getTime())) {
+              console.error('Error: Invalid start date. Please provide a valid ISO 8601 date/time value.');
+              process.exit(1);
+            }
+            startDate = { DateTime: parsedStartDate.toISOString(), TimeZone: 'UTC' };
+          }
+          if (options.due) {
+            const parsedDueDate = new Date(options.due);
+            if (Number.isNaN(parsedDueDate.getTime())) {
+              console.error('Error: Invalid due date. Please provide a valid ISO 8601 date/time value.');
+              process.exit(1);
+            }
+            dueDate = { DateTime: parsedDueDate.toISOString(), TimeZone: 'UTC' };
+          }
         } else if (options.complete) {
           flagStatus = 'Complete';
           actionLabel = 'Marked complete';
@@ -365,7 +393,7 @@ export const mailCommand = new Command('mail')
           process.exit(1);
         }
         const result = await updateEmail(authResult.token!, id, {
-          Flag: { FlagStatus: flagStatus }
+          Flag: { FlagStatus: flagStatus, StartDate: startDate, DueDate: dueDate }
         });
 
         if (!result.ok) {
@@ -374,6 +402,29 @@ export const mailCommand = new Command('mail')
         }
 
         console.log(`\u2713 ${actionLabel}: ${id}`);
+        return;
+      }
+
+      // Handle sensitivity
+      if (options.sensitivity) {
+        const id = options.sensitivity.trim();
+        const sensitivity = SENSITIVITY_MAP[(options.level || 'normal').toLowerCase()];
+
+        if (!sensitivity) {
+          console.error(`Invalid sensitivity level: ${options.level}`);
+          process.exit(1);
+        }
+
+        const result = await updateEmail(authResult.token!, id, {
+          Sensitivity: sensitivity
+        });
+
+        if (!result.ok) {
+          console.error(`Error: ${result.error?.message || 'Failed to update email sensitivity'}`);
+          process.exit(1);
+        }
+
+        console.log(`\u2713 Sensitivity set to ${sensitivity}: ${id}`);
         return;
       }
 
