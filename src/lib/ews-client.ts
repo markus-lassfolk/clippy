@@ -177,6 +177,13 @@ export interface CalendarAttendee {
   };
 }
 
+export const SENSITIVITY_MAP: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
+  normal: 'Normal',
+  personal: 'Personal',
+  private: 'Private',
+  confidential: 'Confidential'
+};
+
 export interface CalendarEvent {
   Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   Id: string;
@@ -1010,7 +1017,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
       recurrence,
       isAllDay,
       mailbox,
-      timezone
+      timezone,
+      sensitivity
     } = options;
 
     let attendeesXml = '';
@@ -1056,7 +1064,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
       <m:Items>
         <t:CalendarItem>
           <t:Subject>${xmlEscape(subject)}</t:Subject>
-          ${options.sensitivity ? `<t:Sensitivity>${xmlEscape(options.sensitivity)}</t:Sensitivity>` : ''}
+          ${sensitivity ? `<t:Sensitivity>${xmlEscape(sensitivity)}</t:Sensitivity>` : ''}
           ${body ? `<t:Body BodyType="Text">${xmlEscape(body)}</t:Body>` : ''}
           <t:Start>${xmlEscape(start)}</t:Start>
           <t:End>${xmlEscape(end)}</t:End>

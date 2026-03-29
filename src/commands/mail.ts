@@ -12,7 +12,8 @@ import {
   moveEmail,
   replyToEmail,
   replyToEmailDraft,
-  updateEmail
+  updateEmail,
+  SENSITIVITY_MAP
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
 
@@ -407,13 +408,7 @@ export const mailCommand = new Command('mail')
       // Handle sensitivity
       if (options.sensitivity) {
         const id = options.sensitivity.trim();
-        const levelMap: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
-          normal: 'Normal',
-          personal: 'Personal',
-          private: 'Private',
-          confidential: 'Confidential'
-        };
-        const sensitivity = levelMap[(options.level || 'normal').toLowerCase()];
+        const sensitivity = SENSITIVITY_MAP[(options.level || 'normal').toLowerCase()];
 
         if (!sensitivity) {
           console.error(`Invalid sensitivity level: ${options.level}`);

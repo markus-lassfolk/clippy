@@ -8,7 +8,8 @@ import {
   type Recurrence,
   type RecurrencePattern,
   type RecurrenceRange,
-  searchRooms
+  searchRooms,
+  SENSITIVITY_MAP
 } from '../lib/ews-client.js';
 
 function formatTime(dateStr: string): string {
@@ -339,13 +340,7 @@ export const createEventCommand = new Command('create-event')
         recurrence = { Pattern: pattern, Range: range };
       }
 
-      const sensitivityMap: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
-        normal: 'Normal',
-        personal: 'Personal',
-        private: 'Private',
-        confidential: 'Confidential'
-      };
-      const sensitivity = options.sensitivity ? sensitivityMap[options.sensitivity.toLowerCase()] : undefined;
+      const sensitivity = options.sensitivity ? SENSITIVITY_MAP[options.sensitivity.toLowerCase()] : undefined;
 
       if (options.sensitivity && !sensitivity) {
         console.error(`Invalid sensitivity: ${options.sensitivity}`);

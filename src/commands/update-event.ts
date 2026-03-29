@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay, parseTimeToDate, toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
-import { getCalendarEvents, getRooms, searchRooms, updateEvent } from '../lib/ews-client.js';
+import { getCalendarEvents, getRooms, searchRooms, updateEvent, SENSITIVITY_MAP } from '../lib/ews-client.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -352,13 +352,7 @@ export const updateEventCommand = new Command('update-event')
       }
 
       if (options.sensitivity) {
-        const sensitivityMap: Record<string, 'Normal' | 'Personal' | 'Private' | 'Confidential'> = {
-          normal: 'Normal',
-          personal: 'Personal',
-          private: 'Private',
-          confidential: 'Confidential'
-        };
-        const sensitivity = sensitivityMap[options.sensitivity.toLowerCase()];
+        const sensitivity = SENSITIVITY_MAP[options.sensitivity.toLowerCase()];
         if (!sensitivity) {
           console.error(`Invalid sensitivity: ${options.sensitivity}`);
           process.exit(1);
