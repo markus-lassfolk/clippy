@@ -808,3 +808,105 @@ export async function cleanupDownloadedFile(path: string): Promise<void> {
     // Ignore cleanup failures
   }
 }
+
+export interface FileAnalytics {
+  allTime?: {
+    access?: { actionCount?: number; actorCount?: number };
+  };
+  lastSevenDays?: {
+    access?: { actionCount?: number; actorCount?: number };
+  };
+}
+
+export async function getFileAnalytics(token: string, itemId: string): Promise<GraphResponse<FileAnalytics>> {
+  const [allTimeResult, lastSevenDaysResult] = await Promise.allSettled([
+    callGraph<{ allTime?: FileAnalytics['allTime'] }>(
+      token,
+      `/me/drive/items/${encodeURIComponent(itemId)}/analytics/allTime`
+    ),
+    callGraph<{ lastSevenDays?: FileAnalytics['lastSevenDays'] }>(
+      token,
+      `/me/drive/items/${encodeURIComponent(itemId)}/analytics/lastSevenDays`
+    )
+  ]);
+
+  const analytics: FileAnalytics = {};
+
+  if (allTimeResult.status === 'fulfilled' && allTimeResult.value.ok && allTimeResult.value.data?.allTime) {
+    analytics.allTime = allTimeResult.value.data.allTime;
+  }
+
+  if (
+    lastSevenDaysResult.status === 'fulfilled' &&
+    lastSevenDaysResult.value.ok &&
+    lastSevenDaysResult.value.data?.lastSevenDays
+  ) {
+    analytics.lastSevenDays = lastSevenDaysResult.value.data.lastSevenDays;
+  }
+
+  if (allTimeResult.status === 'rejected' && lastSevenDaysResult.status === 'rejected') {
+    const error = allTimeResult.reason;
+    if (error instanceof GraphApiError) {
+      return graphError(error.message, error.code, error.status);
+    }
+    return graphError(error instanceof Error ? error.message : 'Failed to get file analytics');
+  }
+
+  return graphResult(analytics);
+}
+
+export async function downloadConvertedFile(
+  token: string,
+  itemId: string,
+  format: string = 'pdf',
+  outputPath?: string
+): Promise<GraphResponse<{ path: string }>> {
+  let tmpPath: string | undefined;
+  try {
+    const metadata = await getFileMetadata(token, itemId);
+    if (!metadata.ok || !metadata.data) {
+      return graphError(
+        metadata.error?.message || 'Failed to fetch file metadata',
+        metadata.error?.code,
+        metadata.error?.status
+      );
+    }
+
+    const item = metadata.data;
+    const originalName = item.name || itemId;
+    const newName = originalName.includes('.')
+      ? originalName.substring(0, originalName.lastIndexOf('.')) + `.${format}`
+      : `${originalName}.${format}`;
+
+    const targetPath = resolve(outputPath || defaultDownloadPath(newName));
+    await mkdir(dirname(targetPath), { recursive: true });
+
+    const path = `/me/drive/items/${encodeURIComponent(itemId)}/content?format=${encodeURIComponent(format)}`;
+
+    const response = await fetchGraphRaw(token, path, { redirect: 'follow' });
+
+    if (!response.ok) {
+      return graphError(`Failed to download converted file: HTTP ${response.status}`);
+    }
+    if (!response.body) {
+      return graphError('Response body is empty');
+    }
+
+    const tmpFileName = `.${newName}.${randomBytes(8).toString('hex')}.tmp`;
+    tmpPath = resolve(dirname(targetPath), 'tmp', tmpFileName);
+    await mkdir(dirname(tmpPath), { recursive: true });
+
+    await streamWebToFile(response.body, tmpPath);
+    await rename(tmpPath, targetPath);
+
+    return graphResult({ path: targetPath });
+  } catch (err) {
+    if (tmpPath) {
+      await unlink(tmpPath).catch(() => {});
+    }
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to download converted file');
+  }
+}
