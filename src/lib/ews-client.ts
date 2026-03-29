@@ -1078,7 +1078,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
       includeChangeKey: boolean
     ): string => {
       const itemIdXml = occurrenceItemId
-        ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
+        ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}"${includeChangeKey && changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`
         : `<t:ItemId Id="${xmlEscape(eventId)}"${includeChangeKey && changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`;
 
       return soapEnvelope(`
@@ -1157,17 +1157,8 @@ export async function deleteEvent(options: DeleteEventOptions): Promise<OwaRespo
       try {
         await callEws(token, cancelEnvelope, mailbox);
         return { ok: true, status: 200 };
-      } catch (primaryErr) {
+      } catch {
         // Fallback to DeleteItem if CancelCalendarItem fails
-        const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-        return {
-          ok: false,
-          status: 0,
-          error: {
-            code: 'EWS_CANCEL_FAILED',
-            message: `Cancellation with message failed: ${primaryMsg}`
-          }
-        };
       }
     }
 
