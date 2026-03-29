@@ -2066,8 +2066,15 @@ export async function areRoomsFree(
 
   if (roomEmails.length === 0) return result;
 
-  try {
-    const envelope = soapEnvelope(`
+  const BATCH_SIZE = 100;
+  const batches: string[][] = [];
+  for (let i = 0; i < roomEmails.length; i += BATCH_SIZE) {
+    batches.push(roomEmails.slice(i, i + BATCH_SIZE));
+  }
+
+  for (const batch of batches) {
+    try {
+      const envelope = soapEnvelope(`
     <m:GetUserAvailabilityRequest>
       <t:TimeZone>
         <t:Bias>-60</t:Bias>
@@ -2087,7 +2094,7 @@ export async function areRoomsFree(
         </t:DaylightTime>
       </t:TimeZone>
       <m:MailboxDataArray>
-        ${roomEmails
+        ${batch
           .map(
             (email) => `
         <t:MailboxData>
@@ -2107,69 +2114,70 @@ export async function areRoomsFree(
       </t:FreeBusyViewOptions>
     </m:GetUserAvailabilityRequest>`);
 
-    const response = await fetch(EWS_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'text/xml; charset=utf-8',
-        Accept: 'text/xml',
-        'X-AnchorMailbox': EWS_USERNAME
-      },
-      body: envelope
-    });
+      const response = await fetch(EWS_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'text/xml; charset=utf-8',
+          Accept: 'text/xml',
+          'X-AnchorMailbox': EWS_USERNAME
+        },
+        body: envelope
+      });
 
-    const xml = await response.text();
+      const xml = await response.text();
 
-    if (!response.ok) {
-      const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');
-      throw new Error(`EWS HTTP ${response.status}${soapError ? `: ${soapError}` : ''}`);
-    }
-
-    // Parse FreeBusyResponse blocks to correlate mailboxes with their events
-    const freeBusyResponses = extractBlocks(xml, 'FreeBusyResponse');
-    const reqStart = new Date(startDateTime).getTime();
-    const reqEnd = new Date(endDateTime).getTime();
-
-    for (let i = 0; i < freeBusyResponses.length; i++) {
-      const resp = freeBusyResponses[i];
-      const email = roomEmails[i];
-
-      // Check for per-room errors (e.g., ErrorMailRecipientNotFound)
-      const responseClass = extractAttribute(resp, 'ResponseMessage', 'ResponseClass');
-      const responseCode = extractTag(resp, 'ResponseCode');
-      if (responseClass && responseClass !== 'Success') {
-        // Room errored - mark as not free (conservative)
-        result.set(email, false);
-        continue;
-      }
-      if (responseCode && responseCode !== 'NoError') {
-        // Room errored - mark as not free (conservative)
-        result.set(email, false);
-        continue;
+      if (!response.ok) {
+        const soapError = extractTag(xml, 'faultstring') || extractTag(xml, 'MessageText');
+        throw new Error(`EWS HTTP ${response.status}${soapError ? `: ${soapError}` : ''}`);
       }
 
-      const calendarEvents = extractBlocks(resp, 'CalendarEvent');
+      // Parse FreeBusyResponse blocks to correlate mailboxes with their events
+      const freeBusyResponses = extractBlocks(xml, 'FreeBusyResponse');
+      const reqStart = new Date(startDateTime).getTime();
+      const reqEnd = new Date(endDateTime).getTime();
 
-      let isFree = true;
-      for (const event of calendarEvents) {
-        const busyType = extractTag(event, 'BusyType');
-        if (busyType === 'Free') continue;
+      for (let i = 0; i < freeBusyResponses.length; i++) {
+        const resp = freeBusyResponses[i];
+        const email = batch[i];
 
-        const evStart = new Date(extractTag(event, 'StartTime') || '').getTime();
-        const evEnd = new Date(extractTag(event, 'EndTime') || '').getTime();
-
-        if (evStart < reqEnd && evEnd > reqStart) {
-          isFree = false;
-          break;
+        // Check for per-room errors (e.g., ErrorMailRecipientNotFound)
+        const responseClass = extractAttribute(resp, 'ResponseMessage', 'ResponseClass');
+        const responseCode = extractTag(resp, 'ResponseCode');
+        if (responseClass && responseClass !== 'Success') {
+          // Room errored - mark as not free (conservative)
+          result.set(email, false);
+          continue;
         }
-      }
+        if (responseCode && responseCode !== 'NoError') {
+          // Room errored - mark as not free (conservative)
+          result.set(email, false);
+          continue;
+        }
 
-      result.set(email, isFree);
-    }
-  } catch {
-    // On error, mark all rooms as not-free (conservative)
-    for (const email of roomEmails) {
-      result.set(email, false);
+        const calendarEvents = extractBlocks(resp, 'CalendarEvent');
+
+        let isFree = true;
+        for (const event of calendarEvents) {
+          const busyType = extractTag(event, 'BusyType');
+          if (busyType === 'Free') continue;
+
+          const evStart = new Date(extractTag(event, 'StartTime') || '').getTime();
+          const evEnd = new Date(extractTag(event, 'EndTime') || '').getTime();
+
+          if (evStart < reqEnd && evEnd > reqStart) {
+            isFree = false;
+            break;
+          }
+        }
+
+        result.set(email, isFree);
+      }
+    } catch {
+      // On error, mark all rooms in this batch as not-free (conservative)
+      for (const email of batch) {
+        result.set(email, false);
+      }
     }
   }
 
