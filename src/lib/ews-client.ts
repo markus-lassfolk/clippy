@@ -1968,15 +1968,15 @@ function buildEWSTimeZoneXml(): string {
         <t:Bias>${offsetMinutes}</t:Bias>
         <t:StandardTime>
           <t:Bias>${janStdBias}</t:Bias>
-          <t:Time>00:00:00</t:Time>
-          <t:DayOrder>1</t:DayOrder>
+          <t:Time>03:00:00</t:Time>
+          <t:DayOrder>5</t:DayOrder>
           <t:Month>10</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:StandardTime>
         <t:DaylightTime>
           <t:Bias>${julDstBias}</t:Bias>
-          <t:Time>00:00:00</t:Time>
-          <t:DayOrder>1</t:DayOrder>
+          <t:Time>02:00:00</t:Time>
+          <t:DayOrder>5</t:DayOrder>
           <t:Month>3</t:Month>
           <t:DayOfWeek>Sunday</t:DayOfWeek>
         </t:DaylightTime>
