@@ -121,7 +121,7 @@ export const createEventCommand = new Command('create-event')
       }
 
       // Parse date and times
-      const baseDate = parseDay(options.day);
+      const baseDate = parseDay(options.day, { throwOnInvalid: true });
       const start = parseTimeToDate(startTime, baseDate);
       const end = parseTimeToDate(endTime, baseDate);
 

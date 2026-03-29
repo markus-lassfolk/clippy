@@ -11,21 +11,34 @@ export function parseTimeToDate(timeStr: string, baseDate: Date = new Date()): D
 
   const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
   if (timeMatch) {
-    result.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    if (hours < 0 || hours > 23) {
+      throw new Error(`Invalid time value: '${timeStr}' — hour must be between 0 and 23.`);
+    }
+    if (minutes < 0 || minutes > 59) {
+      throw new Error(`Invalid time value: '${timeStr}' — minute must be between 0 and 59.`);
+    }
+    result.setHours(hours, minutes, 0, 0);
     return result;
   }
 
   const hourMatch = timeStr.match(/^(\d{1,2})(am|pm)?$/i);
   if (hourMatch) {
-    let hour = parseInt(hourMatch[1], 10);
-    const isPM = hourMatch[2]?.toLowerCase() === 'pm';
-    if (isPM && hour < 12) hour += 12;
-    if (!isPM && hour === 12) hour = 0;
-    result.setHours(hour, 0, 0, 0);
+    const hourStr = hourMatch[1];
+    const period = hourMatch[2]?.toLowerCase();
+    const hourNum = parseInt(hourStr, 10);
+    if (hourNum < 1 || hourNum > 12) {
+      throw new Error(`Invalid time value: '${timeStr}' — hour must be between 1 and 12.`);
+    }
+    let hours = hourNum;
+    if (period === 'pm' && hourNum < 12) hours += 12;
+    if (period === 'am' && hourNum === 12) hours = 0;
+    result.setHours(hours, 0, 0, 0);
     return result;
   }
 
-  return result;
+  throw new Error(`Invalid time value: '${timeStr}' — expected HH:MM, H:MM, or H(am/pm) format.`);
 }
 
 export function toUTCISOString(date: Date): string {
