@@ -6,12 +6,23 @@ export interface ParseDayOptions {
   throwOnInvalid?: boolean;
 }
 
-export function parseTimeToDate(timeStr: string, baseDate: Date = new Date()): Date {
+export interface ParseTimeOptions {
+  throwOnInvalid?: boolean;
+}
+
+export function parseTimeToDate(timeStr: string, baseDate: Date = new Date(), options: ParseTimeOptions = {}): Date {
+  const { throwOnInvalid = true } = options;
   const result = new Date(baseDate);
 
   const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
   if (timeMatch) {
-    result.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+    const hours = parseInt(timeMatch[1], 10);
+    const mins = parseInt(timeMatch[2], 10);
+    if (hours > 23 || mins > 59) {
+      if (throwOnInvalid) throw new Error(`Invalid time value: ${timeStr}`);
+      return result;
+    }
+    result.setHours(hours, mins, 0, 0);
     return result;
   }
 
@@ -19,12 +30,19 @@ export function parseTimeToDate(timeStr: string, baseDate: Date = new Date()): D
   if (hourMatch) {
     let hour = parseInt(hourMatch[1], 10);
     const isPM = hourMatch[2]?.toLowerCase() === 'pm';
+
+    if (hour > 23 || (hourMatch[2] && (hour > 12 || hour === 0))) {
+      if (throwOnInvalid) throw new Error(`Invalid time value: ${timeStr}`);
+      return result;
+    }
+
     if (isPM && hour < 12) hour += 12;
     if (!isPM && hour === 12) hour = 0;
     result.setHours(hour, 0, 0, 0);
     return result;
   }
 
+  if (throwOnInvalid) throw new Error(`Invalid time format: ${timeStr}`);
   return result;
 }
 

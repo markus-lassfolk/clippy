@@ -19,9 +19,23 @@ export const counterCommand = new Command('counter')
     }
 
     // Parse dates and times
-    const baseDate = parseDay(options.day);
-    const start = parseTimeToDate(startTime, baseDate);
-    const end = parseTimeToDate(endTime, baseDate);
+    let baseDate: Date;
+    let start: Date;
+    let end: Date;
+
+    try {
+      baseDate = parseDay(options.day, { throwOnInvalid: true });
+      start = parseTimeToDate(startTime, baseDate);
+      end = parseTimeToDate(endTime, baseDate);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid date/time value';
+      if (options.json) {
+        console.log(JSON.stringify({ error: message }, null, 2));
+      } else {
+        console.error(`Error: ${message}`);
+      }
+      process.exit(1);
+    }
 
     // The Graph API expects times with the time zone context. For simplicity, we can pass
     // the ISO 8601 string and UTC as the time zone.

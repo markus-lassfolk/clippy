@@ -63,7 +63,18 @@ export const deleteEventCommand = new Command('delete-event')
       }
 
       // Get events for the day
-      const baseDate = parseDay(options.day);
+      let baseDate: Date;
+      try {
+        baseDate = parseDay(options.day, { throwOnInvalid: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Invalid day value';
+        if (options.json) {
+          console.log(JSON.stringify({ error: message }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(1);
+      }
       const startOfDay = new Date(baseDate);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(baseDate);
@@ -178,7 +189,18 @@ export const deleteEventCommand = new Command('delete-event')
         // Find the occurrence by index or date, ensuring it matches the provided event ID
         if (options.instance) {
           // Find occurrence matching the specific date and event ID
-          const instanceDate = parseDay(options.instance);
+          let instanceDate: Date;
+          try {
+            instanceDate = parseDay(options.instance, { throwOnInvalid: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Invalid day value';
+            if (options.json) {
+              console.log(JSON.stringify({ error: message }, null, 2));
+            } else {
+              console.error(`Error: ${message}`);
+            }
+            process.exit(1);
+          }
           instanceDate.setHours(0, 0, 0, 0);
           const occEvent = events.find((e) => {
             const eventDate = new Date(e.Start.DateTime);
