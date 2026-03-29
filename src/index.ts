@@ -27,6 +27,7 @@ export type {
   CreatedEvent,
   CreateEventOptions,
   EmailAttachment,
+  EmailFilter,
   EmailListResponse,
   EmailMessage,
   FreeBusySlot,
