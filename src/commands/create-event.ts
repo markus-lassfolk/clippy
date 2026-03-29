@@ -307,15 +307,15 @@ export const createEventCommand = new Command('create-event')
       const result = await createEvent({
         token: authResult.token!,
         subject: title,
-        start: options.timezone ? toNaiveISOString(start) : toUTCISOString(start),
-        end: options.timezone ? toNaiveISOString(end) : toUTCISOString(end),
+        start: options.timezone || options.allDay ? toNaiveISOString(start) : toUTCISOString(start),
+        end: options.timezone || options.allDay ? toNaiveISOString(end) : toUTCISOString(end),
         body: options.description,
         location: roomName,
         attendees: attendees.length > 0 ? attendees : undefined,
         isOnlineMeeting: options.teams,
         isAllDay: options.allDay,
-        startTimeZone: options.timezone,
-        endTimeZone: options.timezone,
+        startTimeZone: options.timezone || (options.allDay ? 'UTC' : undefined),
+        endTimeZone: options.timezone || (options.allDay ? 'UTC' : undefined),
         recurrence,
         mailbox: options.mailbox
       });
