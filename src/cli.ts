@@ -24,6 +24,7 @@ import { subscribeCommand } from './commands/subscribe.js';
 import { subscriptionsCommand } from './commands/subscriptions.js';
 import { suggestCommand } from './commands/suggest.js';
 import { todoCommand } from './commands/todo.js';
+import { sharepointCommand } from "./commands/sharepoint.js";
 import { updateEventCommand } from './commands/update-event.js';
 import { whoamiCommand } from './commands/whoami.js';
 
@@ -57,5 +58,6 @@ program.addCommand(oofCommand);
 program.addCommand(rulesCommand);
 program.addCommand(delegatesCommand);
 program.addCommand(todoCommand);
+program.addCommand(sharepointCommand);
 
 program.parse();
