@@ -80,10 +80,14 @@ try {
     }
 
     Write-Host ""
+    Write-Host "App Name: $AppName"
+    Write-Host "Direct Link: https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/$AppId/isMSAApp~/false"
+    Write-Host "(Note: It may take 1-3 minutes for a newly created app to fully propagate and appear in the Azure Portal)"
+    Write-Host ""
     Write-Host "Next steps:"
     Write-Host "1. Go to the Azure Portal (https://entra.microsoft.com/) to grant admin consent"
     Write-Host "   for the scopes if required by your tenant."
-    Write-Host "2. Run 'clippy login' to start the interactive login flow and get the"
+    Write-Host "2. Run 'm365-agent-cli login' to start the interactive login flow and get the"
     Write-Host "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
     Write-Host "=================================================================================="
 } catch {

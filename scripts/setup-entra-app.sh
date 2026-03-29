@@ -80,9 +80,13 @@ else
 fi
 
 echo ""
+echo "App Name: $APP_NAME"
+echo "Direct Link: https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/$APP_ID/isMSAApp~/false"
+echo "(Note: It may take 1-3 minutes for a newly created app to fully propagate and appear in the Azure Portal)"
+echo ""
 echo "Next steps:"
 echo "1. Go to the Azure Portal (https://entra.microsoft.com/) to grant admin consent"
 echo "   for the scopes if required by your tenant."
-echo "2. Run 'clippy login' to start the interactive login flow and get the"
+echo "2. Run 'm365-agent-cli login' to start the interactive login flow and get the"
 echo "   refresh tokens to store in GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN."
 echo "=================================================================================="
