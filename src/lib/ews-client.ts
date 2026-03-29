@@ -173,6 +173,15 @@ export interface CalendarEvent {
   IsOnlineMeeting?: boolean;
   OnlineMeetingUrl?: string;
   WebLink?: string;
+  FirstOccurrence?: { Start: { DateTime: string; TimeZone: string }; End: { DateTime: string; TimeZone: string } };
+  LastOccurrence?: { Start: { DateTime: string; TimeZone: string }; End: { DateTime: string; TimeZone: string } };
+  ModifiedOccurrences?: Array<{
+    OriginalItemId: string;
+    Start: { DateTime: string; TimeZone: string };
+    End: { DateTime: string; TimeZone: string };
+    Subject?: string;
+  }>;
+  DeletedOccurrences?: Array<{ Start: { DateTime: string; TimeZone: string } }>;
 }
 
 export interface RecurrencePattern {
@@ -417,6 +426,65 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     (b) => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, ''))
   );
 
+  // Recurring event info
+  const firstOccBlock = extractSelfClosingOrBlock(block, 'FirstOccurrence');
+  const firstOccStart = extractTag(firstOccBlock, 'Start');
+  const firstOccEnd = extractTag(firstOccBlock, 'End');
+  const firstOccStartTz = extractTag(firstOccBlock, 'StartTimeZone') || 'UTC';
+  const firstOccEndTz = extractTag(firstOccBlock, 'EndTimeZone') || 'UTC';
+  const FirstOccurrence =
+    firstOccStart && firstOccEnd
+      ? {
+          Start: { DateTime: firstOccStart, TimeZone: firstOccStartTz },
+          End: { DateTime: firstOccEnd, TimeZone: firstOccEndTz }
+        }
+      : undefined;
+
+  const lastOccBlock = extractSelfClosingOrBlock(block, 'LastOccurrence');
+  const lastOccStart = extractTag(lastOccBlock, 'Start');
+  const lastOccEnd = extractTag(lastOccBlock, 'End');
+  const lastOccStartTz = extractTag(lastOccBlock, 'StartTimeZone') || 'UTC';
+  const lastOccEndTz = extractTag(lastOccBlock, 'EndTimeZone') || 'UTC';
+  const LastOccurrence =
+    lastOccStart && lastOccEnd
+      ? {
+          Start: { DateTime: lastOccStart, TimeZone: lastOccStartTz },
+          End: { DateTime: lastOccEnd, TimeZone: lastOccEndTz }
+        }
+      : undefined;
+
+  const modifiedOccsBlock = extractSelfClosingOrBlock(block, 'ModifiedOccurrences');
+  const modifiedOccBlocks = extractBlocks(modifiedOccsBlock, 'Occurrence');
+  const ModifiedOccurrences =
+    modifiedOccBlocks.length > 0
+      ? modifiedOccBlocks.map((occ) => {
+          const occStart = extractTag(occ, 'Start');
+          const occEnd = extractTag(occ, 'End');
+          const occStartTz = extractTag(occ, 'StartTimeZone') || 'UTC';
+          const occEndTz = extractTag(occ, 'EndTimeZone') || 'UTC';
+          const occOrigId = extractAttribute(occ, 'OriginalItemId', 'Id') || '';
+          return {
+            OriginalItemId: occOrigId,
+            Start: { DateTime: occStart || '', TimeZone: occStartTz },
+            End: { DateTime: occEnd || '', TimeZone: occEndTz },
+            Subject: extractTag(occ, 'Subject')
+          };
+        })
+      : undefined;
+
+  const deletedOccsBlock = extractSelfClosingOrBlock(block, 'DeletedOccurrences');
+  const deletedOccBlocks = extractBlocks(deletedOccsBlock, 'DeletedOccurrence');
+  const DeletedOccurrences =
+    deletedOccBlocks.length > 0
+      ? deletedOccBlocks.map((occ) => {
+          const occStart = extractTag(occ, 'Start');
+          const occStartTz = extractTag(occ, 'StartTimeZone') || 'UTC';
+          return {
+            Start: { DateTime: occStart || '', TimeZone: occStartTz }
+          };
+        })
+      : undefined;
+
   return {
     Id: id,
     ChangeKey: changeKey,
@@ -432,7 +500,11 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     BodyPreview: bodyPreview ? bodyPreview.substring(0, 200).replace(/\s+/g, ' ').trim() : undefined,
     Categories: categories.length > 0 ? categories : undefined,
     ShowAs: showAs,
-    Importance: importance
+    Importance: importance,
+    FirstOccurrence,
+    LastOccurrence,
+    ModifiedOccurrences,
+    DeletedOccurrences
   };
 }
 
@@ -617,6 +689,10 @@ export async function getCalendarEvents(
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:StartTimeZone" />
           <t:FieldURI FieldURI="calendar:EndTimeZone" />
+          <t:FieldURI FieldURI="calendar:FirstOccurrence" />
+          <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:CalendarView StartDate="${xmlEscape(startDateTime)}" EndDate="${xmlEscape(endDateTime)}" />
@@ -660,6 +736,10 @@ export async function getCalendarEvent(
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:StartTimeZone" />
           <t:FieldURI FieldURI="calendar:EndTimeZone" />
+          <t:FieldURI FieldURI="calendar:FirstOccurrence" />
+          <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
