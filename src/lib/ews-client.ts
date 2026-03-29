@@ -1752,6 +1752,8 @@ export async function getAttachments(token: string, messageId: string): Promise<
   }
 }
 
+// Note: messageId is intentionally unused. EWS AttachmentId values are globally
+// unique within the mailbox — no parent message reference needed.
 export async function getAttachment(
   token: string,
   _messageId: string,
