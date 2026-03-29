@@ -2264,12 +2264,12 @@ export async function getScheduleViaOutlook(
     }
 
     const suggestStartD = new Date(startDateTime);
-    suggestStartD.setHours(0, 0, 0, 0);
+    suggestStartD.setUTCHours(0, 0, 0, 0);
     const suggestEndD = new Date(endDateTime);
-    suggestEndD.setHours(0, 0, 0, 0);
-    suggestEndD.setDate(suggestEndD.getDate() + 1);
+    suggestEndD.setUTCHours(0, 0, 0, 0);
+    suggestEndD.setUTCDate(suggestEndD.getUTCDate() + 1);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const toMidnight = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00`;
+    const toMidnight = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T00:00:00`;
     const suggestStart = toMidnight(suggestStartD);
     const suggestEnd = toMidnight(suggestEndD);
 
