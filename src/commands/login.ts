@@ -119,36 +119,32 @@ export const loginCommand = new Command('login')
 
     const tenant = getMicrosoftTenantPathSegment();
 
-    const ewsScope = 'offline_access https://outlook.office365.com/EWS.AccessAsUser.All';
-    const ewsRefreshToken = await performDeviceCodeFlow(clientId, tenant, ewsScope, 'EWS');
-
+    // Use a single Graph Device Code flow to obtain a multi-resource refresh token
     const graphScope =
       'offline_access User.Read Calendars.ReadWrite Mail.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All Tasks.ReadWrite Group.ReadWrite.All';
-    const graphRefreshToken = await performDeviceCodeFlow(clientId, tenant, graphScope, 'Microsoft Graph');
+    const refreshToken = await performDeviceCodeFlow(clientId, tenant, graphScope, 'Microsoft 365');
 
-    // Read the current .env content to update/append the refresh tokens
+    // Save tokens immediately
     if (existsSync(envPath)) {
       envContent = await readFile(envPath, 'utf8');
     }
 
     // Update or append EWS_REFRESH_TOKEN
     if (/^EWS_REFRESH_TOKEN=.*$/m.test(envContent)) {
-      envContent = envContent.replace(/^EWS_REFRESH_TOKEN=.*$/m, `EWS_REFRESH_TOKEN=${ewsRefreshToken}`);
+      envContent = envContent.replace(/^EWS_REFRESH_TOKEN=.*$/m, () => `EWS_REFRESH_TOKEN=${refreshToken}`);
     } else {
-      envContent += `\nEWS_REFRESH_TOKEN=${ewsRefreshToken}\n`;
+      envContent += `\nEWS_REFRESH_TOKEN=${refreshToken}\n`;
     }
 
     // Update or append GRAPH_REFRESH_TOKEN
     if (/^GRAPH_REFRESH_TOKEN=.*$/m.test(envContent)) {
-      envContent = envContent.replace(/^GRAPH_REFRESH_TOKEN=.*$/m, `GRAPH_REFRESH_TOKEN=${graphRefreshToken}`);
+      envContent = envContent.replace(/^GRAPH_REFRESH_TOKEN=.*$/m, () => `GRAPH_REFRESH_TOKEN=${refreshToken}`);
     } else {
-      envContent += `\nGRAPH_REFRESH_TOKEN=${graphRefreshToken}\n`;
+      envContent += `\nGRAPH_REFRESH_TOKEN=${refreshToken}\n`;
     }
 
-    // Clean up multiple newlines if any
     envContent = envContent.replace(/\n{3,}/g, '\n\n');
-
     await writeFile(envPath, `${envContent.trim()}\n`, { encoding: 'utf8', mode: 0o600 });
 
-    console.log('Saved EWS_REFRESH_TOKEN and GRAPH_REFRESH_TOKEN to .env file in the current directory.');
+    console.log('Saved GRAPH_REFRESH_TOKEN and EWS_REFRESH_TOKEN to .env file in the current directory.');
   });
