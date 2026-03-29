@@ -1102,6 +1102,7 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
         <t:AdditionalProperties>
           <t:FieldURI FieldURI="item:Subject" />
           <t:FieldURI FieldURI="item:DateTimeReceived" />
+          <t:FieldURI FieldURI="item:DateTimeSent" />
           <t:FieldURI FieldURI="item:HasAttachments" />
           <t:FieldURI FieldURI="item:Importance" />
           <t:FieldURI FieldURI="item:Preview" />
@@ -1148,6 +1149,7 @@ export async function getEmail(token: string, messageId: string): Promise<OwaRes
         <t:AdditionalProperties>
           <t:FieldURI FieldURI="item:Body" />
           <t:FieldURI FieldURI="item:DateTimeReceived" />
+          <t:FieldURI FieldURI="item:DateTimeSent" />
           <t:FieldURI FieldURI="item:HasAttachments" />
           <t:FieldURI FieldURI="message:From" />
           <t:FieldURI FieldURI="message:ToRecipients" />
