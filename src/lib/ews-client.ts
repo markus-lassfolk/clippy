@@ -391,6 +391,8 @@ function parseRecurrenceFromBlock(block: string): {
   description?: string;
   firstOccurrence?: { Start: string; End: string; Id?: string };
   lastOccurrence?: { Start: string; End: string; Id?: string };
+  modifiedOccurrences?: Array<{ ItemId: string; Start: string; End: string; OriginalStart: string }>;
+  deletedOccurrences?: Array<{ Start: string }>;
 } {
   // Check if this item has any recurrence info
   const recurrenceBlock = extractSelfClosingOrBlock(block, 'Recurrence');
@@ -630,8 +632,8 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     RecurrenceDescription: recurrenceInfo.description,
     FirstOccurrence: recurrenceInfo.firstOccurrence,
     LastOccurrence: recurrenceInfo.lastOccurrence,
-    ModifiedOccurrences: modifiedOccurrences && modifiedOccurrences.length > 0 ? modifiedOccurrences : undefined,
-    DeletedOccurrences: deletedOccurrences && deletedOccurrences.length > 0 ? deletedOccurrences : undefined
+    ModifiedOccurrences: recurrenceInfo.modifiedOccurrences,
+    DeletedOccurrences: recurrenceInfo.deletedOccurrences
   };
 }
 
@@ -815,10 +817,12 @@ export async function getCalendarEvents(
           <t:FieldURI FieldURI="item:Importance" />
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:Recurrence" />
-          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
-          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
+          <t:FieldURI FieldURI="calendar:StartTimeZone" />
+          <t:FieldURI FieldURI="calendar:EndTimeZone" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:CalendarView StartDate="${xmlEscape(startDateTime)}" EndDate="${xmlEscape(endDateTime)}" />
@@ -862,10 +866,12 @@ export async function getCalendarEvent(
           <t:FieldURI FieldURI="item:Importance" />
           <t:FieldURI FieldURI="item:TextBody" />
           <t:FieldURI FieldURI="calendar:Recurrence" />
-          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
-          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:FirstOccurrence" />
           <t:FieldURI FieldURI="calendar:LastOccurrence" />
+          <t:FieldURI FieldURI="calendar:ModifiedOccurrences" />
+          <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
+          <t:FieldURI FieldURI="calendar:StartTimeZone" />
+          <t:FieldURI FieldURI="calendar:EndTimeZone" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
