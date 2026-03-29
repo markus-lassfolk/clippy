@@ -379,6 +379,29 @@ export async function downloadFile(
     return graphError('Download URL missing from Graph metadata response.');
   }
 
+  // Security: validate downloadUrl before fetching to prevent SSRF and token exfiltration
+  let url: URL;
+  try {
+    url = new URL(downloadUrl);
+  } catch {
+    return graphError('Download URL is not a valid URL.');
+  }
+
+  if (url.protocol !== 'https:') {
+    return graphError('Download URL has unsupported scheme. Only HTTPS is permitted.');
+  }
+
+  const allowedHosts = new Set([
+    'onedrive.live.com',
+    'sharepoint.com',
+    'graph.microsoft.com',
+    'www.sharepoint.com',
+    'explorerfiles.wikisp.com'
+  ]);
+  if (!allowedHosts.has(url.hostname)) {
+    return graphError(`Download URL hostname '${url.hostname}' is not in the allowlist.`);
+  }
+
   targetPath = resolve(outputPath || defaultDownloadPath(basename(resolvedItem.name || itemId)));
   await mkdir(dirname(targetPath), { recursive: true });
 
@@ -388,7 +411,7 @@ export async function downloadFile(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(downloadUrl);
+      const response = await fetch(url.toString());
 
       if (!response.ok) {
         // Non-transient HTTP errors: don't retry
