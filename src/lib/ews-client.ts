@@ -572,7 +572,10 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
     Categories: categories.length > 0 ? categories : undefined,
     ShowAs: showAs,
     Importance: importance,
-    IsRecurring: recurrenceInfo.description !== undefined,
+    IsRecurring:
+      recurrenceInfo.description !== undefined ||
+      recurrenceInfo.firstOccurrence !== undefined ||
+      recurrenceInfo.lastOccurrence !== undefined,
     RecurrenceDescription: recurrenceInfo.description,
     FirstOccurrence: recurrenceInfo.firstOccurrence,
     LastOccurrence: recurrenceInfo.lastOccurrence
@@ -1131,11 +1134,42 @@ export interface DeleteEventOptions {
   mailbox?: string;
   /** If true, delete without sending cancellation notices even if there are attendees */
   forceDelete?: boolean;
+  /** Cancellation message to send to attendees (only supported for single occurrence deletes) */
+  comment?: string;
 }
 
 export async function deleteEvent(options: DeleteEventOptions): Promise<OwaResponse<void>> {
   try {
-    const { token, eventId, occurrenceItemId, scope = 'all', mailbox, forceDelete } = options;
+    const { token, eventId, occurrenceItemId, scope = 'all', mailbox, forceDelete, comment } = options;
+
+    // If a comment is provided for occurrence delete, use CancelCalendarItem instead
+    if (comment && !forceDelete && (scope === 'this' || scope === 'future')) {
+      const targetId = occurrenceItemId || eventId;
+      const cancelEnvelope = soapEnvelope(`
+    <m:CreateItem MessageDisposition="SendAndSaveCopy">
+      <m:Items>
+        <t:CancelCalendarItem>
+          <t:ReferenceItemId Id="${xmlEscape(targetId)}" />
+          <t:NewBodyContent BodyType="Text">${xmlEscape(comment)}</t:NewBodyContent>
+        </t:CancelCalendarItem>
+      </m:Items>
+    </m:CreateItem>`);
+      try {
+        await callEws(token, cancelEnvelope, mailbox);
+        return { ok: true, status: 200 };
+      } catch (primaryErr) {
+        // Fallback to DeleteItem if CancelCalendarItem fails
+        const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+        return {
+          ok: false,
+          status: 0,
+          error: {
+            code: 'EWS_CANCEL_FAILED',
+            message: `Cancellation with message failed: ${primaryMsg}`
+          }
+        };
+      }
+    }
 
     // Determine send mode based on scope and forceDelete flag
     let sendCancellations = 'SendToNone';

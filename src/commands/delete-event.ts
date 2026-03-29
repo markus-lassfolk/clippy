@@ -257,7 +257,8 @@ export const deleteEventCommand = new Command('delete-event')
           occurrenceItemId,
           scope,
           mailbox: options.mailbox,
-          forceDelete: options.forceDelete
+          forceDelete: options.forceDelete,
+          comment: options.message
         });
         action = 'deleted';
       }
