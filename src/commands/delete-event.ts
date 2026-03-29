@@ -170,7 +170,7 @@ export const deleteEventCommand = new Command('delete-event')
           startInst.setHours(0, 0, 0, 0);
           const endInst = new Date(instDate);
           endInst.setHours(23, 59, 59, 999);
-          
+
           const instResult = await getCalendarEvents(
             authResult.token!,
             startInst.toISOString(),
@@ -178,14 +178,22 @@ export const deleteEventCommand = new Command('delete-event')
             options.mailbox
           );
 
-          if (instResult.ok && instResult.data) {
-             const occurrence = instResult.data.find(e => (e.RecurringMasterItemId === targetEvent.Id || e.Id === targetEvent.Id || e.Subject === targetEvent.Subject));
-             if (occurrence) {
-                targetEvent.Id = occurrence.Id; // swap to occurrence ID
-             } else {
-                console.error(`Could not find occurrence of "${targetEvent.Subject}" on ${options.instance}`);
-                process.exit(1);
-             }
+          if (!instResult.ok || !instResult.data) {
+            console.error(`Error: ${instResult.error?.message || 'Failed to fetch instance events'}`);
+            process.exit(1);
+          }
+
+          const occurrence = instResult.data.find(
+            (e) =>
+              e.RecurringMasterItemId === targetEvent.RecurringMasterItemId ||
+              e.Id === targetEvent.Id ||
+              e.Subject === targetEvent.Subject
+          );
+          if (occurrence) {
+            targetEvent.Id = occurrence.Id; // swap to occurrence ID
+          } else {
+            console.error(`Could not find occurrence of "${targetEvent.Subject}" on ${options.instance}`);
+            process.exit(1);
           }
         } catch (err) {
           console.error(`Failed to find instance: ${err}`);
@@ -193,16 +201,23 @@ export const deleteEventCommand = new Command('delete-event')
         }
       }
 
-      // Handle scope logic
+      // Handle scope logic and occurrence index
       if (options.scope === 'all') {
         if (targetEvent.RecurringMasterItemId) {
           targetEvent.Id = targetEvent.RecurringMasterItemId;
         }
+      } else if (options.occurrence && targetEvent.RecurringMasterItemId) {
+        // When using --occurrence with an occurrence ID, swap to master ID
+        targetEvent.Id = targetEvent.RecurringMasterItemId;
       } else if (options.scope === 'future') {
-        console.warn('Note: --scope future is handled via setting the series EndDate. If it fails, you may need to manually edit the series.');
+        console.warn(
+          'Note: --scope future is handled via setting the series EndDate. If it fails, you may need to manually edit the series.'
+        );
         // For 'future', updating EndDate is complex via CLI since updateEvent doesn't handle RecurrenceEnd updates directly.
         // EWS natively doesn't have "delete future" for deleteItem.
-        console.error('--scope future is not natively supported by EWS DeleteItem. Please manually update the recurring event EndDate.');
+        console.error(
+          '--scope future is not natively supported by EWS DeleteItem. Please manually update the recurring event EndDate.'
+        );
         process.exit(1);
       }
 

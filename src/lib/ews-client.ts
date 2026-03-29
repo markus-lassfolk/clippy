@@ -361,7 +361,11 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const bodyPreview = extractTag(block, 'TextBody') || extractTag(block, 'Body');
 
   const recurringMasterBlock = extractSelfClosingOrBlock(block, 'RecurringMasterItemId');
-  const recurringMasterItemId = recurringMasterBlock ? extractAttribute(recurringMasterBlock, 'RecurringMasterItemId', 'OccurrenceId') || extractAttribute(recurringMasterBlock, 'RecurringMasterItemId', 'Id') || extractAttribute(block, 'RecurringMasterItemId', 'Id') : undefined;
+  const recurringMasterItemId = recurringMasterBlock
+    ? extractAttribute(recurringMasterBlock, 'RecurringMasterItemId', 'OccurrenceId') ||
+      extractAttribute(recurringMasterBlock, 'RecurringMasterItemId', 'Id') ||
+      extractAttribute(block, 'RecurringMasterItemId', 'Id')
+    : undefined;
   const importance = extractTag(block, 'Importance') || 'Normal';
   const showAs = extractTag(block, 'LegacyFreeBusyStatus') || 'Busy';
 
@@ -976,9 +980,10 @@ export interface DeleteEventOptions {
 export async function deleteEvent(options: DeleteEventOptions): Promise<OwaResponse<void>> {
   try {
     const { token, eventId, mailbox, occurrenceIndex } = options;
-    const itemIdXml = occurrenceIndex !== undefined
-      ? `<t:OccurrenceItemId RecurringMasterId="${xmlEscape(eventId)}" InstanceIndex="${occurrenceIndex}" />`
-      : `<t:ItemId Id="${xmlEscape(eventId)}" />`;
+    const itemIdXml =
+      occurrenceIndex !== undefined
+        ? `<t:OccurrenceItemId RecurringMasterId="${xmlEscape(eventId)}" InstanceIndex="${occurrenceIndex}" />`
+        : `<t:ItemId Id="${xmlEscape(eventId)}" />`;
 
     const envelope = soapEnvelope(`
     <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToNone">
@@ -1004,57 +1009,70 @@ export interface CancelEventOptions {
 export async function cancelEvent(options: CancelEventOptions): Promise<OwaResponse<void>> {
   const { token, eventId, comment, mailbox, occurrenceIndex } = options;
 
-  const itemIdXml = occurrenceIndex !== undefined
-    ? `<t:OccurrenceItemId RecurringMasterId="${xmlEscape(eventId)}" InstanceIndex="${occurrenceIndex}" />`
-    : `<t:ItemId Id="${xmlEscape(eventId)}" />`;
+  const itemIdXml =
+    occurrenceIndex !== undefined
+      ? `<t:OccurrenceItemId RecurringMasterId="${xmlEscape(eventId)}" InstanceIndex="${occurrenceIndex}" />`
+      : `<t:ItemId Id="${xmlEscape(eventId)}" />`;
 
-  const referenceItemIdXml = occurrenceIndex !== undefined
-    ? `<t:OccurrenceItemId RecurringMasterId="${xmlEscape(eventId)}" InstanceIndex="${occurrenceIndex}" />`
-    : `<t:ReferenceItemId Id="${xmlEscape(eventId)}" />`;
-
-  // Primary: CancelCalendarItem
-  try {
-    const envelope = soapEnvelope(`
-    <m:CreateItem MessageDisposition="SendAndSaveCopy">
-      <m:Items>
-        <t:CancelCalendarItem>
-          ${referenceItemIdXml}
-          ${comment ? `<t:NewBodyContent BodyType="Text">${xmlEscape(comment)}</t:NewBodyContent>` : ''}
-        </t:CancelCalendarItem>
-      </m:Items>
-    </m:CreateItem>`);
-    await callEws(token, envelope, mailbox);
-    return { ok: true, status: 200 };
-  } catch (primaryErr) {
-    // Fallback: DeleteItem with SendMeetingCancellations
+  // CancelCalendarItem only works with ReferenceItemId (not OccurrenceItemId)
+  // For occurrences, skip primary path and use DeleteItem directly
+  if (occurrenceIndex === undefined) {
+    // Primary: CancelCalendarItem (only for non-occurrence deletions)
     try {
       const envelope = soapEnvelope(`
-      <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToAllAndSaveCopy">
-        <m:ItemIds>
-          ${itemIdXml}
-        </m:ItemIds>
-      </m:DeleteItem>`);
+      <m:CreateItem MessageDisposition="SendAndSaveCopy">
+        <m:Items>
+          <t:CancelCalendarItem>
+            <t:ReferenceItemId Id="${xmlEscape(eventId)}" />
+            ${comment ? `<t:NewBodyContent BodyType="Text">${xmlEscape(comment)}</t:NewBodyContent>` : ''}
+          </t:CancelCalendarItem>
+        </m:Items>
+      </m:CreateItem>`);
       await callEws(token, envelope, mailbox);
-      // Fallback succeeded after primary failed — report it so caller knows what happened
-      const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      return {
-        ok: true,
-        status: 200,
-        info: `Primary cancellation failed (${primaryMsg}); cancellation sent via fallback DeleteItem instead.`
-      };
-    } catch (fallbackErr) {
-      // Both failed — report both errors clearly
-      const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-      return {
-        ok: false,
-        status: 0,
-        error: {
-          code: 'EWS_CANCEL_FAILED',
-          message: `Primary cancellation failed: ${primaryMsg}. Fallback also failed: ${fallbackMsg}`
-        }
-      };
+      return { ok: true, status: 200 };
+    } catch (primaryErr) {
+      // Fallback: DeleteItem with SendMeetingCancellations
+      try {
+        const envelope = soapEnvelope(`
+        <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToAllAndSaveCopy">
+          <m:ItemIds>
+            ${itemIdXml}
+          </m:ItemIds>
+        </m:DeleteItem>`);
+        await callEws(token, envelope, mailbox);
+        const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+        return {
+          ok: true,
+          status: 200,
+          info: `Primary cancellation failed (${primaryMsg}); cancellation sent via fallback DeleteItem instead.`
+        };
+      } catch (fallbackErr) {
+        const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        return {
+          ok: false,
+          status: 0,
+          error: {
+            code: 'EWS_CANCEL_FAILED',
+            message: `Primary cancellation failed: ${primaryMsg}. Fallback also failed: ${fallbackMsg}`
+          }
+        };
+      }
     }
+  }
+
+  // For occurrences, use DeleteItem directly (CancelCalendarItem doesn't support OccurrenceItemId)
+  try {
+    const envelope = soapEnvelope(`
+    <m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToAllAndSaveCopy">
+      <m:ItemIds>
+        ${itemIdXml}
+      </m:ItemIds>
+    </m:DeleteItem>`);
+    await callEws(token, envelope, mailbox);
+    return { ok: true, status: 200 };
+  } catch (err) {
+    return ewsError(err);
   }
 }
 
