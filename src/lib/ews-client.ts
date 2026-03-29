@@ -67,11 +67,10 @@ export function extractSelfClosingOrBlock(xml: string, tagName: string): string 
   return match ? match[0] : '';
 }
 
-function requireNonEmpty(value: string, fieldName: string): string {
+function requireNonEmpty(value: string, fieldName: string): void {
   if (!value || !value.trim()) {
     throw new Error(`${fieldName} cannot be empty`);
   }
-  return value.trim();
 }
 
 // ─── SOAP Core ───
