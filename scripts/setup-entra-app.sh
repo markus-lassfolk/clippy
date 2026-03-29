@@ -15,8 +15,9 @@ fi
 echo "Creating Entra ID App Registration: $APP_NAME..."
 
 # Create the application allowing Microsoft accounts and Organizational accounts
-APP_ID=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADandPersonalMicrosoftAccount --query "appId" -o tsv)
-OBJECT_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].id" -o tsv)
+APP_OUTPUT=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADandPersonalMicrosoftAccount -o json)
+APP_ID=$(echo "$APP_OUTPUT" | jq -r '.appId')
+OBJECT_ID=$(echo "$APP_OUTPUT" | jq -r '.id')
 
 if [ -z "$APP_ID" ]; then
     echo "Failed to create application."
