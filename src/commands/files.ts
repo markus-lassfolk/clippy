@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   checkinFile,
+  uploadLargeFile,
   createOfficeCollaborationLink,
   type DriveItem,
   type DriveItemReference,
@@ -154,6 +155,41 @@ filesCommand
     console.log(`✓ Uploaded: ${result.data.name}`);
     console.log(`  ID: ${result.data.id}`);
     if (result.data.webUrl) console.log(`  URL: ${result.data.webUrl}`);
+  });
+
+filesCommand
+  .command('upload-large <path>')
+  .description('Upload a file up to 4GB using a chunked upload session')
+  .option('--folder <id>', 'Target folder item ID')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific Graph token')
+  .action(async (path: string, options: { folder?: string; json?: boolean; token?: string }) => {
+    const auth = await resolveGraphAuth({ token: options.token });
+    if (!auth.success) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
+    }
+
+    const result = await uploadLargeFile(auth.token!, path, parseFolderRef(options.folder));
+    if (!result.ok || !result.data) {
+      console.error(`Error: ${result.error?.message || 'Failed to upload file'}`);
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(result.data, null, 2));
+      return;
+    }
+
+    if (result.data.driveItem) {
+      console.log(`✓ Uploaded: ${result.data.driveItem.name}`);
+      console.log(`  ID: ${result.data.driveItem.id}`);
+      if (result.data.driveItem.webUrl) console.log(`  URL: ${result.data.driveItem.webUrl}`);
+    } else {
+      console.log('✓ Large upload session created');
+      console.log(`  Upload URL: ${result.data.uploadUrl}`);
+      if (result.data.expirationDateTime) console.log(`  Expires: ${result.data.expirationDateTime}`);
+    }
   });
 
 filesCommand
