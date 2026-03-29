@@ -153,9 +153,14 @@ export const deleteEventCommand = new Command('delete-event')
       }
 
       // Determine scope and occurrence ID
-      const scope = options.scope as 'all' | 'this' | 'future';
+      let scope = options.scope as 'all' | 'this' | 'future';
       let occurrenceItemId: string | undefined;
       let targetEvent = events.find((e) => e.Id === options.id);
+
+      // If occurrence/instance flags are provided, automatically set scope to 'this'
+      if (options.occurrence || options.instance) {
+        scope = 'this';
+      }
 
       if ((options.occurrence || options.instance) && scope === 'this') {
         // Find the occurrence by index or date
@@ -182,7 +187,9 @@ export const deleteEventCommand = new Command('delete-event')
           }
           // Events from CalendarView are already individual occurrences
           if (idx > events.length) {
-            console.error(`Invalid occurrence index: ${idx}. Only ${events.length} occurrence(s) found in the date range.`);
+            console.error(
+              `Invalid occurrence index: ${idx}. Only ${events.length} occurrence(s) found in the date range.`
+            );
             process.exit(1);
           }
           const occEvent = events[idx - 1];

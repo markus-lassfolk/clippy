@@ -397,9 +397,26 @@ function parseRecurrenceFromBlock(block: string): {
   const daysOfWeek = extractTag(recurrenceBlock, 'DaysOfWeek');
   const dayOfWeekIndex = extractTag(recurrenceBlock, 'DayOfWeekIndex');
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
   const dayIndexNames: Record<string, string> = {
-    First: '1st', Second: '2nd', Third: '3rd', Fourth: '4th', Last: 'last'
+    First: '1st',
+    Second: '2nd',
+    Third: '3rd',
+    Fourth: '4th',
+    Last: 'last'
   };
 
   if (recurrenceBlock.includes('DailyRecurrence')) {
@@ -409,11 +426,17 @@ function parseRecurrenceFromBlock(block: string): {
     const dayList = days.length > 0 ? days.join(', ') : 'week';
     parts.push(parseInt(interval) === 1 ? `Weekly on ${dayList}` : `Every ${interval} weeks on ${dayList}`);
   } else if (recurrenceBlock.includes('AbsoluteMonthlyRecurrence')) {
-    parts.push(parseInt(interval) === 1 ? `Monthly on day ${dayOfMonth || 1}` : `Every ${interval} months on day ${dayOfMonth || 1}`);
+    parts.push(
+      parseInt(interval) === 1
+        ? `Monthly on day ${dayOfMonth || 1}`
+        : `Every ${interval} months on day ${dayOfMonth || 1}`
+    );
   } else if (recurrenceBlock.includes('RelativeMonthlyRecurrence')) {
     const idx = dayIndexNames[dayOfWeekIndex || 'First'] || '1st';
     const days = daysOfWeek ? daysOfWeek.split(' ').filter(Boolean).join(', ') : 'day';
-    parts.push(parseInt(interval) === 1 ? `Monthly on the ${idx} ${days}` : `Every ${interval} months on the ${idx} ${days}`);
+    parts.push(
+      parseInt(interval) === 1 ? `Monthly on the ${idx} ${days}` : `Every ${interval} months on the ${idx} ${days}`
+    );
   } else if (recurrenceBlock.includes('AbsoluteYearlyRecurrence')) {
     const monthName = month ? monthNames[parseInt(month) - 1] || month : 'the specified month';
     parts.push(`Yearly on ${monthName} ${dayOfMonth || 1}`);
@@ -974,7 +997,8 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
 
 export async function updateEvent(options: UpdateEventOptions): Promise<OwaResponse<CreatedEvent>> {
   try {
-    const { token, eventId, changeKey, subject, start, end, body, location, attendees, occurrenceItemId, mailbox } = options;
+    const { token, eventId, changeKey, subject, start, end, body, location, attendees, occurrenceItemId, mailbox } =
+      options;
 
     const updates: string[] = [];
 
@@ -1047,7 +1071,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     const sendUpdates = attendees && attendees.length > 0 ? 'SendToAllAndSaveCopy' : 'SendToNone';
 
     const itemIdXml = occurrenceItemId
-      ? `<t:OccurrenceItemId Id="${xmlEscape(occurrenceItemId)}" />`
+      ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
       : `<t:ItemId Id="${xmlEscape(eventId)}"${changeKey ? ` ChangeKey="${xmlEscape(changeKey)}"` : ''} />`;
 
     const buildEnvelope = (conflictResolution: 'AutoResolve' | 'AlwaysOverwrite'): string =>
@@ -1065,11 +1089,7 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
 
     let xml: string;
     try {
-      xml = await callEws(
-        token,
-        buildEnvelope(changeKey ? 'AutoResolve' : 'AlwaysOverwrite'),
-        mailbox
-      );
+      xml = await callEws(token, buildEnvelope(changeKey ? 'AutoResolve' : 'AlwaysOverwrite'), mailbox);
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       const isConflict =
@@ -1113,15 +1133,13 @@ export async function deleteEvent(options: DeleteEventOptions): Promise<OwaRespo
 
     // Determine send mode based on scope
     let sendCancellations = 'SendToNone';
-    if (scope === 'this') {
-      sendCancellations = 'SendToOnlyThisAndSaveCopy';
-    } else if (scope === 'future') {
+    if (scope === 'this' || scope === 'future') {
       sendCancellations = 'SendToAllAndSaveCopy';
     }
 
-    // Use OccurrenceItemId for single occurrence, ItemId for series
+    // Use ItemId for both series and occurrences (CalendarView returns ItemId for occurrences)
     const itemIdXml = occurrenceItemId
-      ? `<t:OccurrenceItemId Id="${xmlEscape(occurrenceItemId)}" />`
+      ? `<t:ItemId Id="${xmlEscape(occurrenceItemId)}" />`
       : `<t:ItemId Id="${xmlEscape(eventId)}" />`;
 
     const envelope = soapEnvelope(`
