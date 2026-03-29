@@ -93,7 +93,17 @@ All commands support these global options:
 
 ### Read-Only Mode
 
-You can run `m365-agent-cli` in a strict Read-Only mode to prevent accidental mutations (such as sending emails, deleting events, or updating files). When enabled, any mutating command or subcommand will be blocked and the CLI will gracefully exit with an error message before any network request is made.
+You can run `m365-agent-cli` in a strict Read-Only mode to prevent accidental mutations (such as sending emails, deleting events, or updating files). When enabled, commands that perform mutating operations will be blocked and the CLI will gracefully exit with an error message before any network request is made.
+
+**Mutating operations that are blocked include:**
+- Creating, updating, or deleting calendar events
+- Sending emails or managing drafts (create, edit, send, delete)
+- Email operations: flagging/unflagging, marking read/unread, moving, replying, forwarding, changing sensitivity
+- File operations: uploading, restoring files
+- Planner operations: creating or updating tasks
+- SharePoint operations: creating or updating list items, updating or publishing pages
+- Auto-reply configuration changes
+- Meeting response actions (accept, decline, tentative)
 
 You can enable Read-Only mode in two ways:
 

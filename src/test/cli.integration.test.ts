@@ -161,7 +161,9 @@ import { Command } from 'commander';
 
 function makeProgram(): Command {
   const p = new Command();
-  p.name('clippy').version('0.1.0').addCommand(whoamiCommand);
+  p.name('clippy').version('0.1.0');
+  p.option('--read-only', 'Run in read-only mode, blocking any mutating operations');
+  p.addCommand(whoamiCommand);
   p.addCommand(autoReplyCommand);
   p.addCommand(calendarCommand);
   p.addCommand(findtimeCommand);
@@ -949,5 +951,89 @@ describe('global options', () => {
     //     expect(result.stdout).toContain('calendar');
     //     expect(result.stdout).toContain('mail');
     //     expect(result.stdout).toContain('files');
+  });
+});
+
+// ─── Read-Only Mode ────────────────────────────────────────────────────
+
+describe('read-only mode', () => {
+  test('--read-only blocks mutating command (create-event)', async () => {
+    const result = await runClippy('create-event "Test" 10:00 11:00 --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating command (files upload)', async () => {
+    const result = await runClippy('files upload /tmp/test.txt --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating draft operations (create)', async () => {
+    const result = await runClippy('drafts --create --to test@example.com --subject "Test" --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating draft operations (edit)', async () => {
+    const result = await runClippy('drafts --edit draft-123 --subject "Updated" --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating mail operations (flag)', async () => {
+    const result = await runClippy('mail inbox --flag msg-123 --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating mail operations (mark-read)', async () => {
+    const result = await runClippy('mail inbox --mark-read msg-123 --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only allows non-mutating command (calendar)', async () => {
+    const result = await runClippy('calendar today --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Calendar');
+  });
+
+  test('--read-only allows non-mutating command (findtime)', async () => {
+    const result = await runClippy('findtime nextweek user@example.com --read-only --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    // findtime is read-only, should succeed
+  });
+
+  test('READ_ONLY_MODE env var blocks mutating command', async () => {
+    const originalEnv = process.env.READ_ONLY_MODE;
+    try {
+      process.env.READ_ONLY_MODE = 'true';
+      const result = await runClippy('create-event "Test" 10:00 11:00 --token test-token-12345');
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('read-only mode');
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.READ_ONLY_MODE = originalEnv;
+      } else {
+        delete process.env.READ_ONLY_MODE;
+      }
+    }
+  });
+
+  test('READ_ONLY_MODE env var allows non-mutating command', async () => {
+    const originalEnv = process.env.READ_ONLY_MODE;
+    try {
+      process.env.READ_ONLY_MODE = 'true';
+      const result = await runClippy('calendar today --token test-token-12345');
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('Calendar');
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.READ_ONLY_MODE = originalEnv;
+      } else {
+        delete process.env.READ_ONLY_MODE;
+      }
+    }
   });
 });

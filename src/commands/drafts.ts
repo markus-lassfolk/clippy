@@ -74,7 +74,7 @@ export const draftsCommand = new Command('drafts')
       },
       cmd: any
     ) => {
-      if (options.send || options.delete) {
+      if (options.send || options.delete || options.create || options.edit) {
         checkReadOnly(cmd);
       }
       const authResult = await resolveAuth({

@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay } from '../lib/dates.js';
 import { getOwaUserInfo, getScheduleViaOutlook } from '../lib/ews-client.js';
-import { checkReadOnly } from '../lib/utils.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -93,7 +92,6 @@ export const findtimeCommand = new Command('findtime')
       },
       cmd: any
     ) => {
-      checkReadOnly(cmd);
       const authResult = await resolveAuth({
         token: options.token
       });

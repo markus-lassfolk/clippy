@@ -114,7 +114,19 @@ export const mailCommand = new Command('mail')
       },
       cmd: any
     ) => {
-      if (options.flag || options.reply || options.move) {
+      const isMutating =
+        options.flag ||
+        options.unflag ||
+        options.markRead ||
+        options.markUnread ||
+        options.complete ||
+        options.sensitivity ||
+        options.move ||
+        options.reply ||
+        options.replyAll ||
+        options.forward;
+
+      if (isMutating) {
         checkReadOnly(cmd);
       }
       const authResult = await resolveAuth({
