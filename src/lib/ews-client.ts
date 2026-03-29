@@ -1,10 +1,3 @@
-// ─── Timezone Utilities ───────────────────────────────────────────────────────
-
-/** Returns the IANA timezone name for the current process, e.g. 'Europe/Stockholm'. */
-export function getLocalTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
 // ─── XML Utilities ───
 
 export function xmlEscape(value: string): string {
