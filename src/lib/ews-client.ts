@@ -1060,7 +1060,7 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
           ${recurrence ? buildRecurrenceXml(recurrence) : ''}
           ${timezone ? `<t:StartTimeZone Id="${xmlEscape(timezone)}"/><t:EndTimeZone Id="${xmlEscape(timezone)}"/>` : ''}
           ${isOnlineMeeting ? '<t:IsOnlineMeeting>true</t:IsOnlineMeeting>' : ''}
-          ${categories && categories.length > 0 ? `<t:Categories>${categories.map((c) => `<t:String>\${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
+          ${categories && categories.length > 0 ? `<t:Categories>${categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
         </t:CalendarItem>
       </m:Items>
     </m:CreateItem>`);
@@ -1582,7 +1582,7 @@ export async function sendEmail(
             <t:Subject>${xmlEscape(options.subject)}</t:Subject>
             <t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body>
             <t:ToRecipients>${toXml}</t:ToRecipients>
-            ${options.categories && options.categories.length > 0 ? `<t:Categories>${options.categories.map((c) => `<t:String>\${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
+            ${options.categories && options.categories.length > 0 ? `<t:Categories>${options.categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
             ${ccXml}
             ${bccXml}
             ${fromXml}
@@ -1811,7 +1811,7 @@ export async function createDraft(
         <t:Message>
           ${options.subject ? `<t:Subject>${xmlEscape(options.subject)}</t:Subject>` : ''}
           ${options.body ? `<t:Body BodyType="${bodyType}">${xmlEscape(options.body)}</t:Body>` : ''}
-          ${options.categories && options.categories.length > 0 ? `<t:Categories>${options.categories.map((c) => `<t:String>\${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
+          ${options.categories && options.categories.length > 0 ? `<t:Categories>${options.categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories>` : ''}
           ${toXml}
           ${ccXml}
         </t:Message>
