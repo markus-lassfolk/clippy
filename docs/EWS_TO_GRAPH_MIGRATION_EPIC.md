@@ -1,6 +1,7 @@
 # Epic: Migrate Exchange Web Services (EWS) to Microsoft Graph
 
 **Status:** Planning / in progress  
+**GitHub Epic:** [#204 — EWS → Microsoft Graph migration](https://github.com/markus-lassfolk/m365-agent-cli/issues/204) (17 sub-issues linked under the epic in GitHub)  
 **Driver:** [Exchange Online retirement of EWS](https://learn.microsoft.com/en-us/graph/migrate-exchange-web-services-overview) (phased; confirm dates in Microsoft docs and Message Center).  
 **Strategy:** Phased migration with **Microsoft Graph as the primary implementation** and **EWS as fallback** until each slice is verified; then remove EWS for that slice.
 
@@ -8,13 +9,11 @@
 
 ## How to track this in GitHub
 
-1. **Create one Epic** (GitHub Issues with the `epic` label, or a parent issue, or a Project field—use whatever your org uses).
-2. **Link this doc** from the Epic description:  
-   `docs/EWS_TO_GRAPH_MIGRATION_EPIC.md`
-3. **Open child issues** from the tables below (one row can be one issue). In GitHub: **New issue** → **EWS → Graph migration task** (template in `.github/ISSUE_TEMPLATE/ews-graph-migration.yml`).
-4. **Update the “GitHub issue” column** below when issues exist (edit this file in PRs).
+1. Use Epic **[#204](https://github.com/markus-lassfolk/m365-agent-cli/issues/204)** and its **sub-issues** (see inventory table below).
+2. New slices: **New issue** → template **EWS → Graph migration task** (`.github/ISSUE_TEMPLATE/ews-graph-migration.yml`), then link as a sub-issue of #204 if needed (`gh api graphql` `addSubIssue`, or GitHub UI).
+3. **One-off script** that created #204–#221: `scripts/create-ews-graph-issues.ps1` — **do not re-run** (it would create duplicate issues). Use it only as a reference for `gh` + GraphQL `addSubIssue`.
 
-Suggested labels: `migration`, `graph`, `ews`, `epic` (optional).
+Labels used: `epic`, `migration`, `ews`, `graph`.
 
 ---
 
@@ -48,22 +47,23 @@ Until a slice is marked **EWS removed**, implementations should follow a consist
 
 | Area | Commands / modules | Graph direction | Notes | Issue | Status |
 |------|-------------------|-----------------|-------|-------|--------|
-| Calendar read | `calendar` | `GET calendarView` / shared calendars | Replace `getCalendarEvents` | | ⬜ |
-| Calendar write | `create-event`, `update-event`, `delete-event` | Events API + online meetings | Time zones, recurrence, Teams | | ⬜ |
-| Meeting response | `respond` | Accept/decline/tentative via Graph | Shared mailbox = `/users/{id}/` | | ⬜ |
-| Forward / counter | `forward-event`, `counter` | Event forward / propose times | Verify Graph equivalents | | ⬜ |
-| Free-busy / findtime | `findtime`, parts of schedule | `calendar/getSchedule` | Already partially Graph; drop `getScheduleViaOutlook` | | ⬜ |
-| Mail CRUD + actions | `mail` | Messages, move, patch, send | Large attachment / MIME edge cases | | ⬜ |
-| Send | `send` | `sendMail` / draft send | | | ⬜ |
-| Drafts | `drafts` | Graph draft messages | | | ⬜ |
-| Folders | `folders` | mailFolders | | | ⬜ |
-| Whoami | `whoami` | `/me` (+ optional mailboxSettings) | Drop `getOwaUserInfo` / ResolveNames | | ⬜ |
-| Auto-reply (EWS) | `auto-reply` | Deprecate in favor of Graph `oof` / mailboxSettings | Align with existing `oof` command | | ⬜ |
-| Delegates | `delegates`, `delegate-client.ts` | Calendar permission / share APIs | **No 1:1 EWS delegate matrix** — product redesign | | ⬜ |
-| Todo link | `todo --link` | `getEmail` → Graph get message | Small change | | ⬜ |
-| Auth | `auth.ts`, env `EWS_*` | Single token + Graph scopes | Align with single-cache epic in `docs/GOALS.md` | | ⬜ |
-| Tests / mocks | `src/test/mocks`, integration tests | Graph-shaped mocks | | | ⬜ |
-| Docs | README, ENTRA_SETUP, SKILL | Remove EWS setup when cut over | | | ⬜ |
+| Phase 0 foundation | Router, env, Azure scopes inventory | — | Backend `auto`, permissions audit | [#205](https://github.com/markus-lassfolk/m365-agent-cli/issues/205) | ⬜ |
+| Calendar read | `calendar` | `GET calendarView` / shared calendars | Replace `getCalendarEvents` | [#206](https://github.com/markus-lassfolk/m365-agent-cli/issues/206) | ⬜ |
+| Free-busy / findtime | `findtime`, parts of schedule | `calendar/getSchedule` | Drop `getScheduleViaOutlook` | [#207](https://github.com/markus-lassfolk/m365-agent-cli/issues/207) | ⬜ |
+| Whoami | `whoami` | `/me` (+ optional mailboxSettings) | Drop `getOwaUserInfo` / ResolveNames | [#208](https://github.com/markus-lassfolk/m365-agent-cli/issues/208) | ⬜ |
+| Mail CRUD + actions | `mail` | Messages, move, patch, send | Large attachment / MIME edge cases | [#209](https://github.com/markus-lassfolk/m365-agent-cli/issues/209) | ⬜ |
+| Send | `send` | `sendMail` / draft send | | [#210](https://github.com/markus-lassfolk/m365-agent-cli/issues/210) | ⬜ |
+| Drafts | `drafts` | Graph draft messages | | [#211](https://github.com/markus-lassfolk/m365-agent-cli/issues/211) | ⬜ |
+| Folders | `folders` | mailFolders | | [#212](https://github.com/markus-lassfolk/m365-agent-cli/issues/212) | ⬜ |
+| Todo link | `todo --link` | `getEmail` → Graph get message | Small change | [#213](https://github.com/markus-lassfolk/m365-agent-cli/issues/213) | ⬜ |
+| Calendar write | `create-event`, `update-event`, `delete-event` | Events API + online meetings | Time zones, recurrence, Teams | [#214](https://github.com/markus-lassfolk/m365-agent-cli/issues/214) | ⬜ |
+| Meeting response | `respond` | Accept/decline/tentative via Graph | Shared mailbox = `/users/{id}/` | [#215](https://github.com/markus-lassfolk/m365-agent-cli/issues/215) | ⬜ |
+| Forward / counter | `forward-event`, `counter` | Event forward / propose times | Verify Graph equivalents | [#216](https://github.com/markus-lassfolk/m365-agent-cli/issues/216) | ⬜ |
+| Auto-reply (EWS) | `auto-reply` | Deprecate in favor of Graph `oof` / mailboxSettings | Align with existing `oof` command | [#217](https://github.com/markus-lassfolk/m365-agent-cli/issues/217) | ⬜ |
+| Delegates | `delegates`, `delegate-client.ts` | Calendar permission / share APIs | **No 1:1 EWS delegate matrix** — product redesign | [#218](https://github.com/markus-lassfolk/m365-agent-cli/issues/218) | ⬜ |
+| Auth | `auth.ts`, env `EWS_*` | Single token + Graph scopes | Align with single-cache epic in `docs/GOALS.md` | [#219](https://github.com/markus-lassfolk/m365-agent-cli/issues/219) | ⬜ |
+| Tests / mocks | `src/test/mocks`, integration tests | Graph-shaped mocks | | [#220](https://github.com/markus-lassfolk/m365-agent-cli/issues/220) | ⬜ |
+| Docs | README, ENTRA_SETUP, SKILL | Remove EWS setup when cut over | | [#221](https://github.com/markus-lassfolk/m365-agent-cli/issues/221) | ⬜ |
 
 Legend: ⬜ not started · 🟡 in progress · ✅ done (EWS fallback removable for that row)
 
@@ -73,7 +73,7 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done (EWS fallback removable 
 
 ### Phase 0 — Foundation
 
-- [ ] Create GitHub Epic + first child issues from inventory table  
+- [x] Create GitHub Epic + child issues from inventory table ([#204](https://github.com/markus-lassfolk/m365-agent-cli/issues/204), [#205](https://github.com/markus-lassfolk/m365-agent-cli/issues/205)–[#221](https://github.com/markus-lassfolk/m365-agent-cli/issues/221))  
 - [ ] Agree env vars / `auto` fallback behavior (see above)  
 - [ ] Add minimal backend router module stub (no behavior change yet) or document “first PR adds router”  
 - [ ] Inventory Azure AD app permissions needed for full Graph parity (mail, calendar, mailboxSettings, …)
@@ -151,4 +151,4 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done (EWS fallback removable 
 
 ---
 
-*Last updated: migrate this line when you edit phases.*
+*Last updated: 2026-03-31 — GitHub Epic #204 and sub-issues #205–#221 created.*
