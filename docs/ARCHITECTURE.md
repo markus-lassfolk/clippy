@@ -21,6 +21,8 @@ m365-agent-cli authenticates once using **Microsoft OAuth2 (Azure AD)**. A singl
 2. **EWS SOAP** — for operations not available in Graph (delegate management, MailTips, full inbox rules, sharing)
 3. **PowerShell** — NOT used. If an operation requires PowerShell remoting, it is out of scope.
 
+**EWS → Graph migration:** Phased plan, command inventory, and GitHub tracking notes live in [EWS_TO_GRAPH_MIGRATION_EPIC.md](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (Graph primary, EWS fallback until each slice is done).
+
 ### 2. Dynamic Settings
 
 m365-agent-cli must not hardcode user-specific settings. These must always be read from the user's actual Microsoft 365 profile:

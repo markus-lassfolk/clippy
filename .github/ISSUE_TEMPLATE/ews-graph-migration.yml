@@ -1,0 +1,51 @@
+name: EWS → Graph migration task
+description: Track a scoped migration slice (Graph primary, EWS fallback until verified).
+title: "[Migration] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for **one row** (or a small group) from the [EWS → Graph migration epic](https://github.com/markus-lassfolk/m365-agent-cli/blob/main/docs/EWS_TO_GRAPH_MIGRATION_EPIC.md).
+        Parent epic: link your GitHub Epic issue here in the description after filing.
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      options:
+        - Phase 0 — Foundation
+        - Phase 1 — Read-only paths
+        - Phase 2 — Mail stack
+        - Phase 3 — Calendar writes + meeting actions
+        - Phase 4 — Rules / OOF consolidation
+        - Phase 5 — Delegates (redesign)
+        - Phase 6 — EWS removal
+    validations:
+      required: true
+
+  - type: input
+    id: inventory
+    attributes:
+      label: Inventory row(s)
+      description: e.g. "calendar read — calendar command" or paste table row from the epic doc.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: work
+    attributes:
+      label: Work checklist
+      options:
+        - label: Graph implementation
+        - label: EWS fallback in `auto` mode (until slice signed off)
+        - label: Tests (Graph path; keep EWS mocks if still used)
+        - label: README / help updates if user-visible
+        - label: Epic doc updated (issue # + status)
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / API mapping links
+      description: Link Microsoft Learn mapping pages, Graph API docs, or parity gaps.
+    validations:
+      required: false
