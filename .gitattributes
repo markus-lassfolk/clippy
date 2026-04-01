@@ -1,0 +1,2 @@
+# Match CI (Linux) and Biome defaults: normalize text to LF in the repo
+* text=auto eol=lf

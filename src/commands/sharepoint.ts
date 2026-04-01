@@ -87,7 +87,10 @@ sharepointCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (opts: { siteId: string; listId: string; fields: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+    async (
+      opts: { siteId: string; listId: string; fields: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {

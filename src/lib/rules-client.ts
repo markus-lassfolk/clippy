@@ -106,12 +106,13 @@ export async function listMessageRules(token: string, user?: string): Promise<Gr
 }
 
 /** Get a single message rule by ID */
-export async function getMessageRule(token: string, ruleId: string, user?: string): Promise<GraphResponse<MessageRule>> {
+export async function getMessageRule(
+  token: string,
+  ruleId: string,
+  user?: string
+): Promise<GraphResponse<MessageRule>> {
   try {
-    return await callGraph<MessageRule>(
-      token,
-      `${inboxRulesBase(user)}/${encodeURIComponent(ruleId)}`
-    );
+    return await callGraph<MessageRule>(token, `${inboxRulesBase(user)}/${encodeURIComponent(ruleId)}`);
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphError(err.message, err.code, err.status);

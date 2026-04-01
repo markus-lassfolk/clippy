@@ -23,22 +23,24 @@ export const sendCommand = new Command('send')
   .option('--mailbox <email>', 'Send from shared mailbox (Send As)')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .action(
-    async (options: {
-      to: string;
-      subject: string;
-      body?: string;
-      cc?: string;
-      bcc?: string;
-      attach?: string;
-      html?: boolean;
-      markdown?: boolean;
-      json?: boolean;
-      token?: string;
-      mailbox?: string;
-      identity?: string;
-      category?: string[];
-    },
-    cmd: any) => {
+    async (
+      options: {
+        to: string;
+        subject: string;
+        body?: string;
+        cc?: string;
+        bcc?: string;
+        attach?: string;
+        html?: boolean;
+        markdown?: boolean;
+        json?: boolean;
+        token?: string;
+        mailbox?: string;
+        identity?: string;
+        category?: string[];
+      },
+      cmd: any
+    ) => {
       checkReadOnly(cmd);
       const authResult = await resolveAuth({
         token: options.token,

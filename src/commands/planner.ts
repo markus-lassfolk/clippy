@@ -131,24 +131,29 @@ plannerCommand
   .option('--json', 'Output JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { plan: string; title: string; bucket?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { plan: string; title: string; bucket?: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const result = await createTask(auth.token!, opts.plan, opts.title, opts.bucket);
+      if (!result.ok || !result.data) {
+        console.error(`Error creating task: ${result.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+      } else {
+        console.log(`Created task: ${result.data.title} (ID: ${result.data.id})`);
+      }
     }
-    const result = await createTask(auth.token!, opts.plan, opts.title, opts.bucket);
-    if (!result.ok || !result.data) {
-      console.error(`Error creating task: ${result.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-    } else {
-      console.log(`Created task: ${result.data.title} (ID: ${result.data.id})`);
-    }
-  });
+  );
 
 plannerCommand
   .command('update-task')

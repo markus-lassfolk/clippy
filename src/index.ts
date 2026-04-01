@@ -87,7 +87,6 @@ export {
 } from './lib/ews-client.js';
 export type { GraphAuthResult } from './lib/graph-auth.js';
 export { resolveGraphAuth } from './lib/graph-auth.js';
-export { graphUserPath } from './lib/graph-user-path.js';
 export type {
   CheckinResult,
   DriveItem,
@@ -143,6 +142,7 @@ export {
   listSubscriptions,
   renewSubscription
 } from './lib/graph-subscriptions.js';
+export { graphUserPath } from './lib/graph-user-path.js';
 export type { AutomaticRepliesSetting, MailboxSettings, OofStatus } from './lib/oof-client.js';
 export { getMailboxSettings, setMailboxSettings } from './lib/oof-client.js';
 export type { Place as PlaceRoom, RoomList as PlaceRoomList } from './lib/places-client.js';

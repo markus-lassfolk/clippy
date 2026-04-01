@@ -143,29 +143,31 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (path: string, options: { folder?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (path: string, options: { folder?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await uploadFile(auth.token!, path, parseFolderRef(options.folder));
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Upload failed'}`);
-      process.exit(1);
-    }
+      const result = await uploadFile(auth.token!, path, parseFolderRef(options.folder));
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Upload failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log(`✓ Uploaded: ${result.data.name}`);
-    console.log(`  ID: ${result.data.id}`);
-    if (result.data.webUrl) console.log(`  URL: ${result.data.webUrl}`);
-  });
+      console.log(`✓ Uploaded: ${result.data.name}`);
+      console.log(`  ID: ${result.data.id}`);
+      if (result.data.webUrl) console.log(`  URL: ${result.data.webUrl}`);
+    }
+  );
 
 filesCommand
   .command('upload-large <path>')
@@ -174,35 +176,37 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (path: string, options: { folder?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (path: string, options: { folder?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await uploadLargeFile(auth.token!, path, parseFolderRef(options.folder));
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to upload file'}`);
-      process.exit(1);
-    }
+      const result = await uploadLargeFile(auth.token!, path, parseFolderRef(options.folder));
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to upload file'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    if (result.data.driveItem) {
-      console.log(`✓ Uploaded: ${result.data.driveItem.name}`);
-      console.log(`  ID: ${result.data.driveItem.id}`);
-      if (result.data.driveItem.webUrl) console.log(`  URL: ${result.data.driveItem.webUrl}`);
-    } else {
-      console.log('✓ Large upload session created');
-      console.log(`  Upload URL: ${result.data.uploadUrl}`);
-      if (result.data.expirationDateTime) console.log(`  Expires: ${result.data.expirationDateTime}`);
+      if (result.data.driveItem) {
+        console.log(`✓ Uploaded: ${result.data.driveItem.name}`);
+        console.log(`  ID: ${result.data.driveItem.id}`);
+        if (result.data.driveItem.webUrl) console.log(`  URL: ${result.data.driveItem.webUrl}`);
+      } else {
+        console.log('✓ Large upload session created');
+        console.log(`  Upload URL: ${result.data.uploadUrl}`);
+        if (result.data.expirationDateTime) console.log(`  Expires: ${result.data.expirationDateTime}`);
+      }
     }
-  });
+  );
 
 filesCommand
   .command('download <fileId>')
@@ -384,27 +388,34 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, versionId: string, options: { json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      fileId: string,
+      versionId: string,
+      options: { json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await restoreFileVersion(auth.token!, fileId, versionId);
-    if (!result.ok) {
-      console.error(`Error: ${result.error?.message || 'Restore failed'}`);
-      process.exit(1);
-    }
+      const result = await restoreFileVersion(auth.token!, fileId, versionId);
+      if (!result.ok) {
+        console.error(`Error: ${result.error?.message || 'Restore failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ success: true, fileId, versionId }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ success: true, fileId, versionId }, null, 2));
+        return;
+      }
 
-    console.log(`✓ Restored version ${versionId} of file ${fileId}`);
-  });
+      console.log(`✓ Restored version ${versionId} of file ${fileId}`);
+    }
+  );
 
 filesCommand
   .command('checkin <fileId>')
@@ -413,30 +424,36 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: { comment?: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      fileId: string,
+      options: { comment?: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await checkinFile(auth.token!, fileId, options.comment);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Check-in failed'}`);
-      process.exit(1);
-    }
+      const result = await checkinFile(auth.token!, fileId, options.comment);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Check-in failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log('✓ File checked in');
-    console.log(`  File: ${result.data.item.name}`);
-    console.log(`  File ID: ${result.data.item.id}`);
-    if (result.data.comment) console.log(`  Comment: ${result.data.comment}`);
-  });
+      console.log('✓ File checked in');
+      console.log(`  File: ${result.data.item.name}`);
+      console.log(`  File ID: ${result.data.item.id}`);
+      if (result.data.comment) console.log(`  Comment: ${result.data.comment}`);
+    }
+  );
 
 filesCommand
   .command('convert <fileId>')
@@ -446,27 +463,32 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: { format: string; out?: string; json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      fileId: string,
+      options: { format: string; out?: string; json?: boolean; token?: string; identity?: string }
+    ) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await downloadConvertedFile(auth.token!, fileId, options.format, options.out);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Conversion download failed'}`);
-      process.exit(1);
-    }
+      const result = await downloadConvertedFile(auth.token!, fileId, options.format, options.out);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Conversion download failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log(`✓ Converted file downloaded`);
-    console.log(`  Saved to: ${result.data.path}`);
-  });
+      console.log(`✓ Converted file downloaded`);
+      console.log(`  Saved to: ${result.data.path}`);
+    }
+  );
 
 filesCommand
   .command('analytics <fileId>')

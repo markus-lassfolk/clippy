@@ -96,7 +96,10 @@ export const roomsCommand = new Command('rooms')
           process.exit(1);
         }
         console.log(`Fetching rooms from list: ${roomListEmail}...`);
-        const result = await listRoomsInRoomList(roomListEmail, { token: authResult.token, identity: options.identity });
+        const result = await listRoomsInRoomList(roomListEmail, {
+          token: authResult.token,
+          identity: options.identity
+        });
         if (!result.ok || !result.data) {
           console.error(`Error: ${result.error?.message || 'Failed to fetch rooms'}`);
           process.exit(1);

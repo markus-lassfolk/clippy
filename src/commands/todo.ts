@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { getEmail } from '../lib/ews-client.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
-import { checkReadOnly } from '../lib/utils.js';
 import {
   addChecklistItem,
   createTask,
@@ -17,6 +16,7 @@ import {
   type TodoTask,
   updateTask
 } from '../lib/todo-client.js';
+import { checkReadOnly } from '../lib/utils.js';
 
 function fmtDate(iso: string | undefined): string {
   if (!iso) return '';
@@ -277,23 +277,25 @@ todoCommand
   .option('--ews-identity <name>', 'EWS token cache identity for --link (default: default)')
   .option('--user <email>', 'Target user or shared mailbox for the task (Graph delegation)')
   .action(
-    async (opts: {
-      title: string;
-      list?: string;
-      body?: string;
-      due?: string;
-      importance?: string;
-      status?: string;
-      reminder?: string;
-      link?: string;
-      mailbox?: string;
-      json?: boolean;
-      token?: string;
-      identity?: string;
-      ewsIdentity?: string;
-      user?: string;
-    },
-    cmd: any) => {
+    async (
+      opts: {
+        title: string;
+        list?: string;
+        body?: string;
+        due?: string;
+        importance?: string;
+        status?: string;
+        reminder?: string;
+        link?: string;
+        mailbox?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        ewsIdentity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success) {
@@ -359,25 +361,36 @@ todoCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
-  .action(async (opts: { list: string; task: string; json?: boolean; token?: string; identity?: string; user?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { list: string; task: string; json?: boolean; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      // dateTime should not include Z/offset - keep dateTime and timeZone separate
+      const nowISO = new Date().toISOString();
+      const now = nowISO.replace('Z', '');
+      const r = await updateTask(
+        auth.token!,
+        listId,
+        opts.task,
+        { status: 'completed', completedDateTime: now },
+        opts.user
+      );
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`\n\u2705 Completed: "${r.data.title}" (${fmtDate(nowISO)})\n`);
     }
-    const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
-    // dateTime should not include Z/offset - keep dateTime and timeZone separate
-    const nowISO = new Date().toISOString();
-    const now = nowISO.replace('Z', '');
-    const r = await updateTask(auth.token!, listId, opts.task, { status: 'completed', completedDateTime: now }, opts.user);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(`\n\u2705 Completed: "${r.data.title}" (${fmtDate(nowISO)})\n`);
-  });
+  );
 
 todoCommand
   .command('delete')
@@ -388,31 +401,36 @@ todoCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
-  .action(async (opts: { list: string; task: string; confirm?: boolean; token?: string; identity?: string; user?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { list: string; task: string; confirm?: boolean; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId, listDisplay: listName } = await resolveListId(auth.token!, opts.list, opts.user);
+      const taskR = await getTask(auth.token!, listId, opts.task, opts.user);
+      if (!taskR.ok || !taskR.data) {
+        console.error(`Task not found: ${taskR.error?.message}`);
+        process.exit(1);
+      }
+      if (!opts.confirm) {
+        console.log(`Delete "${taskR.data.title}" from "${listName}"? (ID: ${opts.task})`);
+        console.log('Run with --confirm to confirm.');
+        process.exit(1);
+      }
+      const r = await deleteTask(auth.token!, listId, opts.task, opts.user);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(`\n\u{1F5D1}  Deleted: "${taskR.data.title}"\n`);
     }
-    const { listId, listDisplay: listName } = await resolveListId(auth.token!, opts.list, opts.user);
-    const taskR = await getTask(auth.token!, listId, opts.task, opts.user);
-    if (!taskR.ok || !taskR.data) {
-      console.error(`Task not found: ${taskR.error?.message}`);
-      process.exit(1);
-    }
-    if (!opts.confirm) {
-      console.log(`Delete "${taskR.data.title}" from "${listName}"? (ID: ${opts.task})`);
-      console.log('Run with --confirm to confirm.');
-      process.exit(1);
-    }
-    const r = await deleteTask(auth.token!, listId, opts.task, opts.user);
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log(`\n\u{1F5D1}  Deleted: "${taskR.data.title}"\n`);
-  });
+  );
 
 todoCommand
   .command('add-checklist')
@@ -424,19 +442,32 @@ todoCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
-  .action(async (opts: { list: string; task: string; name: string; json?: boolean; token?: string; identity?: string; user?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        name: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await addChecklistItem(auth.token!, listId, opts.task, opts.name, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`\n\u2705 Added: "${r.data.displayName}" (${r.data.id})\n`);
     }
-    const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
-    const r = await addChecklistItem(auth.token!, listId, opts.task, opts.name, opts.user);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(`\n\u2705 Added: "${r.data.displayName}" (${r.data.id})\n`);
-  });
+  );

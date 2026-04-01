@@ -14,17 +14,19 @@ export const foldersCommand = new Command('folders')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Delegated or shared mailbox')
   .action(
-    async (options: {
-      create?: string;
-      rename?: string;
-      delete?: string;
-      to?: string;
-      json?: boolean;
-      token?: string;
-      identity?: string;
-      mailbox?: string;
-    },
-    cmd: any) => {
+    async (
+      options: {
+        create?: string;
+        rename?: string;
+        delete?: string;
+        to?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        mailbox?: string;
+      },
+      cmd: any
+    ) => {
       const authResult = await resolveAuth({
         token: options.token,
         identity: options.identity

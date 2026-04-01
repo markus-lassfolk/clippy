@@ -3,12 +3,13 @@
  * Intercepts all HTTP calls and returns mock responses based on URL and request body.
  */
 import {
+  makeGetCalendarItemDetailResponse,
   mockAddAttachmentResponse,
   mockCalendarEventsEmptyResponse,
   mockCalendarEventsResponse,
   mockCancelEventSuccessResponse,
-  mockCreateEventResponse,
   mockCreateDraftResponse,
+  mockCreateEventResponse,
   mockCreateMailFolderResponse,
   mockDeleteEventSuccessResponse,
   mockDeleteMailFolderResponse,
@@ -21,7 +22,6 @@ import {
   mockGetRoomsFromListResponse,
   mockGetRoomsResponse,
   mockGetScheduleResponse,
-  makeGetCalendarItemDetailResponse,
   mockGraphCheckinResponse,
   mockGraphCreateUploadSessionResponse,
   mockGraphDeleteResponse,

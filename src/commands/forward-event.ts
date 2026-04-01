@@ -12,31 +12,38 @@ export const forwardEventCommand = new Command('forward-event')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Mailbox whose calendar contains the event (delegation)')
-  .action(async (eventId: string, recipients: string[], options: { comment?: string; token?: string; identity?: string; user?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const authResult = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!authResult.success) {
-      console.error(`Error: ${authResult.error}`);
-      process.exit(1);
+  .action(
+    async (
+      eventId: string,
+      recipients: string[],
+      options: { comment?: string; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const authResult = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!authResult.success) {
+        console.error(`Error: ${authResult.error}`);
+        process.exit(1);
+      }
+
+      console.log(`Forwarding event...`);
+      console.log(`  Event ID:   ${eventId}`);
+      console.log(`  Recipients: ${recipients.join(', ')}`);
+      if (options.comment) console.log(`  Comment:    ${options.comment}`);
+
+      const response = await forwardEvent({
+        token: authResult.token!,
+        eventId,
+        toRecipients: recipients,
+        comment: options.comment,
+        user: options.user
+      });
+
+      if (!response.ok) {
+        console.error(`\nError: ${response.error?.message || 'Failed to forward event'}`);
+        process.exit(1);
+      }
+
+      console.log('\n\u2713 Successfully forwarded the event.');
     }
-
-    console.log(`Forwarding event...`);
-    console.log(`  Event ID:   ${eventId}`);
-    console.log(`  Recipients: ${recipients.join(', ')}`);
-    if (options.comment) console.log(`  Comment:    ${options.comment}`);
-
-    const response = await forwardEvent({
-      token: authResult.token!,
-      eventId,
-      toRecipients: recipients,
-      comment: options.comment,
-      user: options.user
-    });
-
-    if (!response.ok) {
-      console.error(`\nError: ${response.error?.message || 'Failed to forward event'}`);
-      process.exit(1);
-    }
-
-    console.log('\n\u2713 Successfully forwarded the event.');
-  });
+  );

@@ -133,24 +133,31 @@ sitePagesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (siteId: string, pageId: string, options: { json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      siteId: string,
+      pageId: string,
+      options: { json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await publishSitePage(auth.token!, siteId, pageId);
-    if (!result.ok) {
-      console.error(`Error: ${result.error?.message || 'Request failed'}`);
-      process.exit(1);
-    }
+      const result = await publishSitePage(auth.token!, siteId, pageId);
+      if (!result.ok) {
+        console.error(`Error: ${result.error?.message || 'Request failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ ok: true }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ ok: true }, null, 2));
+        return;
+      }
 
-    console.log(`✓ Published page ${pageId}`);
-  });
+      console.log(`✓ Published page ${pageId}`);
+    }
+  );

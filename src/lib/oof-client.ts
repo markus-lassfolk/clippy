@@ -26,7 +26,10 @@ export interface GetMailboxSettingsResponse {
   timeZone?: string;
 }
 
-export async function getMailboxSettings(token: string, user?: string): Promise<{
+export async function getMailboxSettings(
+  token: string,
+  user?: string
+): Promise<{
   ok: boolean;
   data?: GetMailboxSettingsResponse;
   error?: { message: string; code?: string; status?: number };
