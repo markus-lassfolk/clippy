@@ -4,7 +4,7 @@ Releases are aligned with **npm**, **Git tags**, and **GlitchTip** eligibility (
 
 ## One-time setup (maintainer): npm Trusted Publishing
 
-This repo publishes with **Trusted Publishing** (OIDC from GitHub Actions). You **do not** add an automation token or secret named `NPM_TOKEN` for CI.
+This repo publishes from [`.github/workflows/release.yml`](../.github/workflows/release.yml) with **`npm publish --access public --provenance`** and `permissions: id-token: write`.
 
 1. Sign in to [npmjs.com](https://www.npmjs.com/) and open the **`m365-agent-cli`** package (or create it if the name is first published from your account).
 2. Go to **Package → Access** (or **Publishing access**), then **Trusted publishers** / **Configure trusted publisher**.
@@ -13,12 +13,20 @@ This repo publishes with **Trusted Publishing** (OIDC from GitHub Actions). You 
    - **Repository:** `m365-agent-cli`
    - **Workflow filename:** `release.yml`
    - **Environment:** leave empty unless you use a [GitHub Environment](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment) with protection rules (then match the name here and in the workflow).
+4. Click **Save changes** on npm and confirm the trusted publisher still appears after refresh.
 
 Official npm docs: [Trusted publishers](https://docs.npmjs.com/trusted-publishers).
 
-The workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) uses `permissions: id-token: write` and runs `npm publish --access public --provenance` so the package is published with [provenance](https://docs.npmjs.com/generating-provenance-statements) (no long-lived npm token in GitHub secrets).
+### If publish still returns `E404` / `Not found` after saving npm
 
-If publish fails with an authentication error, the trusted publisher is usually misconfigured (wrong repo, workflow name, or package owner on npm).
+The workflow **does not** use `actions/setup-node`’s `registry-url` input (that can inject an empty `_authToken` into `.npmrc` and break OIDC).
+
+**Optional unblock:** add a repository secret **`NPM_TOKEN`** (a [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens) with **Read and write** for `m365-agent-cli`). The Release workflow uses it when set, so publish succeeds immediately; you can remove the secret later and rely on OIDC only.
+
+```bash
+gh secret set NPM_TOKEN --repo markus-lassfolk/m365-agent-cli
+# paste token when prompted
+```
 
 ### First publish (name not yet on the registry)
 
@@ -31,7 +39,7 @@ Trusted Publishing only applies **after** the package exists under your npm acco
    - `npm publish --access public`  
      With a token: `npm config set //registry.npmjs.org/:_authToken=YOUR_TOKEN` (or `NPM_TOKEN` env with `npm publish` per npm docs). Do **not** commit the token.
 3. On [npmjs.com](https://www.npmjs.com/) open **`m365-agent-cli` → Package → Access → Trusted publishers** and add **GitHub Actions** with repository `markus-lassfolk/m365-agent-cli` and workflow file **`release.yml`** (see section above).
-4. From then on, **only** push tags to trigger [`.github/workflows/release.yml`](../.github/workflows/release.yml); CI publishes via OIDC (no `NPM_TOKEN` in GitHub).
+4. From then on, push tags to trigger [`.github/workflows/release.yml`](../.github/workflows/release.yml); CI publishes via **Trusted Publishing (OIDC)**. Optionally add repository secret **`NPM_TOKEN`** if you need a token-based publish path (see above).
 
 If the package name is already taken on npm, you must rename the package in `package.json` or obtain access from the owner before publishing.
 

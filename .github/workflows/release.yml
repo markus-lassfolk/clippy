@@ -1,5 +1,6 @@
-# Publish to npm (Trusted Publishing / OIDC — no NPM_TOKEN) and create a GitHub Release on tag v*.*.*.
-# Configure the package on npmjs.com: Package → Access → Trusted publishers → link this repo + workflow.
+# Publish to npm and create a GitHub Release on tag v*.*.*.
+# Preferred: Trusted Publishing (OIDC) — configure npm: Package → Trusted publishers → GitHub Actions → this repo + release.yml
+# Optional: add repository secret NPM_TOKEN (granular publish token) if OIDC publish still fails; the publish step uses it when set.
 # See: https://docs.npmjs.com/trusted-publishers
 # Tag must match package.json version (e.g. tag v1.2.3 and "version": "1.2.3").
 
@@ -63,8 +64,17 @@ jobs:
       - name: Knip
         run: bun run knip
 
-      - name: Publish to npm (OIDC + provenance)
-        run: npm publish --access public --provenance
+      - name: Publish to npm (provenance)
+        run: |
+          set -e
+          npm config set registry https://registry.npmjs.org/
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "Using repository secret NPM_TOKEN for registry auth (remove secret later to rely on OIDC only)."
+            export NODE_AUTH_TOKEN="${{ secrets.NPM_TOKEN }}"
+          else
+            echo "Using default npm auth (Trusted Publishing / OIDC when configured on npmjs.com)."
+          fi
+          npm publish --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
