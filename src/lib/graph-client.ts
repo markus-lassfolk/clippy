@@ -391,12 +391,12 @@ export async function uploadFile(
 ): Promise<GraphResponse<DriveItem>> {
   try {
     const absolutePath = resolve(localPath);
+    const st0 = await stat(absolutePath).catch(() => null);
+    if (!st0?.isFile()) return graphError(`Not a file or not found: ${absolutePath}`);
     let resolvedPath: string;
     try {
       resolvedPath = await realpath(absolutePath);
     } catch {
-      const st = await stat(absolutePath).catch(() => null);
-      if (!st?.isFile()) return graphError(`Failed to resolve file: ${absolutePath}`);
       resolvedPath = absolutePath;
     }
     const fileStats = await stat(resolvedPath);
@@ -437,12 +437,12 @@ export async function uploadLargeFile(
 ): Promise<GraphResponse<UploadLargeResult>> {
   try {
     const absolutePath = resolve(localPath);
+    const st0 = await stat(absolutePath).catch(() => null);
+    if (!st0?.isFile()) return graphError(`Not a file or not found: ${absolutePath}`);
     let resolvedPath: string;
     try {
       resolvedPath = await realpath(absolutePath);
     } catch {
-      const st = await stat(absolutePath).catch(() => null);
-      if (!st?.isFile()) return graphError(`Failed to resolve file: ${absolutePath}`);
       resolvedPath = absolutePath;
     }
     let fileHandle: any;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtemp, unlink, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
+import { mkdtemp, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { uploadLargeFile } from './graph-client.js';
@@ -42,7 +43,7 @@ describe('uploadLargeFile chunking', () => {
     const fileSize = 25 * 1024 * 1024; // 25MB
     const buffer = new Uint8Array(fileSize);
     buffer.fill(42);
-    await writeFile(tmpFile, buffer);
+    writeFileSync(tmpFile, buffer);
 
     const originalFetch = globalThis.fetch;
     const fetchCalls: any[] = [];
