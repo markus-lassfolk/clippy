@@ -23,9 +23,12 @@ import {
   updateDraft,
   updateEmail
 } from '../lib/ews-client.js';
+import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
+import { type MailGraphCommandOptions, tryMailGraphPortion } from './mail-graph.js';
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -243,6 +246,27 @@ export const mailCommand = new Command('mail')
       if (isMutating) {
         checkReadOnly(cmd);
       }
+
+      const backend = getExchangeBackend();
+      if (!isMutating && (backend === 'graph' || backend === 'auto')) {
+        const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
+        if (ga.success && ga.token) {
+          const { handled } = await tryMailGraphPortion(
+            ga.token,
+            folder,
+            options as unknown as MailGraphCommandOptions,
+            cmd
+          );
+          if (handled) return;
+        }
+        if (backend === 'graph') {
+          console.error(
+            'This mail subcommand or options require EWS. Set M365_EXCHANGE_BACKEND=ews or auto, or use outlook-graph for Graph mail REST.'
+          );
+          process.exit(1);
+        }
+      }
+
       const authResult = await resolveAuth({
         token: options.token,
         identity: options.identity

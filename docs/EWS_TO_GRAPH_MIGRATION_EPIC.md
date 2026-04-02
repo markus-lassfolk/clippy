@@ -77,10 +77,10 @@ Until a slice is marked **EWS removed**, implementations should follow a consist
 | Calendar read | `calendar` | `GET calendarView` / shared calendars | **Default `calendar` still EWS.** **`graph-calendar`** adds Graph list/view/get + invite responses | [#206](https://github.com/markus-lassfolk/m365-agent-cli/issues/206) | 🟡 Graph parallel path ✅; switch default ⬜ |
 | Free-busy / findtime | `findtime`, parts of schedule | `calendar/getSchedule` | **`schedule`** = Graph `getSchedule` ✅. **`suggest`** = `findMeetingTimes` ✅. **`findtime`** still **`getScheduleViaOutlook`** (EWS) | [#207](https://github.com/markus-lassfolk/m365-agent-cli/issues/207) | 🟡 |
 | Whoami | `whoami` | `/me` (+ optional mailboxSettings) | **`dev_v2`:** Graph `/me` when `M365_EXCHANGE_BACKEND=graph` or `auto`; EWS when `ews` | [#208](https://github.com/markus-lassfolk/m365-agent-cli/issues/208) | 🟡 |
-| Mail CRUD + actions | `mail` | Messages, move, patch, send | **`outlook-graph`** implements broad Graph mail REST ✅. **`mail`** still EWS | [#209](https://github.com/markus-lassfolk/m365-agent-cli/issues/209) | 🟡 |
-| Send | `send` | `sendMail` / draft send | EWS `sendEmail` | [#210](https://github.com/markus-lassfolk/m365-agent-cli/issues/210) | ⬜ |
-| Drafts | `drafts` | Graph draft messages | EWS | [#211](https://github.com/markus-lassfolk/m365-agent-cli/issues/211) | ⬜ |
-| Folders | `folders` | mailFolders | EWS | [#212](https://github.com/markus-lassfolk/m365-agent-cli/issues/212) | ⬜ |
+| Mail CRUD + actions | `mail` | Messages, move, patch, send | **`dev_v2`:** Graph **list + read** when `M365_EXCHANGE_BACKEND=graph`/`auto`; other subcommands EWS | [#209](https://github.com/markus-lassfolk/m365-agent-cli/issues/209) | 🟡 |
+| Send | `send` | `sendMail` / draft send | **`dev_v2`:** Graph `sendMail` (+ file attach); link attach → EWS or `auto` | [#210](https://github.com/markus-lassfolk/m365-agent-cli/issues/210) | 🟡 |
+| Drafts | `drafts` | Graph draft messages | **`dev_v2`:** Graph **list**; create/edit/send/read still EWS | [#211](https://github.com/markus-lassfolk/m365-agent-cli/issues/211) | 🟡 |
+| Folders | `folders` | mailFolders | **`dev_v2`:** Graph CRUD + recursive list | [#212](https://github.com/markus-lassfolk/m365-agent-cli/issues/212) | 🟡 |
 | Todo link | `todo --link` | `getEmail` → Graph get message | **`getEmail`** still EWS in `todo.ts` | [#213](https://github.com/markus-lassfolk/m365-agent-cli/issues/213) | 🟡 |
 | Calendar write | `create-event`, `update-event`, `delete-event` | Events API + online meetings | EWS | [#214](https://github.com/markus-lassfolk/m365-agent-cli/issues/214) | ⬜ |
 | Meeting response | `respond` | Accept/decline/tentative via Graph | **`respond`** EWS. **`graph-calendar` accept\|decline\|tentative** Graph ✅ | [#215](https://github.com/markus-lassfolk/m365-agent-cli/issues/215) | 🟡 |
@@ -119,8 +119,8 @@ Legend: ⬜ not started / EWS-only · 🟡 in progress / partial Graph · ✅ do
 
 ### Phase 2 — Mail stack
 
-- [x] Graph mail REST (`outlook-graph`) — [ ] default `mail` / `send` / `drafts` / `folders` still EWS  
-- [ ] `auto` / router  
+- [x] Graph mail REST (`outlook-graph`) — [x] **`dev_v2`:** `folders` / `send` / `mail` (list+read) / `drafts` (list) honor `M365_EXCHANGE_BACKEND`  
+- [ ] Full Graph parity on `mail` / `drafts` (reply, search, draft CRUD, …)  
 
 **Exit:** Mail commands use Graph in `auto`; EWS optional per env.
 

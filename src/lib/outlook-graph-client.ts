@@ -32,12 +32,16 @@ export interface OutlookMessage {
   id: string;
   subject?: string;
   bodyPreview?: string;
+  body?: { contentType?: string; content?: string };
   receivedDateTime?: string;
   sentDateTime?: string;
+  lastModifiedDateTime?: string;
   isRead?: boolean;
   importance?: string;
+  categories?: string[];
   from?: { emailAddress?: { name?: string; address?: string } };
   toRecipients?: Array<{ emailAddress?: { name?: string; address?: string } }>;
+  ccRecipients?: Array<{ emailAddress?: { name?: string; address?: string } }>;
 }
 
 /** Graph [contact](https://learn.microsoft.com/en-us/graph/api/resources/contact) (subset). */
@@ -160,12 +164,44 @@ export async function deleteMailFolder(token: string, folderId: string, user?: s
   }
 }
 
+/** All mail folders (nested), depth-first under the mailbox root. */
+export async function listAllMailFoldersRecursive(
+  token: string,
+  user?: string
+): Promise<GraphResponse<OutlookMailFolder[]>> {
+  try {
+    const root = await listMailFolders(token, user);
+    if (!root.ok || !root.data) return root;
+    const all: OutlookMailFolder[] = [];
+
+    async function walk(folder: OutlookMailFolder): Promise<void> {
+      all.push(folder);
+      const n = folder.childFolderCount ?? 0;
+      if (n === 0) return;
+      const ch = await listChildMailFolders(token, folder.id, user);
+      if (!ch.ok || !ch.data?.length) return;
+      for (const c of ch.data) {
+        await walk(c);
+      }
+    }
+
+    for (const f of root.data) {
+      await walk(f);
+    }
+    return graphResult(all);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list mail folders');
+  }
+}
+
 export interface MessagesQueryOptions {
   filter?: string;
   orderby?: string;
   select?: string;
   /** When set, only one page (no automatic paging). */
   top?: number;
+  skip?: number;
 }
 
 /** Query for `GET /me/messages` (mailbox-wide, not folder-scoped). */
@@ -194,6 +230,7 @@ function messagesPath(folderId: string, user: string | undefined, query?: Messag
   if (query?.orderby) params.set('$orderby', query.orderby);
   if (query?.select) params.set('$select', query.select);
   if (query?.top !== undefined) params.set('$top', String(query.top));
+  if (query?.skip !== undefined) params.set('$skip', String(query.skip));
   const qs = params.toString() ? `?${params.toString()}` : '';
   return `${mailFoldersRoot(user)}/${encodeURIComponent(folderId)}/messages${qs}`;
 }

@@ -13,8 +13,11 @@ import {
   sendDraftById,
   updateDraft
 } from '../lib/ews-client.js';
+import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { lookupMimeType } from '../lib/mime-type.js';
+import { listMessagesInFolder } from '../lib/outlook-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 function formatDate(dateStr: string): string {
@@ -97,6 +100,88 @@ export const draftsCommand = new Command('drafts')
       if (options.send || options.delete || options.create || options.edit) {
         checkReadOnly(cmd);
       }
+
+      const backend = getExchangeBackend();
+      const graphListOnly = !options.create && !options.edit && !options.send && !options.delete && !options.read;
+
+      if (graphListOnly && (backend === 'graph' || backend === 'auto')) {
+        const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
+        if (ga.success && ga.token) {
+          const limit = parseInt(options.limit, 10) || 10;
+          const user = options.mailbox?.trim() || undefined;
+          const r = await listMessagesInFolder(ga.token, 'drafts', user, {
+            top: limit,
+            orderby: 'lastModifiedDateTime desc'
+          });
+          if (!r.ok || !r.data) {
+            if (options.json) {
+              console.log(JSON.stringify({ error: r.error?.message || 'Failed to fetch drafts' }, null, 2));
+            } else {
+              console.error(`Error: ${r.error?.message || 'Failed to fetch drafts'}`);
+            }
+            process.exit(1);
+          }
+          const graphDrafts = r.data;
+          if (options.json) {
+            console.log(
+              JSON.stringify(
+                {
+                  backend: 'graph',
+                  drafts: graphDrafts.map((d, i) => ({
+                    index: i + 1,
+                    id: d.id,
+                    to: d.toRecipients?.map((x) => x.emailAddress?.address),
+                    subject: d.subject,
+                    preview: d.bodyPreview,
+                    lastModified: d.lastModifiedDateTime || d.receivedDateTime,
+                    categories: d.categories
+                  }))
+                },
+                null,
+                2
+              )
+            );
+            return;
+          }
+
+          console.log(`\n\ud83d\udcdd Drafts (Graph)${options.mailbox ? ` — ${options.mailbox}` : ''}:\n`);
+          console.log('\u2500'.repeat(70));
+          if (graphDrafts.length === 0) {
+            console.log('\n  No drafts found.\n');
+            return;
+          }
+          for (let i = 0; i < graphDrafts.length; i++) {
+            const draft = graphDrafts[i];
+            const to = draft.toRecipients?.map((x) => x.emailAddress?.address).join(', ') || '(no recipient)';
+            const subject = draft.subject || '(no subject)';
+            const when = draft.lastModifiedDateTime || draft.receivedDateTime;
+            const date = when ? formatDate(when) : '';
+            console.log(
+              `  [${(i + 1).toString().padStart(2)}] ${truncate(to, 25).padEnd(25)} ${truncate(subject, 32).padEnd(32)} ${date}`
+            );
+            console.log(`       ID: ${draft.id}`);
+            if (draft.categories?.length) console.log(`       Categories: ${draft.categories.join(', ')}`);
+          }
+          console.log(`\n${'\u2500'.repeat(70)}`);
+          console.log('\nCommands:');
+          console.log('  m365-agent-cli drafts -r <id>                  # Read draft (EWS)');
+          console.log('  m365-agent-cli drafts --create --to "..." ...   # EWS');
+          console.log('');
+          return;
+        }
+        if (backend === 'graph') {
+          console.error('Error: Graph authentication failed. Set EWS_CLIENT_ID and GRAPH_REFRESH_TOKEN.');
+          process.exit(1);
+        }
+      }
+
+      if (backend === 'graph' && !graphListOnly) {
+        console.error(
+          'Draft create/edit/send/delete/read require EWS today. Set M365_EXCHANGE_BACKEND=ews or auto, or use outlook-graph for Graph mail.'
+        );
+        process.exit(1);
+      }
+
       const authResult = await resolveAuth({
         token: options.token,
         identity: options.identity

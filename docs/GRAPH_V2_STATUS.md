@@ -28,14 +28,18 @@ Implementation: `src/lib/exchange-backend.ts`.
 | --- | --- |
 | Phase 0 stub | `getExchangeBackend()`, `DEFAULT_EXCHANGE_BACKEND='graph'`, helpers for tests |
 | `whoami` | Uses **`GET /me`** on Graph when `graph` or `auto` (Graph path); EWS path when `ews`; `auto` falls back to EWS |
+| `folders` | Graph: `listAllMailFoldersRecursive`, create/rename/delete via Graph mail folders; `ews` / `auto` unchanged semantics |
+| `send` | Graph: `sendMail` + `buildGraphSendMailPayload` (file attachments); **`--attach-link` not on Graph** — use `ews` or `auto`; `auto` falls back to EWS on Graph failure |
+| `mail` | Graph path: **list** + **`--read`** only (`mail-graph.ts`); search/flags/download/reply/etc. → EWS or error on `graph` |
+| `drafts` | Graph path: **list drafts** only; create/edit/send/delete/read-by-id still **EWS** |
+| `outlook-graph-client` | `listAllMailFoldersRecursive`; `MessagesQueryOptions.skip`; `OutlookMessage` body / lastModified |
 | Unit tests | `src/lib/exchange-backend.test.ts` |
 
 ---
 
 ## Next (priority order — aligns with epic phases)
 
-1. **Mail stack** — Wire `mail`, `send`, `drafts`, `folders` to backend router; prefer Graph (`outlook-graph` / shared clients) vs EWS (`mail`, etc.) — [#209](https://github.com/markus-lassfolk/m365-agent-cli/issues/209)–[#212](https://github.com/markus-lassfolk/m365-agent-cli/issues/212).  
-2. **Calendar** — Default `calendar` / writes via Graph; keep `M365_EXCHANGE_BACKEND=ews` for escape hatch — [#206](https://github.com/markus-lassfolk/m365-agent-cli/issues/206), [#214](https://github.com/markus-lassfolk/m365-agent-cli/issues/214).  
+1. **Calendar** — Default `calendar` / writes via Graph; keep `M365_EXCHANGE_BACKEND=ews` for escape hatch — [#206](https://github.com/markus-lassfolk/m365-agent-cli/issues/206), [#214](https://github.com/markus-lassfolk/m365-agent-cli/issues/214).  
 3. **`findtime`** — Graph `getSchedule` / align with `schedule` — [#207](https://github.com/markus-lassfolk/m365-agent-cli/issues/207).  
 4. **Auth consolidation** — Single refresh token / cache where possible — [#219](https://github.com/markus-lassfolk/m365-agent-cli/issues/219).  
 5. **Delegates / auto-reply** — Graph or deprecate — [#217](https://github.com/markus-lassfolk/m365-agent-cli/issues/217), [#218](https://github.com/markus-lassfolk/m365-agent-cli/issues/218).  
@@ -52,4 +56,4 @@ Implementation: `src/lib/exchange-backend.ts`.
 
 ---
 
-*Last updated: 2026-04-02 — `dev_v2` initial: exchange backend module + Graph `whoami`.*
+*Last updated: 2026-04-02 — Mail stack: `folders`, `send`, `mail` (list/read), `drafts` (list) on Graph.*
