@@ -1011,7 +1011,7 @@ export interface UploadSessionResult {
   nextExpectedRanges?: string[];
 }
 
-export async function createTaskAttachmentUploadSession(
+async function createTaskAttachmentUploadSession(
   token: string,
   listId: string,
   taskId: string,
@@ -1052,7 +1052,7 @@ export async function createTaskAttachmentUploadSession(
  * Upload file bytes via session (no Bearer on PUT; Graph upload URL is pre-authorized).
  * Returns the final attachment object from the last chunk response when JSON.
  */
-export async function uploadFileViaTodoAttachmentSession(
+async function uploadFileViaTodoAttachmentSession(
   uploadUrl: string,
   filePath: string,
   chunkSize = 4 * 1024 * 1024

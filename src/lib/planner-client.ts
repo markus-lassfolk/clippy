@@ -962,7 +962,7 @@ export async function getPlannerUser(token: string): Promise<GraphResponse<Plann
   }
 }
 
-export async function patchPlannerUser(
+async function patchPlannerUser(
   token: string,
   etag: string,
   body: {
