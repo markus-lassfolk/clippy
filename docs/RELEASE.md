@@ -21,7 +21,9 @@ Official npm docs: [Trusted publishers](https://docs.npmjs.com/trusted-publisher
 
 The workflow **does not** use `actions/setup-node`’s `registry-url` input (that can inject an empty `_authToken` into `.npmrc` and break OIDC).
 
-**Optional unblock:** add a repository secret **`NPM_TOKEN`** (a [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens) with **Read and write** for `m365-agent-cli`). When set, the workflow publishes with **`npm publish --access public`** (no `--provenance`, which expects OIDC-only auth). Remove the secret later to use **Trusted Publishing + provenance** only.
+**Optional unblock (temporary):** add a repository secret **`NPM_TOKEN`** — a [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens) with **Read and write** for `m365-agent-cli`. For **CI**, the token must have **Bypass two-factor authentication (2FA)** enabled; otherwise automated `npm publish` fails (often with misleading `E404`/`E403`). npm warns about bypass; that is expected until you move to Trusted Publishing.
+
+When set, the workflow publishes with **`npm publish --access public`** (no `--provenance`). **When Trusted Publishing is verified:** revoke the token on npm, delete the **`NPM_TOKEN`** secret — the next tag run uses **OIDC only** (`npm publish` with provenance). The Release workflow uses **Node 24** and **npm ≥11.5.1**, which npm requires for Trusted Publishing.
 
 ```bash
 gh secret set NPM_TOKEN --repo markus-lassfolk/m365-agent-cli
