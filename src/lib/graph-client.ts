@@ -395,7 +395,9 @@ export async function uploadFile(
     try {
       resolvedPath = await realpath(absolutePath);
     } catch {
-      return graphError(`Failed to resolve file: ${absolutePath}`);
+      const st = await stat(absolutePath).catch(() => null);
+      if (!st?.isFile()) return graphError(`Failed to resolve file: ${absolutePath}`);
+      resolvedPath = absolutePath;
     }
     const fileStats = await stat(resolvedPath);
     if (!fileStats.isFile()) return graphError(`Not a file: ${resolvedPath}`);
@@ -439,7 +441,9 @@ export async function uploadLargeFile(
     try {
       resolvedPath = await realpath(absolutePath);
     } catch {
-      return graphError(`Failed to resolve file: ${absolutePath}`);
+      const st = await stat(absolutePath).catch(() => null);
+      if (!st?.isFile()) return graphError(`Failed to resolve file: ${absolutePath}`);
+      resolvedPath = absolutePath;
     }
     let fileHandle: any;
     try {

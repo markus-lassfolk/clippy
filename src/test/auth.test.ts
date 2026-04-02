@@ -8,7 +8,9 @@ const mockFetch = mock();
 mock.module('node:fs/promises', () => ({
   readFile: mockRead,
   writeFile: mockWrite,
-  mkdir: mock(() => Promise.resolve())
+  mkdir: mock(() => Promise.resolve()),
+  rename: mock(() => Promise.resolve()),
+  unlink: mock(() => Promise.resolve())
 }));
 
 const mockGetJwtExpiration = mock(() => Date.now() + 3600_000);
