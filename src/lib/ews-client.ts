@@ -207,6 +207,7 @@ export interface CalendarEvent {
   Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   Id: string;
   ChangeKey?: string;
+  HasAttachments?: boolean;
   Subject: string;
   Start: { DateTime: string; TimeZone: string };
   End: { DateTime: string; TimeZone: string };
@@ -268,10 +269,16 @@ export interface CreateEventOptions {
   sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   mailbox?: string;
   categories?: string[];
+  /** File attachments added after the calendar item is created (EWS CreateAttachment). */
+  fileAttachments?: EmailAttachment[];
+  /** Reference (URL) attachments, e.g. cloud document links (EWS ReferenceAttachment). */
+  referenceAttachments?: ReferenceAttachmentInput[];
 }
 
 export interface CreatedEvent {
   Id: string;
+  /** Present when the server returned it (needed for follow-up writes / attachments). */
+  ChangeKey?: string;
   Subject: string;
   Start: { DateTime: string; TimeZone: string };
   End: { DateTime: string; TimeZone: string };
@@ -349,6 +356,8 @@ export interface EmailMessage {
   IsDraft?: boolean;
   HasAttachments?: boolean;
   Importance?: 'Low' | 'Normal' | 'High';
+  /** Outlook category names (item-level; colors come from mailbox master category list). */
+  Categories?: string[];
   Flag?: {
     FlagStatus?: 'NotFlagged' | 'Flagged' | 'Complete';
     StartDate?: { DateTime: string; TimeZone: string };
@@ -382,6 +391,10 @@ export interface Attachment {
   IsInline: boolean;
   ContentId?: string;
   ContentBytes?: string;
+  /** File bytes vs cloud/URL reference (EWS ReferenceAttachment). */
+  Kind?: 'file' | 'reference';
+  /** When Kind is reference, the linked URL (AttachLongPathName). */
+  AttachLongPathName?: string;
 }
 
 export interface AttachmentListResponse {
@@ -392,6 +405,14 @@ export interface EmailAttachment {
   name: string;
   contentType: string;
   contentBytes: string;
+}
+
+/** EWS ReferenceAttachment (link to a document or web resource). */
+export interface ReferenceAttachmentInput {
+  name: string;
+  /** HTTPS URL stored as AttachLongPathName. */
+  url: string;
+  contentType?: string;
 }
 
 export interface MailFolder {
@@ -571,6 +592,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   const location = extractTag(block, 'Location');
   const isAllDay = extractTag(block, 'IsAllDayEvent').toLowerCase() === 'true';
   const isCancelled = extractTag(block, 'IsCancelled').toLowerCase() === 'true';
+  const hasAttachments = extractTag(block, 'HasAttachments').toLowerCase() === 'true';
   const bodyPreview = extractTag(block, 'TextBody') || extractTag(block, 'Body');
   const importance = extractTag(block, 'Importance') || 'Normal';
   const showAs = extractTag(block, 'LegacyFreeBusyStatus') || 'Busy';
@@ -651,6 +673,7 @@ function parseCalendarItem(block: string, mailbox?: string): CalendarEvent {
   return {
     Id: id,
     ChangeKey: changeKey,
+    HasAttachments: hasAttachments,
     Subject: subject,
     Start: { DateTime: start, TimeZone: startTz },
     End: { DateTime: end, TimeZone: endTz },
@@ -721,6 +744,11 @@ function parseEmailMessage(block: string): EmailMessage {
   const flagBlock = extractSelfClosingOrBlock(block, 'Flag');
   const flagStatus = extractTag(flagBlock, 'FlagStatus') as 'NotFlagged' | 'Flagged' | 'Complete' | undefined;
 
+  const categoriesBlock = extractSelfClosingOrBlock(block, 'Categories');
+  const categories = extractBlocks(categoriesBlock, 'String').map(
+    (b) => extractTag(b, 'String') || xmlDecode(b.replace(/<[^>]+>/g, ''))
+  );
+
   return {
     Id: id,
     ChangeKey: changeKey,
@@ -736,6 +764,7 @@ function parseEmailMessage(block: string): EmailMessage {
     IsDraft: isDraft,
     HasAttachments: hasAttachments,
     Importance: importance,
+    Categories: categories.length > 0 ? categories : undefined,
     Flag: flagStatus ? { FlagStatus: flagStatus } : undefined
   };
 }
@@ -873,6 +902,7 @@ export async function getCalendarEvents(
           <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:StartTimeZone" />
           <t:FieldURI FieldURI="calendar:EndTimeZone" />
+          <t:FieldURI FieldURI="item:HasAttachments" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:CalendarView StartDate="${xmlEscape(startDateTime)}" EndDate="${xmlEscape(endDateTime)}" />
@@ -922,6 +952,7 @@ export async function getCalendarEvent(
           <t:FieldURI FieldURI="calendar:DeletedOccurrences" />
           <t:FieldURI FieldURI="calendar:StartTimeZone" />
           <t:FieldURI FieldURI="calendar:EndTimeZone" />
+          <t:FieldURI FieldURI="item:HasAttachments" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
@@ -1066,7 +1097,9 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
       mailbox,
       timezone,
       categories,
-      sensitivity
+      sensitivity,
+      fileAttachments,
+      referenceAttachments
     } = options;
 
     let attendeesXml = '';
@@ -1130,9 +1163,32 @@ export async function createEvent(options: CreateEventOptions): Promise<OwaRespo
     const xml = await callEws(token, envelope, mailbox);
     const block = extractBlocks(xml, 'CalendarItem')[0] || '';
     const id = extractAttribute(block, 'ItemId', 'Id');
+    let changeKey = extractAttribute(block, 'ItemId', 'ChangeKey')?.trim();
+
+    if (!id?.trim()) {
+      return {
+        ok: false,
+        status: 400,
+        error: { code: 'EWS_ERROR', message: 'Create event response did not include an item id' }
+      };
+    }
+
+    const files = fileAttachments ?? [];
+    const refs = referenceAttachments ?? [];
+    if (files.length > 0 || refs.length > 0) {
+      let itemState: { id: string; changeKey?: string } = { id: id.trim(), changeKey: changeKey || undefined };
+      for (const att of files) {
+        itemState = await addAttachmentToItem(token, itemState.id, att, mailbox, itemState, 'calendar');
+      }
+      for (const ref of refs) {
+        itemState = await addReferenceAttachmentToItem(token, itemState.id, ref, mailbox, itemState);
+      }
+      changeKey = itemState.changeKey || changeKey;
+    }
 
     return ewsResult({
-      Id: id,
+      Id: id.trim(),
+      ChangeKey: changeKey || undefined,
       Subject: subject,
       Start: { DateTime: start, TimeZone: timezone || 'UTC' },
       End: { DateTime: end, TimeZone: timezone || 'UTC' },
@@ -1329,9 +1385,11 @@ export async function updateEvent(options: UpdateEventOptions): Promise<OwaRespo
     }
     const block = extractBlocks(xml, 'CalendarItem')[0] || '';
     const newId = extractAttribute(block, 'ItemId', 'Id') || eventId;
+    const newChangeKey = extractAttribute(block, 'ItemId', 'ChangeKey')?.trim();
 
     return ewsResult({
       Id: newId,
+      ChangeKey: newChangeKey || undefined,
       Subject: subject || '',
       Start: { DateTime: start || '', TimeZone: timezone || 'UTC' },
       End: { DateTime: end || '', TimeZone: timezone || 'UTC' }
@@ -1554,6 +1612,7 @@ export async function getEmails(options: GetEmailsOptions): Promise<OwaResponse<
           <t:FieldURI FieldURI="message:IsRead" />
           <t:FieldURI FieldURI="item:Flag" />
           <t:FieldURI FieldURI="item:IsDraft" />
+          <t:FieldURI FieldURI="item:Categories" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:IndexedPageItemView MaxEntriesReturned="${top}" Offset="${skip}" BasePoint="Beginning" />
@@ -1602,6 +1661,7 @@ export async function getEmail(token: string, messageId: string, mailbox?: strin
           <t:FieldURI FieldURI="message:IsRead" />
           <t:FieldURI FieldURI="item:Flag" />
           <t:FieldURI FieldURI="item:Importance" />
+          <t:FieldURI FieldURI="item:Categories" />
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
@@ -1642,6 +1702,7 @@ export async function sendEmail(
     body: string;
     bodyType?: 'Text' | 'HTML';
     attachments?: EmailAttachment[];
+    referenceAttachments?: ReferenceAttachmentInput[];
     mailbox?: string;
     categories?: string[];
   }
@@ -1679,8 +1740,11 @@ export async function sendEmail(
       ? `<m:SavedItemFolderId><t:DistinguishedFolderId Id="sentitems"><t:Mailbox><t:EmailAddress>${xmlEscape(mailbox)}</t:EmailAddress></t:Mailbox></t:DistinguishedFolderId></m:SavedItemFolderId>`
       : '';
 
+    const hasFileAtt = !!options.attachments && options.attachments.length > 0;
+    const hasRefAtt = !!options.referenceAttachments && options.referenceAttachments.length > 0;
+
     // If no attachments, send directly
-    if (!options.attachments || options.attachments.length === 0) {
+    if (!hasFileAtt && !hasRefAtt) {
       const envelope = soapEnvelope(`
       <m:CreateItem MessageDisposition="SendAndSaveCopy">
         ${savedItemFolderIdXml}
@@ -1716,8 +1780,11 @@ export async function sendEmail(
       id: draftResult.data.Id,
       changeKey: draftResult.data.ChangeKey
     };
-    for (const att of options.attachments) {
-      item = await addAttachmentToItem(token, item.id, att, mailbox, item);
+    for (const att of options.attachments ?? []) {
+      item = await addAttachmentToItem(token, item.id, att, mailbox, item, 'message');
+    }
+    for (const ref of options.referenceAttachments ?? []) {
+      item = await addReferenceAttachmentToItem(token, item.id, ref, mailbox, item);
     }
 
     await sendItemById(token, item.id, mailbox, item);
@@ -1841,12 +1908,61 @@ export async function forwardEmail(
   }
 }
 
+/** Create a forward draft (same as forward, but SaveOnly). Use addAttachmentToDraft / updateDraft, then sendDraftById. */
+export async function forwardEmailDraft(
+  token: string,
+  messageId: string,
+  toRecipients: string[],
+  comment?: string,
+  mailbox?: string
+): Promise<OwaResponse<{ draftId: string }>> {
+  try {
+    const resolved = await resolveMessageForWrite(token, messageId, mailbox);
+    if (!resolved.ok || !resolved.data) {
+      return resolved as unknown as OwaResponse<{ draftId: string }>;
+    }
+    const { id: refId, changeKey: refCk } = resolved.data;
+
+    const toXml = toRecipients
+      .map((e) => `<t:Mailbox><t:EmailAddress>${xmlEscape(e)}</t:EmailAddress></t:Mailbox>`)
+      .join('');
+
+    const envelope = soapEnvelope(`
+    <m:CreateItem MessageDisposition="SaveOnly">
+      <m:Items>
+        <t:ForwardItem>
+          ${referenceItemIdXml(refId, refCk)}
+          <t:ToRecipients>${toXml}</t:ToRecipients>
+          ${comment ? `<t:NewBodyContent BodyType="Text">${xmlEscape(comment)}</t:NewBodyContent>` : ''}
+        </t:ForwardItem>
+      </m:Items>
+    </m:CreateItem>`);
+
+    const xml = await callEws(token, envelope, mailbox);
+    const draftId = extractAttribute(xml, 'ItemId', 'Id');
+    if (!draftId?.trim()) {
+      return {
+        ok: false,
+        status: 400,
+        error: { code: 'EWS_ERROR', message: 'Forward draft response did not include an item id' }
+      };
+    }
+    return ewsResult({ draftId });
+  } catch (err) {
+    return ewsError(err);
+  }
+}
+
 export async function updateEmail(
   token: string,
   messageId: string,
   updates: {
     IsRead?: boolean;
     Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
+    /** Replace categories; omit to leave unchanged. Use empty array + clearCategories or use clearCategories only. */
+    categories?: string[];
+    /** When true, remove all categories (DeleteItemField). Ignored if categories is provided. */
+    clearCategories?: boolean;
     Flag?: {
       FlagStatus: 'NotFlagged' | 'Flagged' | 'Complete';
       StartDate?: { DateTime: string; TimeZone: string };
@@ -1857,6 +1973,7 @@ export async function updateEmail(
 ): Promise<OwaResponse<EmailMessage>> {
   try {
     const setFields: string[] = [];
+    const deleteFields: string[] = [];
 
     if (updates.IsRead !== undefined) {
       setFields.push(`
@@ -1872,6 +1989,20 @@ export async function updateEmail(
         <t:FieldURI FieldURI="item:Sensitivity" />
         <t:Message><t:Sensitivity>${xmlEscape(updates.Sensitivity)}</t:Sensitivity></t:Message>
       </t:SetItemField>`);
+    }
+
+    if (updates.categories !== undefined) {
+      if (updates.categories.length === 0) {
+        deleteFields.push(`<t:DeleteItemField><t:FieldURI FieldURI="item:Categories" /></t:DeleteItemField>`);
+      } else {
+        setFields.push(`
+      <t:SetItemField>
+        <t:FieldURI FieldURI="item:Categories" />
+        <t:Message><t:Categories>${updates.categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories></t:Message>
+      </t:SetItemField>`);
+      }
+    } else if (updates.clearCategories) {
+      deleteFields.push(`<t:DeleteItemField><t:FieldURI FieldURI="item:Categories" /></t:DeleteItemField>`);
     }
 
     if (updates.Flag) {
@@ -1892,7 +2023,8 @@ export async function updateEmail(
       </t:SetItemField>`);
     }
 
-    if (setFields.length === 0) {
+    const allUpdates = [...setFields, ...deleteFields];
+    if (allUpdates.length === 0) {
       return { ok: false, status: 400, error: { code: 'NO_UPDATES', message: 'No fields to update' } };
     }
 
@@ -1908,7 +2040,7 @@ export async function updateEmail(
         <t:ItemChange>
           ${itemIdXml(msgId, msgCk)}
           <t:Updates>
-            ${setFields.join('')}
+            ${allUpdates.join('')}
           </t:Updates>
         </t:ItemChange>
       </m:ItemChanges>
@@ -2030,11 +2162,14 @@ export async function updateDraft(
     subject?: string;
     body?: string;
     bodyType?: 'Text' | 'HTML';
+    categories?: string[];
+    clearCategories?: boolean;
     mailbox?: string;
   }
 ): Promise<OwaResponse<void>> {
   try {
     const setFields: string[] = [];
+    const deleteFields: string[] = [];
 
     if (options.subject !== undefined) {
       setFields.push(
@@ -2062,7 +2197,22 @@ export async function updateDraft(
       );
     }
 
-    if (setFields.length === 0) {
+    if (options.categories !== undefined) {
+      if (options.categories.length === 0) {
+        deleteFields.push(`<t:DeleteItemField><t:FieldURI FieldURI="item:Categories" /></t:DeleteItemField>`);
+      } else {
+        setFields.push(`
+      <t:SetItemField>
+        <t:FieldURI FieldURI="item:Categories" />
+        <t:Message><t:Categories>${options.categories.map((c) => `<t:String>${xmlEscape(c)}</t:String>`).join('')}</t:Categories></t:Message>
+      </t:SetItemField>`);
+      }
+    } else if (options.clearCategories) {
+      deleteFields.push(`<t:DeleteItemField><t:FieldURI FieldURI="item:Categories" /></t:DeleteItemField>`);
+    }
+
+    const allUpdates = [...setFields, ...deleteFields];
+    if (allUpdates.length === 0) {
       return { ok: false, status: 400, error: { code: 'NO_UPDATES', message: 'No fields to update' } };
     }
 
@@ -2077,7 +2227,7 @@ export async function updateDraft(
       <m:ItemChanges>
         <t:ItemChange>
           ${itemIdXml(did, dck)}
-          <t:Updates>${setFields.join('')}</t:Updates>
+          <t:Updates>${allUpdates.join('')}</t:Updates>
         </t:ItemChange>
       </m:ItemChanges>
     </m:UpdateItem>`);
@@ -2157,12 +2307,27 @@ export async function deleteDraftById(token: string, draftId: string, mailbox?: 
   }
 }
 
+type AttachmentParentKind = 'message' | 'calendar';
+
+async function resolveParentForWrite(
+  token: string,
+  itemId: string,
+  mailbox: string | undefined,
+  kind: AttachmentParentKind
+): Promise<OwaResponse<{ id: string; changeKey?: string }>> {
+  if (kind === 'calendar') {
+    return resolveCalendarForWrite(token, itemId, mailbox);
+  }
+  return resolveMessageForWrite(token, itemId, mailbox);
+}
+
 async function addAttachmentToItem(
   token: string,
   itemId: string,
   attachment: EmailAttachment,
   mailbox?: string,
-  preResolved?: { id: string; changeKey?: string }
+  preResolved?: { id: string; changeKey?: string },
+  parentKind: AttachmentParentKind = 'message'
 ): Promise<{ id: string; changeKey?: string }> {
   let pid: string;
   let pck: string | undefined;
@@ -2170,9 +2335,9 @@ async function addAttachmentToItem(
     pid = preResolved.id.trim();
     pck = preResolved.changeKey?.trim() || undefined;
   } else {
-    const resolved = await resolveMessageForWrite(token, itemId, mailbox);
+    const resolved = await resolveParentForWrite(token, itemId, mailbox, parentKind);
     if (!resolved.ok || !resolved.data) {
-      throw new Error(resolved.error?.message || 'Failed to resolve message for attachment');
+      throw new Error(resolved.error?.message || 'Failed to resolve parent item for attachment');
     }
     pid = resolved.data.id;
     pck = resolved.data.changeKey;
@@ -2200,6 +2365,80 @@ async function addAttachmentToItem(
   return { id: pid, changeKey: pck };
 }
 
+async function addReferenceAttachmentToItem(
+  token: string,
+  itemId: string,
+  ref: ReferenceAttachmentInput,
+  mailbox?: string,
+  preResolved?: { id: string; changeKey?: string },
+  parentKind: AttachmentParentKind = 'message'
+): Promise<{ id: string; changeKey?: string }> {
+  let pid: string;
+  let pck: string | undefined;
+  if (preResolved?.id?.trim()) {
+    pid = preResolved.id.trim();
+    pck = preResolved.changeKey?.trim() || undefined;
+  } else {
+    const resolved = await resolveParentForWrite(token, itemId, mailbox, parentKind);
+    if (!resolved.ok || !resolved.data) {
+      throw new Error(resolved.error?.message || 'Failed to resolve parent item for reference attachment');
+    }
+    pid = resolved.data.id;
+    pck = resolved.data.changeKey;
+  }
+  const parentCkAttr = pck ? ` ChangeKey="${xmlEscape(pck)}"` : '';
+  const ct = ref.contentType?.trim() || 'text/html';
+
+  const envelope = soapEnvelope(`
+  <m:CreateAttachment>
+    <m:ParentItemId Id="${xmlEscape(pid)}"${parentCkAttr} />
+    <m:Attachments>
+      <t:ReferenceAttachment>
+        <t:Name>${xmlEscape(ref.name)}</t:Name>
+        <t:ContentType>${xmlEscape(ct)}</t:ContentType>
+        <t:AttachLongPathName>${xmlEscape(ref.url)}</t:AttachLongPathName>
+      </t:ReferenceAttachment>
+    </m:Attachments>
+  </m:CreateAttachment>`);
+  const xml = await callEws(token, envelope, mailbox);
+
+  const rootId = extractAttribute(xml, 'RootItemId', 'Id')?.trim();
+  const rootCk = extractAttribute(xml, 'RootItemId', 'ChangeKey')?.trim();
+  if (rootId) {
+    return { id: rootId, changeKey: rootCk || pck };
+  }
+  return { id: pid, changeKey: pck };
+}
+
+/** Add file and/or reference attachments to a calendar event (organizer item id or occurrence id). */
+export async function addCalendarEventAttachments(
+  token: string,
+  eventId: string,
+  mailbox: string | undefined,
+  fileAttachments: EmailAttachment[],
+  referenceAttachments: ReferenceAttachmentInput[]
+): Promise<OwaResponse<void>> {
+  try {
+    if (fileAttachments.length === 0 && referenceAttachments.length === 0) {
+      return { ok: true, status: 200 };
+    }
+    const resolved = await resolveCalendarForWrite(token, eventId, mailbox);
+    if (!resolved.ok || !resolved.data) {
+      return resolved as OwaResponse<void>;
+    }
+    let item = resolved.data;
+    for (const att of fileAttachments) {
+      item = await addAttachmentToItem(token, item.id, att, mailbox, item, 'calendar');
+    }
+    for (const ref of referenceAttachments) {
+      item = await addReferenceAttachmentToItem(token, item.id, ref, mailbox, item, 'calendar');
+    }
+    return { ok: true, status: 200 };
+  } catch (err) {
+    return ewsError(err);
+  }
+}
+
 export async function addAttachmentToDraft(
   token: string,
   draftId: string,
@@ -2207,7 +2446,21 @@ export async function addAttachmentToDraft(
   mailbox?: string
 ): Promise<OwaResponse<void>> {
   try {
-    await addAttachmentToItem(token, draftId, attachment, mailbox);
+    await addAttachmentToItem(token, draftId, attachment, mailbox, undefined, 'message');
+    return { ok: true, status: 200 };
+  } catch (err) {
+    return ewsError(err);
+  }
+}
+
+export async function addReferenceAttachmentToDraft(
+  token: string,
+  draftId: string,
+  ref: ReferenceAttachmentInput,
+  mailbox?: string
+): Promise<OwaResponse<void>> {
+  try {
+    await addReferenceAttachmentToItem(token, draftId, ref, mailbox, undefined, 'message');
     return { ok: true, status: 200 };
   } catch (err) {
     return ewsError(err);
@@ -2347,11 +2600,10 @@ export async function deleteMailFolder(token: string, folderId: string, mailbox?
 
 export async function getAttachments(
   token: string,
-  messageId: string,
+  itemId: string,
   mailbox?: string
 ): Promise<OwaResponse<AttachmentListResponse>> {
   try {
-    // First get the item to find attachment IDs
     const envelope = soapEnvelope(`
     <m:GetItem>
       <m:ItemShape>
@@ -2361,21 +2613,36 @@ export async function getAttachments(
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>
-        <t:ItemId Id="${xmlEscape(messageId)}" />
+        <t:ItemId Id="${xmlEscape(itemId)}" />
       </m:ItemIds>
     </m:GetItem>`);
 
     const xml = await callEws(token, envelope, mailbox);
-    const attachBlocks = extractBlocks(xml, 'FileAttachment');
+    const attachments: Attachment[] = [];
 
-    const attachments: Attachment[] = attachBlocks.map((ab) => ({
-      Id: extractAttribute(ab, 'AttachmentId', 'Id'),
-      Name: extractTag(ab, 'Name'),
-      ContentType: extractTag(ab, 'ContentType') || 'application/octet-stream',
-      Size: parseInt(extractTag(ab, 'Size') || '0', 10),
-      IsInline: extractTag(ab, 'IsInline').toLowerCase() === 'true',
-      ContentId: extractTag(ab, 'ContentId') || undefined
-    }));
+    for (const ab of extractBlocks(xml, 'FileAttachment')) {
+      attachments.push({
+        Id: extractAttribute(ab, 'AttachmentId', 'Id') || '',
+        Name: extractTag(ab, 'Name'),
+        ContentType: extractTag(ab, 'ContentType') || 'application/octet-stream',
+        Size: parseInt(extractTag(ab, 'Size') || '0', 10),
+        IsInline: extractTag(ab, 'IsInline').toLowerCase() === 'true',
+        ContentId: extractTag(ab, 'ContentId') || undefined,
+        Kind: 'file'
+      });
+    }
+
+    for (const ab of extractBlocks(xml, 'ReferenceAttachment')) {
+      attachments.push({
+        Id: extractAttribute(ab, 'AttachmentId', 'Id') || '',
+        Name: extractTag(ab, 'Name'),
+        ContentType: extractTag(ab, 'ContentType') || 'text/html',
+        Size: parseInt(extractTag(ab, 'Size') || '0', 10),
+        IsInline: false,
+        Kind: 'reference',
+        AttachLongPathName: extractTag(ab, 'AttachLongPathName') || undefined
+      });
+    }
 
     return ewsResult({ value: attachments });
   } catch (err) {
@@ -2383,11 +2650,11 @@ export async function getAttachments(
   }
 }
 
-// Note: messageId is intentionally unused. EWS AttachmentId values are globally
-// unique within the mailbox — no parent message reference needed.
+// Note: parent item id is intentionally unused. EWS AttachmentId values are globally
+// unique within the mailbox — no parent item reference needed.
 export async function getAttachment(
   token: string,
-  _messageId: string,
+  _parentItemId: string,
   attachmentId: string,
   mailbox?: string
 ): Promise<OwaResponse<Attachment>> {
@@ -2400,17 +2667,34 @@ export async function getAttachment(
     </m:GetAttachment>`);
 
     const xml = await callEws(token, envelope, mailbox);
-    const block = extractBlocks(xml, 'FileAttachment')[0] || '';
+    const fileBlock = extractBlocks(xml, 'FileAttachment')[0];
+    if (fileBlock) {
+      return ewsResult({
+        Id: extractAttribute(fileBlock, 'AttachmentId', 'Id'),
+        Name: extractTag(fileBlock, 'Name'),
+        ContentType: extractTag(fileBlock, 'ContentType') || 'application/octet-stream',
+        Size: parseInt(extractTag(fileBlock, 'Size') || '0', 10),
+        IsInline: extractTag(fileBlock, 'IsInline').toLowerCase() === 'true',
+        ContentId: extractTag(fileBlock, 'ContentId') || undefined,
+        ContentBytes: extractTag(fileBlock, 'Content') || undefined,
+        Kind: 'file'
+      });
+    }
 
-    return ewsResult({
-      Id: extractAttribute(block, 'AttachmentId', 'Id'),
-      Name: extractTag(block, 'Name'),
-      ContentType: extractTag(block, 'ContentType') || 'application/octet-stream',
-      Size: parseInt(extractTag(block, 'Size') || '0', 10),
-      IsInline: extractTag(block, 'IsInline').toLowerCase() === 'true',
-      ContentId: extractTag(block, 'ContentId') || undefined,
-      ContentBytes: extractTag(block, 'Content') || undefined
-    });
+    const refBlock = extractBlocks(xml, 'ReferenceAttachment')[0];
+    if (refBlock) {
+      return ewsResult({
+        Id: extractAttribute(refBlock, 'AttachmentId', 'Id'),
+        Name: extractTag(refBlock, 'Name'),
+        ContentType: extractTag(refBlock, 'ContentType') || 'text/html',
+        Size: parseInt(extractTag(refBlock, 'Size') || '0', 10),
+        IsInline: false,
+        Kind: 'reference',
+        AttachLongPathName: extractTag(refBlock, 'AttachLongPathName') || undefined
+      });
+    }
+
+    return { ok: false, status: 404, error: { code: 'NOT_FOUND', message: 'Attachment not found' } };
   } catch (err) {
     return ewsError(err);
   }

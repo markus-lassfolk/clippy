@@ -21,22 +21,56 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 ## Delegation and shared access
 
 - **EWS shared mailbox:** `--mailbox <email>` on calendar, mail, send, folders, drafts, respond, findtime, delegates, auto-reply (and similar) to act as that mailbox where supported.
-- **Graph delegation:** **`--user <upn-or-id>`** on supported commands (e.g. inbox **rules**, **oof**, **todo**, **schedule** / meeting-time helpers, **subscribe**, **rooms**/places, **files** where implemented) — calls Graph as `/users/{id}/...` instead of `/me/...`. Requires app permissions + admin consent where applicable.
+- **Graph delegation:** **`--user <upn-or-id>`** on supported commands (e.g. inbox **rules**, **oof**, **todo**, **outlook-categories**, **schedule** / meeting-time helpers, **subscribe**, **rooms**/places, **files** where implemented) — calls Graph as `/users/{id}/...` instead of `/me/...`. Requires app permissions + admin consent where applicable.
 
 ## Safety
 
 - **`--read-only`** (root) or **`READ_ONLY_MODE=true`** in env / `.env` runs `checkReadOnly()` before specific mutating actions (exits before the request). The **authoritative list** is the **Read-Only Mode** table in this repo’s `README.md` (kept in sync with `grep checkReadOnly src` in source).
-- Read/query commands (e.g. `calendar`, `schedule`, `suggest`, `subscriptions list`, `rules list`) are **not** gated unless they call `checkReadOnly`—see README.
+- Read/query commands (e.g. `calendar`, `schedule`, `suggest`, `subscriptions list`, `rules list`, **`outlook-categories list`**) are **not** gated unless they call `checkReadOnly`—see README. **`outlook-categories create` / `update` / `delete`** are mutating and **are** gated.
 - **`m365-agent-cli --help`** only lists root flags (e.g. `--read-only`). Per-command flags are on each subcommand’s help.
+
+## Categories, labels, and colors (Outlook vs To Do vs Planner)
+
+- **Mail and calendar (EWS):** Items use **category name strings** (same names as in Outlook). **Colors** are not stored per message/event in the CLI; they come from the mailbox **master category list**. **List** names + preset colors: **`outlook-categories list`**. **Create / rename / delete** master entries (and colors `preset0`..`preset24`): **`outlook-categories create`**, **`update`**, **`delete`** (Graph; needs **`MailboxSettings.ReadWrite`**). Set categories on existing messages: **`mail --set-categories <id> --category <name>`**, **`mail --clear-categories <id>`**. On **outgoing** reply/forward: **`mail --with-category <name>`** (repeatable) with **`--reply` / `--reply-all` / `--forward`**. Drafts: **`drafts --create` / `--edit`** with **`--category`**; **`--clear-categories`** on edit. Calendar: **`create-event` / `update-event`** with **`--category`**; verbose **`calendar`** shows categories when present.
+- **Microsoft To Do (Graph):** Tasks use **`categories[]`** as **string labels** (independent of Outlook master categories). **`todo create --category`**, **`todo update --category` / `--clear-categories`**.
+- **Planner (Graph):** Tasks use **six fixed slots** `category1`..`category6` (**`appliedCategories`**). Display names are defined per **plan** (plan details). CLI: **`planner create-task --label`**, **`planner update-task --label` / `--unlabel` / `--clear-labels`**; list views resolve names when plan details are available.
+
+## Attachments (EWS)
+
+File and link attachments are supported on **messages** and **calendar items** (not on Planner/To Do in this CLI).
+
+| Flow | Command / flags |
+|------|-----------------|
+| Send email with files or links | **`send --attach <paths>`** (comma-separated), **`send --attach-link <spec>`** (repeatable; spec is **`Title|https://url`** or a bare **`https://`** URL) |
+| Drafts | **`drafts --create` / `--edit`** with **`--attach`** and **`--attach-link`** (same pattern as `send`) |
+| Download from a message | **`mail -d <id>`** (or **`--download`**), **`--output <dir>`** for save location |
+| Reply / forward with attachments or outgoing categories | **`mail --reply` / `--reply-all` / `--forward`** with **`--attach`**, **`--attach-link`**, **`--with-category`** (uses draft + send; **`--draft`** to save only). Use **message id** from list/read, not the numeric index, for non-interactive scripts. |
+| Calendar event files / links | **`create-event`** / **`update-event`**: **`--attach`**, **`--attach-link`** (adds after the item exists; paths relative to cwd where documented) |
+| List or download event attachments | **`calendar --list-attachments <eventId>`**, **`calendar --download-attachments <eventId>`** with **`--output`**, **`--force`** to overwrite |
+| Inbox rules | **`rules`**: conditions like **`--hasAttachments`**, actions like **`--forwardAsAttachmentTo`** (see **`rules --help`**) |
+
+Paths are validated (no unsafe traversal); large files may hit Exchange limits—see command help and README.
+
+## Calendar: date ranges and weekday (“business day”) windows
+
+The **`calendar`** command accepts a start day (and optional end day) plus **mutually exclusive** span modes:
+
+- **`--days <n>`** — **N consecutive calendar days** forward from the start day (includes the start day). No end-date argument.
+- **`--previous-days <n>`** — **N consecutive calendar days** ending on the start day.
+- **`--business-days <n>`** or **`--busness-days <n>`** (typo alias) — **N weekdays (Mon–Fri)** forward from the start anchor; if the anchor falls on a weekend, the first counted weekday is the next Monday (see implementation in `calendar-range.ts`).
+- **`--previous-business-days <n>`** — **N weekdays** backward ending on the last weekday on or before the start anchor.
+
+Do **not** combine these flags with each other or with an explicit **`[end]`** date argument. Do **not** combine them with week keywords **`week` / `thisweek` / `lastweek` / `nextweek`** — use a single day (e.g. `today`) as the start when using `--business-days` / `--days` / etc.
 
 ## Command map (high level)
 
 | Area | Commands / notes |
 |------|------------------|
-| Calendar | `calendar`, `create-event`, `update-event`, `delete-event`, `respond`, `findtime`, `forward-event`, `counter`, `schedule`, `suggest` |
-| Mail | `mail`, `send`, `drafts`, `folders` |
+| Calendar | `calendar` (**`--list-attachments`**, **`--download-attachments`**), `create-event` / `update-event` (**`--attach`**, **`--attach-link`**), `delete-event`, `respond`, `findtime`, `forward-event`, `counter`, `schedule`, `suggest` |
+| Mail | `mail` (**`-d`**, reply/forward **`--attach`**, **`--attach-link`**, **`--with-category`**), `send`, `drafts`, `folders` |
+| Outlook categories (Graph) | `outlook-categories` **`list`**, **`create`**, **`update`**, **`delete`** — master list **names + colors** |
 | Files | `files` (list, search, upload, download, share, versions, …) |
-| Planner | `planner` |
+| Planner | `planner` (tasks, plans, buckets; **labels** on tasks) |
 | SharePoint | `sharepoint` / `sp`, `pages` (site pages) |
 | Directory / rooms | `find`, `rooms` |
 | Graph mail extras | `rules` (inbox message rules), `oof` (automatic replies), `todo` (Microsoft To Do) |
@@ -46,7 +80,7 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 
 ## EWS writes (mail/calendar)
 
-- Mutating EWS calls (reply, forward, move, flag/read state, drafts send, calendar respond/cancel/delete/update, etc.) are implemented in **`ews-client.ts`** to resolve **ItemId + ChangeKey** via **`GetItem`** / **`getCalendarEvent`** before **`CreateItem`**, **`UpdateItem`**, **`MoveItem`**, **`SendItem`**, and similar—especially important for **delegated/shared mailbox** use (`--mailbox`), where Exchange may return **`ErrorChangeKeyRequiredForWriteOperations`** if ChangeKey is omitted.
+- Mutating EWS calls (reply, forward, move, flag/read state, drafts send, calendar respond/cancel/delete/update, **message categories**, etc.) are implemented in **`ews-client.ts`** to resolve **ItemId + ChangeKey** via **`GetItem`** / **`getCalendarEvent`** before **`CreateItem`**, **`UpdateItem`**, **`MoveItem`**, **`SendItem`**, and similar—especially important for **delegated/shared mailbox** use (`--mailbox`), where Exchange may return **`ErrorChangeKeyRequiredForWriteOperations`** if ChangeKey is omitted.
 - Callers pass **message or event IDs** from list/read output as today; they do **not** supply ChangeKey manually.
 
 ## Agent tips
@@ -55,3 +89,5 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 - If auth fails, suggest `verify-token` and re-`login`; wrong **identity** profile means wrong cache file—check `--identity`.
 - For “on behalf of user X” Graph work, confirm **`--user`** is available on that subcommand via `--help` before assuming it works everywhere.
 - If a user still sees EWS change-key or conflict errors after an update, suggest **re-fetching the item ID** (another process may have modified the message/event) and retrying.
+- For **Outlook-colored categories** on mail/calendar items, use **names** that exist in **`outlook-categories list`** (or Outlook) so colors match; **Planner** and **To Do** use different label models.
+- For **attachments**, use **`mail -d`**, **`send`/`drafts`/`create-event`/`update-event`** flags above; **OneDrive/SharePoint files** use **`files`**, not EWS attachments.

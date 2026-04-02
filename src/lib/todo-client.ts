@@ -30,6 +30,8 @@ export interface TodoTask {
   dueDateTime?: { dateTime: string; timeZone: string };
   importance?: TodoImportance;
   status?: TodoStatus;
+  /** Outlook-style category labels (strings). */
+  categories?: string[];
   linkedResources?: TodoLinkedResource[];
   checklistItems?: TodoChecklistItem[];
   createdDateTime?: string;
@@ -130,6 +132,7 @@ export interface CreateTaskOptions {
   isReminderOn?: boolean;
   reminderDateTime?: string;
   linkedResources?: TodoLinkedResource[];
+  categories?: string[];
 }
 
 export async function createTask(
@@ -148,6 +151,7 @@ export async function createTask(
     payload.reminderDateTime = { dateTime: options.reminderDateTime, timeZone: options.timeZone || 'UTC' };
   }
   if (options.linkedResources?.length) payload.linkedResources = options.linkedResources;
+  if (options.categories?.length) payload.categories = options.categories;
   let result: GraphResponse<TodoTask>;
   try {
     result = await callGraph<TodoTask>(token, `${todoRoot(user)}/lists/${encodeURIComponent(listId)}/tasks`, {
@@ -178,6 +182,10 @@ export interface UpdateTaskOptions {
   reminderDateTime?: string | null;
   completedDateTime?: string | null;
   linkedResources?: TodoLinkedResource[];
+  /** Replace categories when set (including empty array). */
+  categories?: string[];
+  /** When true, PATCH with categories: []. Ignored if categories is set. */
+  clearCategories?: boolean;
 }
 
 export async function updateTask(
@@ -211,6 +219,8 @@ export async function updateTask(
         : { dateTime: options.completedDateTime, timeZone: options.timeZone || 'UTC' };
   }
   if (options.linkedResources !== undefined) payload.linkedResources = options.linkedResources;
+  if (options.categories !== undefined) payload.categories = options.categories;
+  else if (options.clearCategories) payload.categories = [];
   let result: GraphResponse<TodoTask>;
   try {
     result = await callGraph<TodoTask>(

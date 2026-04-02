@@ -2,15 +2,42 @@ import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   createTask,
+  getPlanDetails,
   getTask,
   listGroupPlans,
   listPlanBuckets,
   listPlanTasks,
   listUserPlans,
   listUserTasks,
+  normalizeAppliedCategories,
+  type PlannerCategorySlot,
+  type PlannerPlanDetails,
+  type PlannerTask,
+  parsePlannerLabelKey,
   updateTask
 } from '../lib/planner-client.js';
 import { checkReadOnly } from '../lib/utils.js';
+
+const LABEL_SLOTS: PlannerCategorySlot[] = [
+  'category1',
+  'category2',
+  'category3',
+  'category4',
+  'category5',
+  'category6'
+];
+
+function formatTaskLabels(task: PlannerTask, descriptions?: PlannerPlanDetails['categoryDescriptions']): string {
+  if (!task.appliedCategories) return '';
+  const parts: string[] = [];
+  for (const slot of LABEL_SLOTS) {
+    if (task.appliedCategories[slot]) {
+      const name = descriptions?.[slot]?.trim();
+      parts.push(name || slot);
+    }
+  }
+  return parts.join(', ');
+}
 
 export const plannerCommand = new Command('planner').description('Manage Microsoft Planner tasks and plans');
 
@@ -34,9 +61,16 @@ plannerCommand
     if (opts.json) {
       console.log(JSON.stringify(result.data, null, 2));
     } else {
+      const planDetailsCache = new Map<string, PlannerPlanDetails['categoryDescriptions']>();
       for (const t of result.data) {
+        if (!planDetailsCache.has(t.planId)) {
+          const d = await getPlanDetails(auth.token!, t.planId);
+          planDetailsCache.set(t.planId, d.ok ? d.data?.categoryDescriptions : undefined);
+        }
+        const desc = planDetailsCache.get(t.planId);
+        const labels = formatTaskLabels(t, desc);
         console.log(`- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})`);
-        console.log(`  Plan ID: ${t.planId} | Bucket ID: ${t.bucketId}`);
+        console.log(`  Plan ID: ${t.planId} | Bucket ID: ${t.bucketId}${labels ? ` | Labels: ${labels}` : ''}`);
       }
     }
   });
@@ -113,11 +147,16 @@ plannerCommand
       console.error(`Error listing tasks: ${result.error?.message}`);
       process.exit(1);
     }
+    const detailsR = await getPlanDetails(auth.token!, opts.plan);
+    const descriptions = detailsR.ok ? detailsR.data?.categoryDescriptions : undefined;
     if (opts.json) {
       console.log(JSON.stringify(result.data, null, 2));
     } else {
       for (const t of result.data) {
-        console.log(`- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})`);
+        const labels = formatTaskLabels(t, descriptions);
+        console.log(
+          `- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})${labels ? ` | ${labels}` : ''}`
+        );
       }
     }
   });
@@ -128,12 +167,26 @@ plannerCommand
   .requiredOption('-p, --plan <planId>', 'Plan ID')
   .requiredOption('-t, --title <title>', 'Task title')
   .option('-b, --bucket <bucketId>', 'Bucket ID')
+  .option(
+    '--label <slot>',
+    'Label slot: 1-6 or category1..category6 (repeatable; names are defined in plan details)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .option('--json', 'Output JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
     async (
-      opts: { plan: string; title: string; bucket?: string; json?: boolean; token?: string; identity?: string },
+      opts: {
+        plan: string;
+        title: string;
+        bucket?: string;
+        label?: string[];
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
       cmd: any
     ) => {
       checkReadOnly(cmd);
@@ -142,7 +195,20 @@ plannerCommand
         console.error(`Auth error: ${auth.error}`);
         process.exit(1);
       }
-      const result = await createTask(auth.token!, opts.plan, opts.title, opts.bucket);
+      let applied: ReturnType<typeof normalizeAppliedCategories> | undefined;
+      if (opts.label?.length) {
+        const setTrue: PlannerCategorySlot[] = [];
+        for (const raw of opts.label) {
+          const slot = parsePlannerLabelKey(raw);
+          if (!slot) {
+            console.error(`Invalid --label "${raw}". Use 1-6 or category1..category6.`);
+            process.exit(1);
+          }
+          setTrue.push(slot);
+        }
+        applied = normalizeAppliedCategories(undefined, { setTrue });
+      }
+      const result = await createTask(auth.token!, opts.plan, opts.title, opts.bucket, undefined, applied);
       if (!result.ok || !result.data) {
         console.error(`Error creating task: ${result.error?.message}`);
         process.exit(1);
@@ -163,6 +229,19 @@ plannerCommand
   .option('-b, --bucket <bucketId>', 'Move to Bucket ID')
   .option('--percent <percentComplete>', 'Percent complete (0-100)')
   .option('--assign <userId>', 'Assign to user ID')
+  .option(
+    '--label <slot>',
+    'Turn on label slot (1-6 or category1..category6); repeatable',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option(
+    '--unlabel <slot>',
+    'Turn off label slot; repeatable',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option('--clear-labels', 'Clear all label slots on the task')
   .option('--json', 'Output JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -174,6 +253,9 @@ plannerCommand
         bucket?: string;
         percent?: string;
         assign?: string;
+        label?: string[];
+        unlabel?: string[];
+        clearLabels?: boolean;
         json?: boolean;
         token?: string;
         identity?: string;
@@ -218,6 +300,44 @@ plannerCommand
             orderHint: ' !'
           }
         };
+      }
+
+      const labelOps = (opts.label?.length ?? 0) > 0 || (opts.unlabel?.length ?? 0) > 0 || opts.clearLabels;
+      if (labelOps) {
+        const setTrue: PlannerCategorySlot[] = [];
+        const setFalse: PlannerCategorySlot[] = [];
+        for (const raw of opts.label ?? []) {
+          const slot = parsePlannerLabelKey(raw);
+          if (!slot) {
+            console.error(`Invalid --label "${raw}". Use 1-6 or category1..category6.`);
+            process.exit(1);
+          }
+          setTrue.push(slot);
+        }
+        for (const raw of opts.unlabel ?? []) {
+          const slot = parsePlannerLabelKey(raw);
+          if (!slot) {
+            console.error(`Invalid --unlabel "${raw}". Use 1-6 or category1..category6.`);
+            process.exit(1);
+          }
+          setFalse.push(slot);
+        }
+        if (opts.clearLabels && (setTrue.length > 0 || setFalse.length > 0)) {
+          console.error('Error: use --clear-labels alone, or use --label/--unlabel without --clear-labels');
+          process.exit(1);
+        }
+        updates.appliedCategories = normalizeAppliedCategories(taskRes.data.appliedCategories, {
+          clearAll: opts.clearLabels,
+          setTrue: setTrue.length ? setTrue : undefined,
+          setFalse: setFalse.length ? setFalse : undefined
+        });
+      }
+
+      if (Object.keys(updates).length === 0) {
+        console.error(
+          'Error: specify at least one of --title, --bucket, --percent, --assign, --label, --unlabel, --clear-labels'
+        );
+        process.exit(1);
       }
 
       const result = await updateTask(auth.token!, opts.id, etag, updates);

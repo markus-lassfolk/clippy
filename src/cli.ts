@@ -17,6 +17,7 @@ import { forwardEventCommand } from './commands/forward-event.js';
 import { loginCommand } from './commands/login.js';
 import { mailCommand } from './commands/mail.js';
 import { oofCommand } from './commands/oof.js';
+import { outlookCategoriesCommand } from './commands/outlook-categories.js';
 import { plannerCommand } from './commands/planner.js';
 import { respondCommand } from './commands/respond.js';
 import { roomsCommand } from './commands/rooms.js';
@@ -69,6 +70,8 @@ program.addCommand(oofCommand);
 program.addCommand(rulesCommand);
 program.addCommand(delegatesCommand);
 program.addCommand(todoCommand);
+
+program.addCommand(outlookCategoriesCommand);
 
 program.addCommand(plannerCommand);
 

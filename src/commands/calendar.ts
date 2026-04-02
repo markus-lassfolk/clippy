@@ -1,7 +1,37 @@
+import { access, mkdir, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
+import {
+  businessDaysBackward,
+  businessDaysForward,
+  calendarDaysBackward,
+  calendarDaysForward,
+  isWeekRangeKeyword
+} from '../lib/calendar-range.js';
 import { parseDay, parseLocalDate } from '../lib/dates.js';
-import { type CalendarAttendee, type CalendarEvent, getCalendarEvents } from '../lib/ews-client.js';
+import {
+  type CalendarAttendee,
+  type CalendarEvent,
+  getAttachment,
+  getAttachments,
+  getCalendarEvent,
+  getCalendarEvents
+} from '../lib/ews-client.js';
+
+function sanitizeFileComponent(name: string): string {
+  const s = name.replace(/[/\\?%*:|"<>]/g, '_').trim();
+  return s.length > 0 ? s : 'attachment';
+}
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function formatTime(dateStr: string): string {
   const date = parseLocalDate(dateStr);
@@ -98,6 +128,90 @@ function getDateRange(startDay: string, endDay?: string): { start: string; end: 
   };
 }
 
+function parseCalendarRangeInt(v: string | boolean | undefined, flag: string): number | undefined {
+  if (v === undefined || v === '') {
+    return undefined;
+  }
+  if (typeof v === 'boolean') {
+    return undefined;
+  }
+  const n = parseInt(String(v), 10);
+  if (!Number.isFinite(n) || n < 1 || n > 366) {
+    throw new Error(`${flag} must be an integer between 1 and 366`);
+  }
+  return n;
+}
+
+function parseAnchorDateForDynamicRange(startDay: string): Date {
+  const startDate = parseDay(startDay, { weekdayDirection: 'previous' });
+  startDate.setHours(0, 0, 0, 0);
+  return startDate;
+}
+
+/**
+ * Resolve EWS window when using --days / --business-days / etc., or delegate to getDateRange.
+ */
+function resolveCalendarQueryRange(
+  startDay: string,
+  endDay: string | undefined,
+  rangeOpts: {
+    days?: number;
+    previousDays?: number;
+    businessDays?: number;
+    previousBusinessDays?: number;
+  }
+): { start: string; end: string; label: string } {
+  const { days, previousDays, businessDays, previousBusinessDays } = rangeOpts;
+  const modeCount = [days, previousDays, businessDays, previousBusinessDays].filter((x) => x !== undefined).length;
+
+  if (modeCount === 0) {
+    return getDateRange(startDay, endDay);
+  }
+
+  if (modeCount > 1) {
+    throw new Error(
+      'Use only one of: --days, --previous-days, --business-days (--busness-days), --previous-business-days'
+    );
+  }
+
+  if (endDay !== undefined) {
+    throw new Error('Do not pass an end date argument when using --days / --business-days / --previous-days / ...');
+  }
+
+  if (isWeekRangeKeyword(startDay)) {
+    throw new Error(
+      'Week keywords (week, thisweek, lastweek, nextweek) cannot be combined with --days / --business-days / ... — use a single day (e.g. today) as start'
+    );
+  }
+
+  const anchor = parseAnchorDateForDynamicRange(startDay);
+  let result: { start: Date; endExclusive: Date };
+  let title: string;
+
+  if (days !== undefined) {
+    result = calendarDaysForward(anchor, days);
+    title = `Next ${days} calendar day(s)`;
+  } else if (previousDays !== undefined) {
+    result = calendarDaysBackward(anchor, previousDays);
+    title = `Previous ${previousDays} calendar day(s)`;
+  } else if (businessDays !== undefined) {
+    result = businessDaysForward(anchor, businessDays);
+    title = `Next ${businessDays} business day(s)`;
+  } else {
+    result = businessDaysBackward(anchor, previousBusinessDays!);
+    title = `Previous ${previousBusinessDays} business day(s)`;
+  }
+
+  const lastInclusive = new Date(result.endExclusive);
+  lastInclusive.setDate(lastInclusive.getDate() - 1);
+
+  return {
+    start: result.start.toISOString(),
+    end: result.endExclusive.toISOString(),
+    label: `${title} (${formatDate(result.start.toISOString())} – ${formatDate(lastInclusive.toISOString())})`
+  };
+}
+
 function getResponseIcon(response: string): string {
   switch (response) {
     case 'Accepted':
@@ -129,6 +243,10 @@ function displayEvent(event: CalendarEvent, verbose: boolean): void {
 
   if (location) {
     console.log(`     📍 ${location}`);
+  }
+
+  if (event.HasAttachments) {
+    console.log(`     📎 Has attachments`);
   }
 
   if (verbose) {
@@ -196,15 +314,45 @@ export const calendarCommand = new Command('calendar')
   )
   .argument('[end]', 'End day for range (optional)')
   .option('-v, --verbose', 'Show attendees and more details')
+  .option('--list-attachments <eventId>', 'List file and link attachments on an event by id')
+  .option('--download-attachments <eventId>', 'Download file attachments; links saved as .url shortcuts')
+  .option('-o, --output <dir>', 'Output directory for --download-attachments', '.')
+  .option('--force', 'Overwrite existing files when downloading calendar attachments')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Delegated or shared mailbox calendar')
+  .option(
+    '--days <n>',
+    'Show N consecutive calendar days forward from start (includes start day; not for use with week keywords)'
+  )
+  .option('--previous-days <n>', 'Show N consecutive calendar days ending on start day')
+  .option(
+    '--business-days <n>',
+    'Show N weekdays (Mon–Fri) forward from start (skip weekend; use for “next N working days”)'
+  )
+  .option('--busness-days <n>', 'Same as --business-days (common typo)')
+  .option('--previous-business-days <n>', 'Show N weekdays backward ending on the last weekday on or before start')
   .action(
     async (
       startDay: string,
       endDay: string | undefined,
-      options: { json?: boolean; token?: string; identity?: string; verbose?: boolean; mailbox?: string }
+      options: {
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        verbose?: boolean;
+        mailbox?: string;
+        listAttachments?: string;
+        downloadAttachments?: string;
+        output: string;
+        force?: boolean;
+        days?: string;
+        previousDays?: string;
+        businessDays?: string;
+        busnessDays?: string;
+        previousBusinessDays?: string;
+      }
     ) => {
       const authResult = await resolveAuth({
         token: options.token,
@@ -221,7 +369,158 @@ export const calendarCommand = new Command('calendar')
         process.exit(1);
       }
 
-      const { start, end, label } = getDateRange(startDay, endDay);
+      const token = authResult.token!;
+      const mailbox = options.mailbox;
+
+      if (options.listAttachments) {
+        const eventId = options.listAttachments.trim();
+        const eventRes = await getCalendarEvent(token, eventId, mailbox);
+        if (!eventRes.ok || !eventRes.data) {
+          console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+          process.exit(1);
+        }
+        const attsRes = await getAttachments(token, eventId, mailbox);
+        if (!attsRes.ok || !attsRes.data) {
+          console.error(`Error: ${attsRes.error?.message || 'Failed to list attachments'}`);
+          process.exit(1);
+        }
+        const atts = attsRes.data.value.filter((a) => !a.IsInline);
+        if (options.json) {
+          console.log(JSON.stringify({ eventId, subject: eventRes.data.Subject, attachments: atts }, null, 2));
+          return;
+        }
+        console.log(`\nAttachments — ${eventRes.data.Subject}`);
+        console.log('─'.repeat(40));
+        if (atts.length === 0) {
+          console.log('  (none)');
+        } else {
+          for (const a of atts) {
+            if (a.Kind === 'reference' && a.AttachLongPathName) {
+              console.log(`  🔗 ${a.Name}`);
+              console.log(`     ${a.AttachLongPathName}`);
+            } else {
+              const sizeKB = Math.round(a.Size / 1024);
+              console.log(`  📄 ${a.Name} (${sizeKB} KB)`);
+            }
+          }
+        }
+        console.log();
+        return;
+      }
+
+      if (options.downloadAttachments) {
+        const eventId = options.downloadAttachments.trim();
+        const eventRes = await getCalendarEvent(token, eventId, mailbox);
+        if (!eventRes.ok || !eventRes.data) {
+          console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+          process.exit(1);
+        }
+        if (!eventRes.data.HasAttachments) {
+          console.log('This event has no attachments.');
+          return;
+        }
+        const attsRes = await getAttachments(token, eventId, mailbox);
+        if (!attsRes.ok || !attsRes.data) {
+          console.error(`Error: ${attsRes.error?.message || 'Failed to fetch attachments'}`);
+          process.exit(1);
+        }
+        const attachments = attsRes.data.value.filter((a) => !a.IsInline);
+        if (attachments.length === 0) {
+          console.log('No downloadable attachments (inline-only).');
+          return;
+        }
+        await mkdir(options.output, { recursive: true });
+        const usedPaths = new Set<string>();
+        console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/\n`);
+        for (const att of attachments) {
+          if (att.Kind === 'reference' || att.AttachLongPathName) {
+            let url = att.AttachLongPathName;
+            if (!url) {
+              const full = await getAttachment(token, eventId, att.Id, mailbox);
+              if (full.ok && full.data?.AttachLongPathName) {
+                url = full.data.AttachLongPathName;
+              }
+            }
+            if (!url) {
+              console.error(`  Failed to resolve link: ${att.Name}`);
+              continue;
+            }
+            const base = sanitizeFileComponent(att.Name || 'link');
+            let filePath = join(options.output, `${base}.url`);
+            let counter = 1;
+            while (usedPaths.has(filePath) || (!options.force && (await pathExists(filePath)))) {
+              filePath = join(options.output, `${base} (${counter}).url`);
+              counter++;
+            }
+            usedPaths.add(filePath);
+            const content = `[InternetShortcut]\r\nURL=${url}\r\n`;
+            await writeFile(filePath, content, 'utf8');
+            console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (link)`);
+            continue;
+          }
+
+          const fullAtt = await getAttachment(token, eventId, att.Id, mailbox);
+          if (!fullAtt.ok || !fullAtt.data?.ContentBytes) {
+            console.error(`  Failed to download: ${att.Name}`);
+            continue;
+          }
+          const content = Buffer.from(fullAtt.data.ContentBytes, 'base64');
+          let filePath = join(options.output, att.Name);
+          let counter = 1;
+          while (true) {
+            if (usedPaths.has(filePath)) {
+              const ext = extname(att.Name);
+              const base = att.Name.slice(0, att.Name.length - ext.length);
+              filePath = join(options.output, `${base} (${counter})${ext}`);
+              counter++;
+              continue;
+            }
+            if (!options.force) {
+              try {
+                await access(filePath);
+                const ext = extname(att.Name);
+                const base = att.Name.slice(0, att.Name.length - ext.length);
+                filePath = join(options.output, `${base} (${counter})${ext}`);
+                counter++;
+                continue;
+              } catch {
+                // missing — ok
+              }
+            }
+            break;
+          }
+          usedPaths.add(filePath);
+          await writeFile(filePath, content);
+          const sizeKB = Math.round(content.length / 1024);
+          console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (${sizeKB} KB)`);
+        }
+        console.log('\nDone.\n');
+        return;
+      }
+
+      let start: string;
+      let end: string;
+      let label: string;
+      try {
+        const resolved = resolveCalendarQueryRange(startDay, endDay, {
+          days: parseCalendarRangeInt(options.days, '--days'),
+          previousDays: parseCalendarRangeInt(options.previousDays, '--previous-days'),
+          businessDays: parseCalendarRangeInt(options.businessDays ?? options.busnessDays, '--business-days'),
+          previousBusinessDays: parseCalendarRangeInt(options.previousBusinessDays, '--previous-business-days')
+        });
+        start = resolved.start;
+        end = resolved.end;
+        label = resolved.label;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (options.json) {
+          console.log(JSON.stringify({ error: message }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(1);
+      }
+
       const result = await getCalendarEvents(authResult.token!, start, end, options.mailbox);
 
       if (!result.ok || !result.data) {

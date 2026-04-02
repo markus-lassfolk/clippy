@@ -1,9 +1,11 @@
 import { readFile, stat } from 'node:fs/promises';
 import { Command } from 'commander';
+import { AttachmentLinkSpecError, parseAttachLinkSpec } from '../lib/attach-link-spec.js';
 import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.js';
 import { resolveAuth } from '../lib/auth.js';
 import {
   addAttachmentToDraft,
+  addReferenceAttachmentToDraft,
   createDraft,
   deleteDraftById,
   getEmail,
@@ -47,8 +49,21 @@ export const draftsCommand = new Command('drafts')
   .option('--subject <text>', 'Subject for create/edit')
   .option('--body <text>', 'Body for create/edit')
   .option('--attach <files>', 'Attach file(s), comma-separated paths')
+  .option(
+    '--attach-link <spec>',
+    'Attach link: "Title|https://url" or bare https URL (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .option('--markdown', 'Parse body as markdown')
   .option('--html', 'Treat body as HTML')
+  .option(
+    '--category <name>',
+    'Outlook category (repeatable; colors follow mailbox master list)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option('--clear-categories', 'On --edit, remove all categories from the draft')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (EWS; default: default)')
@@ -67,12 +82,15 @@ export const draftsCommand = new Command('drafts')
         subject?: string;
         body?: string;
         attach?: string;
+        attachLink?: string[];
         markdown?: boolean;
         html?: boolean;
         json?: boolean;
         token?: string;
         identity?: string;
         mailbox?: string;
+        category?: string[];
+        clearCategories?: boolean;
       },
       cmd: any
     ) => {
@@ -146,13 +164,15 @@ export const draftsCommand = new Command('drafts')
           bodyType = 'HTML';
         }
 
+        const cats = (options.category ?? []).map((c) => c.trim()).filter(Boolean);
         const result = await createDraft(authResult.token!, {
           to: toList,
           cc: ccList,
           subject: options.subject,
           body,
           bodyType,
-          mailbox: options.mailbox
+          mailbox: options.mailbox,
+          categories: cats.length ? cats : undefined
         });
 
         if (!result.ok || !result.data) {
@@ -205,6 +225,31 @@ export const draftsCommand = new Command('drafts')
           }
         }
 
+        const linkSpecsCreate = options.attachLink ?? [];
+        for (const spec of linkSpecsCreate) {
+          try {
+            const { name, url } = parseAttachLinkSpec(spec);
+            const linkRes = await addReferenceAttachmentToDraft(
+              authResult.token!,
+              result.data.Id,
+              { name, url, contentType: 'text/html' },
+              options.mailbox
+            );
+            if (!linkRes.ok) {
+              console.error(`Failed to attach link ${name}: ${linkRes.error?.message}`);
+              process.exit(1);
+            }
+            if (!options.json) {
+              console.log(`  Attached link: ${name}`);
+            }
+          } catch (err) {
+            const msg =
+              err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+            console.error(`Invalid --attach-link: ${msg}`);
+            process.exit(1);
+          }
+        }
+
         if (options.json) {
           console.log(JSON.stringify({ success: true, draftId: result.data.Id }, null, 2));
         } else {
@@ -237,6 +282,7 @@ export const draftsCommand = new Command('drafts')
         console.log(`\n${'\u2500'.repeat(60)}`);
         console.log(`To: ${d.ToRecipients?.map((r) => r.EmailAddress?.Address).join(', ') || '(none)'}`);
         console.log(`Subject: ${d.Subject || '(no subject)'}`);
+        if (d.Categories?.length) console.log(`Categories: ${d.Categories.join(', ')}`);
         console.log(`${'\u2500'.repeat(60)}\n`);
         console.log(d.Body?.Content || d.BodyPreview || '(no content)');
         console.log(`\n${'\u2500'.repeat(60)}\n`);
@@ -275,13 +321,16 @@ export const draftsCommand = new Command('drafts')
           bodyType = 'HTML';
         }
 
+        const cats = (options.category ?? []).map((c) => c.trim()).filter(Boolean);
         const result = await updateDraft(authResult.token!, id, {
           to: toList,
           cc: ccList,
           subject: options.subject,
           body,
           bodyType,
-          mailbox: options.mailbox
+          mailbox: options.mailbox,
+          categories: cats.length ? cats : undefined,
+          clearCategories: options.clearCategories
         });
 
         if (!result.ok) {
@@ -324,6 +373,31 @@ export const draftsCommand = new Command('drafts')
               }
               process.exit(1);
             }
+          }
+        }
+
+        const linkSpecsEdit = options.attachLink ?? [];
+        for (const spec of linkSpecsEdit) {
+          try {
+            const { name, url } = parseAttachLinkSpec(spec);
+            const linkRes = await addReferenceAttachmentToDraft(
+              authResult.token!,
+              id,
+              { name, url, contentType: 'text/html' },
+              options.mailbox
+            );
+            if (!linkRes.ok) {
+              console.error(`Failed to attach link ${name}: ${linkRes.error?.message}`);
+              process.exit(1);
+            }
+            if (!options.json) {
+              console.log(`  Attached link: ${name}`);
+            }
+          } catch (err) {
+            const msg =
+              err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+            console.error(`Invalid --attach-link: ${msg}`);
+            process.exit(1);
           }
         }
 
@@ -374,7 +448,8 @@ export const draftsCommand = new Command('drafts')
                 to: d.ToRecipients?.map((r) => r.EmailAddress?.Address),
                 subject: d.Subject,
                 preview: d.BodyPreview,
-                lastModified: d.ReceivedDateTime
+                lastModified: d.ReceivedDateTime,
+                categories: d.Categories
               }))
             },
             null,
@@ -402,6 +477,7 @@ export const draftsCommand = new Command('drafts')
           `  [${(i + 1).toString().padStart(2)}] ${truncate(to, 25).padEnd(25)} ${truncate(subject, 32).padEnd(32)} ${date}`
         );
         console.log(`       ID: ${draft.Id}`);
+        if (draft.Categories?.length) console.log(`       Categories: ${draft.Categories.join(', ')}`);
       }
 
       console.log(`\n${'\u2500'.repeat(70)}`);

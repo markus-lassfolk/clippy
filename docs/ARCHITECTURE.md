@@ -99,6 +99,7 @@ Scopes are requested incrementally. The base token covers:
 | People/GAL lookup | `People.Read` |
 | To-Do tasks | `Tasks.ReadWrite` |
 | OOF / mailbox settings | `MailboxSettings.ReadWrite` |
+| Outlook master categories (names + colors) | `MailboxSettings.Read` (list), **`MailboxSettings.ReadWrite`** (create/update/delete) |
 | Delegate management | (EWS SOAP — same token) |
 
 ## Directory Structure
@@ -114,6 +115,11 @@ src/
     jwt-utils.ts       — JWT parsing (expiry, structure validation)
     xml-utils.ts      — XML escape, SOAP envelope builders
     date-utils.ts     — date parsing, formatting (locale-aware)
+    dates.ts          — shared date parsing (`parseDay`, weekday-relative resolution)
+    calendar-range.ts — calendar window helpers (`--days`, `--business-days`, etc. on `calendar`)
+    outlook-master-categories.ts — Graph `GET .../outlook/masterCategories`
+    planner-client.ts — Planner tasks, plans, buckets, plan details (label names)
+    todo-client.ts    — Microsoft To Do lists/tasks (including `categories`)
     url-utils.ts      — URL sanitization, safe filename handling
   commands/
     whoami.ts
@@ -128,6 +134,9 @@ src/
     folders.ts
     send.ts
     drafts.ts
+    outlook-categories.ts
+    planner.ts
+    todo.ts
     files.ts
 ```
 
@@ -150,6 +159,8 @@ Used for operations with no Graph equivalent:
 
 **Write operations:** `ews-client.ts` resolves targets with **`GetItem`** (messages) or **`getCalendarEvent`** (calendar) before mutating SOAP calls and includes **ChangeKey** on `ItemId`, `ReferenceItemId`, `ParentItemId`, and related shapes where Exchange requires it (notably delegated/shared mailbox scenarios). Callers continue to pass only **item IDs** from list/read commands. `updateEvent` may prefetch **ChangeKey** when the caller does not supply one; a failed prefetch returns that error instead of sending an invalid **UpdateItem**.
 
+**Categories:** Mail and calendar items expose **`item:Categories`** (string list). Colors for those names are defined by the mailbox **master category list** (Graph: `outlook/masterCategories`, CLI: `outlook-categories list`), not as per-item color fields in EWS.
+
 ### Microsoft Graph REST (via `graph-client.ts`)
 
 Preferred for new features:
@@ -168,6 +179,8 @@ Preferred for new features:
 | OOF | `PATCH /me/mailboxSettings` | `automaticRepliesSetting` |
 | Mailbox settings | `GET/PATCH /me/mailboxSettings` | timezone, working hours, language |
 | Subscriptions | `POST /subscriptions` | Webhook push notifications |
+| Outlook categories | `GET/POST/PATCH/DELETE .../outlook/masterCategories` | Master list CRUD (names + `preset0`..`preset24`); CLI `outlook-categories list|create|update|delete` |
+| Planner | `GET/PATCH /planner/tasks`, `GET /planner/plans/{id}/details` | Task `appliedCategories` (six slots); plan `categoryDescriptions` for labels |
 
 ## Out of Scope
 

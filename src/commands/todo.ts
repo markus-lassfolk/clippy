@@ -193,6 +193,7 @@ todoCommand
         console.log(`Title:       ${t.title}`);
         console.log(`Status:      ${stsEmoji(t.status)} ${t.status}`);
         console.log(`Importance:  ${impEmoji(t.importance)} ${t.importance}`);
+        if (t.categories?.length) console.log(`Categories:  ${t.categories.join(', ')}`);
         if (t.dueDateTime) console.log(`Due:         ${fmtDT(t.dueDateTime)} (${t.dueDateTime.timeZone})`);
         if (t.isReminderOn && t.reminderDateTime) console.log(`Reminder:    ${fmtDT(t.reminderDateTime)}`);
         if (t.completedDateTime) console.log(`Completed:   ${fmtDT(t.completedDateTime)}`);
@@ -252,6 +253,7 @@ todoCommand
         const due = t.dueDateTime ? `\u{1F4C5} ${fmtDT(t.dueDateTime)}` : '';
         console.log(`  ${t.status === 'completed' ? '\u2705' : '  '} ${impEmoji(t.importance)} ${t.title} ${due}`);
         console.log(`      ID: ${t.id}  |  ${t.status || 'no status'}  |  ${t.importance || 'normal'}`);
+        if (t.categories?.length) console.log(`      Categories: ${t.categories.join(', ')}`);
         if (t.linkedResources?.length)
           console.log(`      \u21B3 linked: ${t.linkedResources.map((l) => l.description).join(', ')}`);
         console.log('');
@@ -271,6 +273,12 @@ todoCommand
   .option('--reminder <ISO-8601>', 'Reminder datetime')
   .option('--link <msgId>', 'Link task to an email by message ID')
   .option('--mailbox <email>', 'Delegated or shared mailbox (with --link, for EWS message lookup)')
+  .option(
+    '--category <name>',
+    'Category label (repeatable; To Do uses string categories)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -288,6 +296,7 @@ todoCommand
         reminder?: string;
         link?: string;
         mailbox?: string;
+        category?: string[];
         json?: boolean;
         token?: string;
         identity?: string;
@@ -322,6 +331,7 @@ todoCommand
         linkedResources = [{ webUrl: emailUrl(er.data.Id), description: er.data.Subject || 'Linked email' }];
       }
 
+      const cats = (opts.category ?? []).map((c) => c.trim()).filter(Boolean);
       const result = await createTask(
         auth.token!,
         listId,
@@ -333,7 +343,8 @@ todoCommand
           dueDateTime: opts.due,
           reminderDateTime: opts.reminder,
           isReminderOn: !!opts.reminder,
-          linkedResources
+          linkedResources,
+          categories: cats.length ? cats : undefined
         },
         opts.user
       );
@@ -349,6 +360,132 @@ todoCommand
         if (opts.link) console.log(`   \u21B3 Linked to email`);
         console.log('');
       }
+    }
+  );
+
+todoCommand
+  .command('update')
+  .description('Update a task (title, body, due, importance, status, categories)')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .option('--title <text>', 'New title')
+  .option('-b, --body <text>', 'New body/notes')
+  .option('-d, --due <ISO-8601>', 'Due date (or omit with --clear-due)')
+  .option('--clear-due', 'Remove due date')
+  .option('--importance <level>', 'Importance: low, normal, high')
+  .option('--status <status>', 'Status: notStarted, inProgress, completed, waitingOnOthers, deferred')
+  .option('--reminder <ISO-8601>', 'Reminder datetime')
+  .option('--clear-reminder', 'Turn off reminder')
+  .option(
+    '--category <name>',
+    'Set categories to this list (repeatable; replaces existing categories)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option('--clear-categories', 'Remove all categories')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        title?: string;
+        body?: string;
+        due?: string;
+        clearDue?: boolean;
+        importance?: string;
+        status?: string;
+        reminder?: string;
+        clearReminder?: boolean;
+        category?: string[];
+        clearCategories?: boolean;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+
+      const hasField =
+        opts.title !== undefined ||
+        opts.body !== undefined ||
+        opts.due !== undefined ||
+        opts.clearDue ||
+        opts.importance !== undefined ||
+        opts.status !== undefined ||
+        opts.reminder !== undefined ||
+        opts.clearReminder ||
+        (opts.category !== undefined && opts.category.length > 0) ||
+        opts.clearCategories;
+
+      if (!hasField) {
+        console.error(
+          'Error: specify at least one of --title, --body, --due, --clear-due, --importance, --status, --reminder, --clear-reminder, --category, --clear-categories'
+        );
+        process.exit(1);
+      }
+
+      if (opts.clearCategories && opts.category !== undefined && opts.category.length > 0) {
+        console.error('Error: use either --clear-categories or --category, not both');
+        process.exit(1);
+      }
+
+      let importance: TodoImportance | undefined;
+      if (opts.importance !== undefined) {
+        const valid: TodoImportance[] = ['low', 'normal', 'high'];
+        if (!valid.includes(opts.importance as TodoImportance)) {
+          console.error(`Invalid importance: ${opts.importance}`);
+          process.exit(1);
+        }
+        importance = opts.importance as TodoImportance;
+      }
+      let status: TodoStatus | undefined;
+      if (opts.status !== undefined) {
+        const valid: TodoStatus[] = ['notStarted', 'inProgress', 'completed', 'waitingOnOthers', 'deferred'];
+        if (!valid.includes(opts.status as TodoStatus)) {
+          console.error(`Invalid status: ${opts.status}`);
+          process.exit(1);
+        }
+        status = opts.status as TodoStatus;
+      }
+
+      const updateOpts: Parameters<typeof updateTask>[3] = {};
+      if (opts.title !== undefined) updateOpts.title = opts.title;
+      if (opts.body !== undefined) updateOpts.body = opts.body;
+      if (opts.clearDue) updateOpts.dueDateTime = null;
+      else if (opts.due !== undefined) updateOpts.dueDateTime = opts.due;
+      if (importance !== undefined) updateOpts.importance = importance;
+      if (status !== undefined) updateOpts.status = status;
+      if (opts.clearReminder) {
+        updateOpts.isReminderOn = false;
+        updateOpts.reminderDateTime = null;
+      } else if (opts.reminder !== undefined) {
+        updateOpts.isReminderOn = true;
+        updateOpts.reminderDateTime = opts.reminder;
+      }
+      if (opts.clearCategories) updateOpts.clearCategories = true;
+      else if (opts.category !== undefined && opts.category.length > 0) {
+        updateOpts.categories = opts.category.map((c) => c.trim()).filter(Boolean);
+      }
+
+      const r = await updateTask(auth.token!, listId, opts.task, updateOpts, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`\n\u2705 Updated: "${r.data.title}"\n`);
     }
   );
 

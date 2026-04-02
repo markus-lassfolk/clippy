@@ -132,7 +132,7 @@ The table below matches **`checkReadOnly` in the source** (search the repo for `
 | `counter` | Entire command |
 | `respond` | `accept`, `decline`, `tentative` (not `respond list`) |
 | `send` | Entire command |
-| `mail` | Mutating flags only: `--flag`, `--unflag`, `--mark-read`, `--mark-unread`, `--complete`, `--sensitivity`, `--move`, `--reply`, `--reply-all`, `--forward` (listing, `--read`, `--download` stay allowed) |
+| `mail` | Mutating flags only: `--flag`, `--unflag`, `--mark-read`, `--mark-unread`, `--complete`, `--sensitivity`, `--move`, `--reply`, `--reply-all`, `--forward`, `--set-categories`, `--clear-categories` (listing, `--read`, `--download` stay allowed) |
 | `drafts` | `--create`, `--edit`, `--send`, `--delete` (plain list/read allowed) |
 | `folders` | `--create`, `--rename` (with `--to`), `--delete` (listing folders allowed) |
 | `files` | `upload`, `upload-large`, `delete`, `share`, `restore`, `checkin` |
@@ -140,13 +140,14 @@ The table below matches **`checkReadOnly` in the source** (search the repo for `
 | `sharepoint` / `sp` | `create-item`, `update-item` |
 | `pages` | `update`, `publish` |
 | `rules` | `create`, `update`, `delete` |
-| `todo` | `create`, `complete`, `delete`, `add-checklist` |
+| `todo` | `create`, `update`, `complete`, `delete`, `add-checklist` |
 | `subscribe` | Creating a subscription; `subscribe cancel <id>` |
 | `delegates` | `add`, `update`, `remove` |
 | `oof` | Write path only (when `--status`, `--internal-message`, `--external-message`, `--start`, or `--end` is used to change settings) |
 | `auto-reply` | Entire command (EWS auto-reply rules) |
+| `outlook-categories` | `create`, `update`, `delete` (not `list`) |
 
-**Intentionally not gated** (no `checkReadOnly` today): read/query helpers such as `schedule`, `suggest`, `findtime`, `calendar`, `subscriptions list`, `rules list` / `rules get`, `todo` list-only usage, `files` list/search/meta/download/convert/analytics/versions, etc. Those calls do not use the guard in code; if a new subcommand adds writes, it should call `checkReadOnly` and this table should be updated.
+**Intentionally not gated** (no `checkReadOnly` today): read/query helpers such as `schedule`, `suggest`, `findtime`, `calendar`, `subscriptions list`, `rules list` / `rules get`, `todo` list-only usage, **`outlook-categories list`** (mutating `outlook-categories create|update|delete` **are** gated), `files` list/search/meta/download/convert/analytics/versions, etc. Those calls do not use the guard in code; if a new subcommand adds writes, it should call `checkReadOnly` and this table should be updated.
 
 You can enable Read-Only mode in two ways:
 
@@ -194,6 +195,28 @@ m365-agent-cli calendar week --verbose
 # Shared mailbox calendar
 m365-agent-cli calendar --mailbox shared@company.com
 m365-agent-cli calendar nextweek --mailbox shared@company.com
+```
+
+### Calendar: rolling ranges and business (weekday) windows
+
+Besides a single day or `start end` date range, **`calendar`** supports **one** of these span modes (not combinable with each other or with an `[end]` argument; not with `week` / `lastweek` / `nextweek`):
+
+```bash
+# Next 5 calendar days starting today (includes today)
+m365-agent-cli calendar today --days 5
+
+# Previous 3 calendar days ending on today
+m365-agent-cli calendar today --previous-days 3
+
+# Next 10 weekdays (Mon–Fri) starting from the anchor day
+# (if anchor is Sat/Sun, counting starts from the next Monday)
+m365-agent-cli calendar today --business-days 10
+
+# Typo-tolerant alias for --business-days
+m365-agent-cli calendar today --busness-days 5
+
+# 5 weekdays backward ending on or before the anchor
+m365-agent-cli calendar today --previous-business-days 5
 ```
 
 ### Create Events
@@ -265,6 +288,8 @@ m365-agent-cli update-event --id <eventId> --teams        # Add Teams meeting
 m365-agent-cli update-event --id <eventId> --no-teams      # Remove Teams meeting
 m365-agent-cli update-event --id <eventId> --all-day       # Make all-day
 m365-agent-cli update-event --id <eventId> --sensitivity private
+m365-agent-cli update-event --id <eventId> --category "Project A" --category Review
+m365-agent-cli update-event --id <eventId> --clear-categories
 
 # Show events from a specific day
 m365-agent-cli update-event --day tomorrow
@@ -369,6 +394,32 @@ m365-agent-cli mail -d 3 -o ~/Downloads
 m365-agent-cli mail --mailbox shared@company.com
 ```
 
+### Categories on mail (Outlook)
+
+Messages use **category name strings** (same as Outlook). **Colors** come from the mailbox **master category list**, not from a separate field per message. List master categories (names + preset color) via Graph:
+
+```bash
+m365-agent-cli outlook-categories list
+m365-agent-cli outlook-categories list --user colleague@company.com   # delegation, if permitted
+```
+
+Manage the master list (names + **preset** colors `preset0`..`preset24`; requires Graph **`MailboxSettings.ReadWrite`**):
+
+```bash
+m365-agent-cli outlook-categories create --name "Project A" --color preset9
+m365-agent-cli outlook-categories update --id <categoryGuid> --name "Project A (new)" --color preset12
+m365-agent-cli outlook-categories delete --id <categoryGuid>
+```
+
+Set or clear categories on a message **by ID** from list/read output:
+
+```bash
+m365-agent-cli mail --set-categories <messageId> --category Work --category "Follow up"
+m365-agent-cli mail --clear-categories <messageId>
+```
+
+Category names appear in **`mail`** list (text and JSON) and when reading a message (`-r`).
+
 ### Send Email
 
 ```bash
@@ -432,6 +483,15 @@ m365-agent-cli mail --reply 1 --message "Draft reply" --draft
 m365-agent-cli mail --forward 1 --to-addr "colleague@example.com"
 m365-agent-cli mail --forward 1 --to-addr "a@example.com,b@example.com" --message "FYI"
 
+# Reply or forward with file/link attachments and/or Outlook categories (draft workflow)
+m365-agent-cli mail --reply <messageId> --message "See attached" --attach "report.pdf"
+m365-agent-cli mail --forward <messageId> --to-addr "boss@company.com" --message "FYI" --attach-link "https://contoso.com/doc"
+m365-agent-cli mail --reply <messageId> --message "Tagged" --with-category Work --with-category "Follow up"
+
+# Forward or reply as draft (optionally with --attach / --attach-link / --with-category)
+m365-agent-cli mail --forward <messageId> --to-addr "a@b.com" --draft
+m365-agent-cli mail --reply <messageId> --message "Will edit later" --draft
+
 # Reply/forward from shared mailbox
 m365-agent-cli mail --reply 1 --message "..." --mailbox shared@company.com
 m365-agent-cli mail --reply-all 1 --message "..." --mailbox shared@company.com
@@ -460,6 +520,8 @@ m365-agent-cli mail --move 2 --to deleted
 m365-agent-cli mail --move 3 --to "My Custom Folder"
 ```
 
+See **Categories on mail** above for `--set-categories` / `--clear-categories`.
+
 ### Manage Drafts
 
 ```bash
@@ -474,6 +536,11 @@ m365-agent-cli drafts --create \
   --to "recipient@example.com" \
   --subject "Draft Email" \
   --body "Work in progress..."
+
+# Categories on drafts (same name strings as Outlook; see outlook-categories list)
+m365-agent-cli drafts --create --to "a@b.com" --subject "Hi" --body "..." --category Work
+m365-agent-cli drafts --edit <draftId> --category Review --category "Follow up"
+m365-agent-cli drafts --edit <draftId> --clear-categories
 
 # Create with attachment
 m365-agent-cli drafts --create \
@@ -600,10 +667,10 @@ Legacy Office formats such as `.doc`, `.xls`, and `.ppt` must be converted first
 
 ## Microsoft Planner Commands
 
-Manage tasks and plans in Microsoft Planner.
+Manage tasks and plans in Microsoft Planner. Planner uses **six label slots** per task (`category1`..`category6`); **display names** for those slots are defined in **plan details**. The CLI accepts slots as **`1`..`6`** or **`category1`..`category6`**.
 
 ```bash
-# List tasks assigned to you
+# List tasks assigned to you (label names shown when plan details are available)
 m365-agent-cli planner list-my-tasks
 
 # List your plans
@@ -616,10 +683,27 @@ m365-agent-cli planner list-tasks --plan <planId>
 
 # Create and update tasks
 m365-agent-cli planner create-task --plan <planId> --title "New Task" -b <bucketId>
-m365-agent-cli planner update-task <taskId> --title "Updated Task" --percent 50 --assign <userId>
+m365-agent-cli planner create-task --plan <planId> --title "Labeled" --label 1 --label category3
+
+m365-agent-cli planner update-task -i <taskId> --title "Updated Task" --percent 50 --assign <userId>
+m365-agent-cli planner update-task -i <taskId> --label 2 --unlabel 1
+m365-agent-cli planner update-task -i <taskId> --clear-labels
 ```
 
 ---
+
+## Microsoft To Do
+
+To Do tasks support **string categories** (independent of Outlook mailbox master categories).
+
+```bash
+# Create with categories
+m365-agent-cli todo create -t "Buy milk" --category Shopping --category Errands
+
+# Update fields including categories (see: m365-agent-cli todo update --help)
+m365-agent-cli todo update -l Tasks -t <taskId> --category Work --category Urgent
+m365-agent-cli todo update -l Tasks -t <taskId> --clear-categories
+```
 
 ## SharePoint Commands
 

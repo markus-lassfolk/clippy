@@ -1,7 +1,21 @@
+import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
+import { AttachmentLinkSpecError, parseAttachLinkSpec } from '../lib/attach-link-spec.js';
+import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.js';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay, parseTimeToDate, toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
-import { getCalendarEvents, getRooms, SENSITIVITY_MAP, searchRooms, updateEvent } from '../lib/ews-client.js';
+import {
+  addCalendarEventAttachments,
+  type EmailAttachment,
+  getCalendarEvent,
+  getCalendarEvents,
+  getRooms,
+  type ReferenceAttachmentInput,
+  SENSITIVITY_MAP,
+  searchRooms,
+  updateEvent
+} from '../lib/ews-client.js';
+import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 function formatTime(dateStr: string): string {
@@ -55,6 +69,13 @@ export const updateEventCommand = new Command('update-event')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Update event in shared mailbox calendar')
+  .option('--attach <files>', 'Add file attachment(s), comma-separated paths (relative to cwd)')
+  .option(
+    '--attach-link <spec>',
+    'Add link attachment: "Title|https://url" or bare https URL (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .action(
     async (
       _eventIndex: string | undefined,
@@ -81,6 +102,8 @@ export const updateEventCommand = new Command('update-event')
         mailbox?: string;
         category?: string[];
         clearCategories?: boolean;
+        attach?: string;
+        attachLink?: string[];
       },
       cmd: any
     ) => {
@@ -199,8 +222,7 @@ export const updateEventCommand = new Command('update-event')
         return;
       }
 
-      // Get the target event by ID
-      const targetEvent = events.find((e) => e.Id === options.id);
+      let targetEvent = events.find((e) => e.Id === options.id);
       let occurrenceItemId: string | undefined;
       let displayEvent = targetEvent;
 
@@ -255,13 +277,20 @@ export const updateEventCommand = new Command('update-event')
             `  ${formatDate(occEvent.Start.DateTime)} ${formatTime(occEvent.Start.DateTime)} - ${formatTime(occEvent.End.DateTime)}`
           );
         }
+      } else if (!targetEvent && options.id) {
+        const fetched = await getCalendarEvent(authResult.token!, options.id, options.mailbox);
+        if (!fetched.ok || !fetched.data) {
+          console.error(`Invalid event id: ${options.id}`);
+          process.exit(1);
+        }
+        displayEvent = fetched.data;
+        targetEvent = fetched.data;
       } else if (!targetEvent) {
         console.error(`Invalid event id: ${options.id}`);
         process.exit(1);
       }
 
-      // Check if any update options were provided
-      const hasUpdates =
+      const hasFieldUpdates =
         options.title ||
         options.description ||
         options.start ||
@@ -277,7 +306,12 @@ export const updateEventCommand = new Command('update-event')
         options.clearCategories ||
         !!options.sensitivity;
 
-      if (!hasUpdates) {
+      const wantsFileAttach = !!options.attach?.trim();
+      const linkSpecs = options.attachLink ?? [];
+      const wantsLinkAttach = linkSpecs.length > 0;
+      const wantsAttachments = wantsFileAttach || wantsLinkAttach;
+
+      if (!hasFieldUpdates && !wantsAttachments) {
         // Show current event details
         console.log(`\nEvent: ${displayEvent!.Subject}`);
         console.log(
@@ -293,188 +327,255 @@ export const updateEventCommand = new Command('update-event')
             console.log(`    - ${a.EmailAddress?.Address}${typeLabel}`);
           }
         }
-        console.log('\nUse options like --title, --add-attendee, --room to update.');
+        console.log('\nUse options like --title, --add-attendee, --room, --attach, or --attach-link to update.');
         return;
       }
 
-      // Build update payload
-      const updateOptions: Parameters<typeof updateEvent>[0] = {
-        token: authResult.token!,
-        eventId: targetEvent ? targetEvent.Id : displayEvent!.Id,
-        changeKey: displayEvent!.ChangeKey,
-        occurrenceItemId,
-        mailbox: options.mailbox,
-        categories: options.clearCategories
-          ? []
-          : options.category && options.category.length > 0
-            ? options.category
-            : undefined
-      };
-
-      if (options.title) {
-        updateOptions.subject = options.title;
-      }
-
-      if (options.timezone) {
-        updateOptions.timezone = options.timezone;
-      }
-
-      if (options.description) {
-        updateOptions.body = options.description;
-      }
-
-      // Handle time changes
-      if (options.start || options.end) {
-        const eventDate = new Date(displayEvent!.Start.DateTime);
-
-        if (options.start) {
+      let fileAttachments: EmailAttachment[] | undefined;
+      if (wantsFileAttach) {
+        fileAttachments = [];
+        const workingDirectory = process.cwd();
+        const filePaths = options
+          .attach!.split(',')
+          .map((f) => f.trim())
+          .filter(Boolean);
+        for (const filePath of filePaths) {
           try {
-            const newStart = parseTimeToDate(options.start, eventDate, { throwOnInvalid: true });
-            updateOptions.start = options.timezone ? toLocalUnzonedISOString(newStart) : toUTCISOString(newStart);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Invalid start time';
-            if (options.json) {
-              console.log(JSON.stringify({ error: message }, null, 2));
-            } else {
-              console.error(`Error: ${message}`);
+            const validated = await validateAttachmentPath(filePath, workingDirectory);
+            const content = await readFile(validated.absolutePath);
+            const contentType = lookupMimeType(validated.fileName);
+            fileAttachments.push({
+              name: validated.fileName,
+              contentType,
+              contentBytes: content.toString('base64')
+            });
+            if (!options.json) {
+              console.log(`  Adding file attachment: ${validated.fileName}`);
             }
-            process.exit(1);
-          }
-        }
-
-        if (options.end) {
-          try {
-            const newEnd = parseTimeToDate(options.end, eventDate, { throwOnInvalid: true });
-            updateOptions.end = options.timezone ? toLocalUnzonedISOString(newEnd) : toUTCISOString(newEnd);
           } catch (err) {
-            const message = err instanceof Error ? err.message : 'Invalid end time';
-            if (options.json) {
-              console.log(JSON.stringify({ error: message }, null, 2));
+            console.error(`Failed to read attachment: ${filePath}`);
+            if (err instanceof AttachmentPathError) {
+              console.error(err.message);
             } else {
-              console.error(`Error: ${message}`);
+              console.error(err instanceof Error ? err.message : 'Unknown error');
             }
             process.exit(1);
           }
         }
       }
 
-      // Handle location
-      if (options.location) {
-        updateOptions.location = options.location;
-      }
-
-      // Handle all-day
-      if (options.allDay !== undefined) {
-        updateOptions.isAllDay = options.allDay;
-      }
-
-      if (options.sensitivity) {
-        const sensitivity = SENSITIVITY_MAP[options.sensitivity.toLowerCase()];
-        if (!sensitivity) {
-          console.error(`Invalid sensitivity: ${options.sensitivity}`);
-          process.exit(1);
+      let referenceAttachments: ReferenceAttachmentInput[] | undefined;
+      if (wantsLinkAttach) {
+        referenceAttachments = [];
+        for (const spec of linkSpecs) {
+          try {
+            const { name, url } = parseAttachLinkSpec(spec);
+            referenceAttachments.push({ name, url, contentType: 'text/html' });
+            if (!options.json) {
+              console.log(`  Adding link attachment: ${name}`);
+            }
+          } catch (err) {
+            const msg =
+              err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+            console.error(`Invalid --attach-link: ${msg}`);
+            process.exit(1);
+          }
         }
-        updateOptions.sensitivity = sensitivity;
       }
 
-      // Handle room
-      let roomEmail: string | undefined;
-      let roomName: string | undefined;
+      let updateResult: Awaited<ReturnType<typeof updateEvent>> | undefined;
 
-      if (options.room) {
-        if (options.room.includes('@')) {
-          roomEmail = options.room;
-          roomName = options.room;
-        } else {
-          let roomsResult = await searchRooms(authResult.token!, options.room);
-          if (!roomsResult.ok || !roomsResult.data || roomsResult.data.length === 0) {
-            roomsResult = await getRooms(authResult.token!);
+      if (hasFieldUpdates) {
+        const updateOptions: Parameters<typeof updateEvent>[0] = {
+          token: authResult.token!,
+          eventId: targetEvent ? targetEvent.Id : displayEvent!.Id,
+          changeKey: displayEvent!.ChangeKey,
+          occurrenceItemId,
+          mailbox: options.mailbox,
+          categories: options.clearCategories
+            ? []
+            : options.category && options.category.length > 0
+              ? options.category
+              : undefined
+        };
+
+        if (options.title) {
+          updateOptions.subject = options.title;
+        }
+
+        if (options.timezone) {
+          updateOptions.timezone = options.timezone;
+        }
+
+        if (options.description) {
+          updateOptions.body = options.description;
+        }
+
+        if (options.start || options.end) {
+          const eventDate = new Date(displayEvent!.Start.DateTime);
+
+          if (options.start) {
+            try {
+              const newStart = parseTimeToDate(options.start, eventDate, { throwOnInvalid: true });
+              updateOptions.start = options.timezone ? toLocalUnzonedISOString(newStart) : toUTCISOString(newStart);
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Invalid start time';
+              if (options.json) {
+                console.log(JSON.stringify({ error: message }, null, 2));
+              } else {
+                console.error(`Error: ${message}`);
+              }
+              process.exit(1);
+            }
           }
 
-          if (roomsResult.ok && roomsResult.data) {
-            const found = roomsResult.data.find((r) =>
-              options.room ? r.Name.toLowerCase().includes(options.room.toLowerCase()) : false
-            );
-            if (found) {
-              roomEmail = found.Address;
-              roomName = found.Name;
-            } else {
-              console.error(`Room not found: ${options.room}`);
+          if (options.end) {
+            try {
+              const newEnd = parseTimeToDate(options.end, eventDate, { throwOnInvalid: true });
+              updateOptions.end = options.timezone ? toLocalUnzonedISOString(newEnd) : toUTCISOString(newEnd);
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Invalid end time';
+              if (options.json) {
+                console.log(JSON.stringify({ error: message }, null, 2));
+              } else {
+                console.error(`Error: ${message}`);
+              }
               process.exit(1);
             }
           }
         }
 
-        if (roomName) {
-          updateOptions.location = roomName;
-        }
-      }
-
-      // Handle attendees (merge existing with new)
-      // NOTE: updateEvent replaces the entire attendee list via EWS SetItemField.
-      // Concurrent edits (e.g., removing an attendee via OWA between fetch and update)
-      // can be overwritten. This is a known EWS limitation.
-      if (options.addAttendee.length > 0 || options.removeAttendee.length > 0 || roomEmail) {
-        const existingAttendees: Array<{ email: string; name?: string; type: 'Required' | 'Optional' | 'Resource' }> = (
-          displayEvent!.Attendees || []
-        ).map((a) => ({
-          email: a.EmailAddress?.Address || '',
-          name: a.EmailAddress?.Name,
-          type: a.Type as 'Required' | 'Optional' | 'Resource'
-        }));
-
-        // Remove attendees specified via --remove-attendee
-        for (const email of options.removeAttendee) {
-          const idx = existingAttendees.findIndex((a) => a.email.toLowerCase() === email.toLowerCase());
-          if (idx !== -1) existingAttendees.splice(idx, 1);
+        if (options.location) {
+          updateOptions.location = options.location;
         }
 
-        // Add new attendees
-        for (const email of options.addAttendee) {
-          if (!existingAttendees.find((a) => a.email.toLowerCase() === email.toLowerCase())) {
-            existingAttendees.push({ email, type: 'Required' });
+        if (options.allDay !== undefined) {
+          updateOptions.isAllDay = options.allDay;
+        }
+
+        if (options.sensitivity) {
+          const sensitivity = SENSITIVITY_MAP[options.sensitivity.toLowerCase()];
+          if (!sensitivity) {
+            console.error(`Invalid sensitivity: ${options.sensitivity}`);
+            process.exit(1);
+          }
+          updateOptions.sensitivity = sensitivity;
+        }
+
+        let roomEmail: string | undefined;
+        let roomName: string | undefined;
+
+        if (options.room) {
+          if (options.room.includes('@')) {
+            roomEmail = options.room;
+            roomName = options.room;
+          } else {
+            let roomsResult = await searchRooms(authResult.token!, options.room);
+            if (!roomsResult.ok || !roomsResult.data || roomsResult.data.length === 0) {
+              roomsResult = await getRooms(authResult.token!);
+            }
+
+            if (roomsResult.ok && roomsResult.data) {
+              const found = roomsResult.data.find((r) =>
+                options.room ? r.Name.toLowerCase().includes(options.room.toLowerCase()) : false
+              );
+              if (found) {
+                roomEmail = found.Address;
+                roomName = found.Name;
+              } else {
+                console.error(`Room not found: ${options.room}`);
+                process.exit(1);
+              }
+            }
+          }
+
+          if (roomName) {
+            updateOptions.location = roomName;
           }
         }
 
-        // Add room if specified
-        if (roomEmail) {
-          // Remove any existing room
-          const withoutRooms = existingAttendees.filter((a) => a.type !== 'Resource');
-          withoutRooms.push({ email: roomEmail, name: roomName, type: 'Resource' });
-          updateOptions.attendees = withoutRooms;
-        } else {
-          updateOptions.attendees = existingAttendees;
+        if (options.addAttendee.length > 0 || options.removeAttendee.length > 0 || roomEmail) {
+          const existingAttendees: Array<{ email: string; name?: string; type: 'Required' | 'Optional' | 'Resource' }> =
+            (displayEvent!.Attendees || []).map((a) => ({
+              email: a.EmailAddress?.Address || '',
+              name: a.EmailAddress?.Name,
+              type: a.Type as 'Required' | 'Optional' | 'Resource'
+            }));
+
+          for (const email of options.removeAttendee) {
+            const idx = existingAttendees.findIndex((a) => a.email.toLowerCase() === email.toLowerCase());
+            if (idx !== -1) existingAttendees.splice(idx, 1);
+          }
+
+          for (const email of options.addAttendee) {
+            if (!existingAttendees.find((a) => a.email.toLowerCase() === email.toLowerCase())) {
+              existingAttendees.push({ email, type: 'Required' });
+            }
+          }
+
+          if (roomEmail) {
+            const withoutRooms = existingAttendees.filter((a) => a.type !== 'Resource');
+            withoutRooms.push({ email: roomEmail, name: roomName, type: 'Resource' });
+            updateOptions.attendees = withoutRooms;
+          } else {
+            updateOptions.attendees = existingAttendees;
+          }
+        }
+
+        if (options.teams !== undefined) {
+          updateOptions.isOnlineMeeting = options.teams;
+        }
+
+        console.log(`\nUpdating: ${displayEvent!.Subject}`);
+
+        updateResult = await updateEvent(updateOptions);
+
+        if (!updateResult.ok) {
+          if (options.json) {
+            console.log(JSON.stringify({ error: updateResult.error?.message || 'Failed to update event' }, null, 2));
+          } else {
+            console.error(`\nError: ${updateResult.error?.message || 'Failed to update event'}`);
+          }
+          process.exit(1);
         }
       }
 
-      // Handle Teams
-      if (options.teams !== undefined) {
-        updateOptions.isOnlineMeeting = options.teams;
-      }
+      const eventIdForAttach = occurrenceItemId || updateResult?.data?.Id || displayEvent!.Id;
 
-      console.log(`\nUpdating: ${displayEvent!.Subject}`);
-
-      const updateResult = await updateEvent(updateOptions);
-
-      if (!updateResult.ok) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: updateResult.error?.message || 'Failed to update event' }, null, 2));
-        } else {
-          console.error(`\nError: ${updateResult.error?.message || 'Failed to update event'}`);
+      if (wantsAttachments) {
+        const attachResult = await addCalendarEventAttachments(
+          authResult.token!,
+          eventIdForAttach,
+          options.mailbox,
+          fileAttachments ?? [],
+          referenceAttachments ?? []
+        );
+        if (!attachResult.ok) {
+          if (options.json) {
+            console.log(JSON.stringify({ error: attachResult.error?.message || 'Failed to add attachments' }, null, 2));
+          } else {
+            console.error(`\nError: ${attachResult.error?.message || 'Failed to add attachments'}`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
       }
 
       if (options.json) {
+        const dr = updateResult?.data;
+        const de = displayEvent!;
         console.log(
           JSON.stringify(
             {
               success: true,
               event: {
-                id: updateResult.data?.Id,
-                subject: updateResult.data?.Subject,
-                start: updateResult.data?.Start.DateTime,
-                end: updateResult.data?.End.DateTime
+                id: occurrenceItemId || dr?.Id || de.Id,
+                changeKey: dr?.ChangeKey,
+                subject: dr?.Subject ?? de.Subject,
+                start: dr?.Start.DateTime ?? de.Start.DateTime,
+                end: dr?.End.DateTime ?? de.End.DateTime,
+                fieldUpdatesApplied: hasFieldUpdates,
+                fileAttachmentsAdded: fileAttachments?.length ?? 0,
+                referenceAttachmentsAdded: referenceAttachments?.length ?? 0
               }
             },
             null,
@@ -482,11 +583,23 @@ export const updateEventCommand = new Command('update-event')
           )
         );
       } else {
-        console.log('\n\u2713 Event updated successfully.\n');
-        if (updateResult.data) {
-          console.log(`  Title: ${updateResult.data.Subject}`);
+        if (hasFieldUpdates) {
+          console.log('\n\u2713 Event updated successfully.');
+        }
+        if (wantsAttachments) {
+          console.log('\n\u2713 Attachment(s) added to calendar event.');
+        }
+        const dr = updateResult?.data;
+        const de = displayEvent!;
+        if (dr) {
+          console.log(`\n  Title: ${dr.Subject}`);
           console.log(
-            `  When:  ${formatDate(updateResult.data.Start.DateTime)} ${formatTime(updateResult.data.Start.DateTime)} - ${formatTime(updateResult.data.End.DateTime)}`
+            `  When:  ${formatDate(dr.Start.DateTime)} ${formatTime(dr.Start.DateTime)} - ${formatTime(dr.End.DateTime)}`
+          );
+        } else if (wantsAttachments) {
+          console.log(`\n  Title: ${de.Subject}`);
+          console.log(
+            `  When:  ${formatDate(de.Start.DateTime)} ${formatTime(de.Start.DateTime)} - ${formatTime(de.End.DateTime)}`
           );
         }
         console.log('');

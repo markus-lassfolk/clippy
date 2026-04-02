@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
+import { AttachmentLinkSpecError, parseAttachLinkSpec } from '../lib/attach-link-spec.js';
 import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.js';
 import { resolveAuth } from '../lib/auth.js';
-import { type EmailAttachment, sendEmail } from '../lib/ews-client.js';
+import { type EmailAttachment, type ReferenceAttachmentInput, sendEmail } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
@@ -16,6 +17,12 @@ export const sendCommand = new Command('send')
   .option('--cc <emails>', 'CC recipient(s), comma-separated')
   .option('--bcc <emails>', 'BCC recipient(s), comma-separated')
   .option('--attach <files>', 'Attach file(s), comma-separated paths')
+  .option(
+    '--attach-link <spec>',
+    'Attach link: "Title|https://url" or bare https URL (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .option('--html', 'Send body as HTML')
   .option('--markdown', 'Parse body as markdown (bold, links, lists)')
   .option('--json', 'Output as JSON')
@@ -31,6 +38,7 @@ export const sendCommand = new Command('send')
         cc?: string;
         bcc?: string;
         attach?: string;
+        attachLink?: string[];
         html?: boolean;
         markdown?: boolean;
         json?: boolean;
@@ -126,6 +134,26 @@ export const sendCommand = new Command('send')
         }
       }
 
+      let referenceAttachments: ReferenceAttachmentInput[] | undefined;
+      const linkSpecs = options.attachLink ?? [];
+      if (linkSpecs.length > 0) {
+        referenceAttachments = [];
+        for (const spec of linkSpecs) {
+          try {
+            const { name, url } = parseAttachLinkSpec(spec);
+            referenceAttachments.push({ name, url, contentType: 'text/html' });
+            if (!options.json) {
+              console.log(`  Attaching link: ${name}`);
+            }
+          } catch (err) {
+            const msg =
+              err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+            console.error(`Invalid --attach-link: ${msg}`);
+            process.exit(1);
+          }
+        }
+      }
+
       const result = await sendEmail(authResult.token!, {
         to: toList,
         cc: ccList,
@@ -134,6 +162,7 @@ export const sendCommand = new Command('send')
         body,
         bodyType,
         attachments,
+        referenceAttachments,
         mailbox: options.mailbox,
         categories: options.category && options.category.length > 0 ? options.category : undefined
       });
@@ -154,7 +183,8 @@ export const sendCommand = new Command('send')
               success: true,
               to: toList,
               subject: options.subject,
-              attachments: attachments?.map((a) => a.name)
+              attachments: attachments?.map((a) => a.name),
+              attachLinks: referenceAttachments?.map((a) => a.name)
             },
             null,
             2
@@ -163,8 +193,10 @@ export const sendCommand = new Command('send')
       } else {
         console.log(`\n\u2713 Email sent to ${toList.join(', ')}`);
         console.log(`  Subject: ${options.subject}`);
-        if (attachments && attachments.length > 0) {
-          console.log(`  Attachments: ${attachments.length}`);
+        const nFile = attachments?.length ?? 0;
+        const nLink = referenceAttachments?.length ?? 0;
+        if (nFile + nLink > 0) {
+          console.log(`  Attachments: ${nFile} file(s), ${nLink} link(s)`);
         }
         console.log();
       }

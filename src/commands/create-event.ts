@@ -1,16 +1,22 @@
+import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
+import { AttachmentLinkSpecError, parseAttachLinkSpec } from '../lib/attach-link-spec.js';
+import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.js';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay, parseTimeToDate, toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
 import {
   areRoomsFree,
   createEvent,
+  type EmailAttachment,
   getRooms,
   type Recurrence,
   type RecurrencePattern,
   type RecurrenceRange,
+  type ReferenceAttachmentInput,
   SENSITIVITY_MAP,
   searchRooms
 } from '../lib/ews-client.js';
+import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 function formatTime(dateStr: string): string {
@@ -48,6 +54,13 @@ export const createEventCommand = new Command('create-event')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Create event in shared mailbox calendar')
+  .option('--attach <files>', 'Attach file(s), comma-separated paths (relative to cwd)')
+  .option(
+    '--attach-link <spec>',
+    'Attach link: "Title|https://url" or bare https URL (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .action(
     async (
       title: string,
@@ -74,6 +87,8 @@ export const createEventCommand = new Command('create-event')
         identity?: string;
         mailbox?: string;
         category?: string[];
+        attach?: string;
+        attachLink?: string[];
       },
       cmd: any
     ) => {
@@ -355,6 +370,59 @@ export const createEventCommand = new Command('create-event')
         process.exit(1);
       }
 
+      const workingDirectory = process.cwd();
+      let fileAttachments: EmailAttachment[] | undefined;
+      if (options.attach?.trim()) {
+        fileAttachments = [];
+        const filePaths = options.attach
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean);
+        for (const filePath of filePaths) {
+          try {
+            const validated = await validateAttachmentPath(filePath, workingDirectory);
+            const content = await readFile(validated.absolutePath);
+            const contentType = lookupMimeType(validated.fileName);
+            fileAttachments.push({
+              name: validated.fileName,
+              contentType,
+              contentBytes: content.toString('base64')
+            });
+            if (!options.json) {
+              console.log(`  Attaching file: ${validated.fileName} (${Math.round(validated.size / 1024)} KB)`);
+            }
+          } catch (err) {
+            console.error(`Failed to read attachment: ${filePath}`);
+            if (err instanceof AttachmentPathError) {
+              console.error(err.message);
+            } else {
+              console.error(err instanceof Error ? err.message : 'Unknown error');
+            }
+            process.exit(1);
+          }
+        }
+      }
+
+      let referenceAttachments: ReferenceAttachmentInput[] | undefined;
+      const linkSpecs = options.attachLink ?? [];
+      if (linkSpecs.length > 0) {
+        referenceAttachments = [];
+        for (const spec of linkSpecs) {
+          try {
+            const { name, url } = parseAttachLinkSpec(spec);
+            referenceAttachments.push({ name, url, contentType: 'text/html' });
+            if (!options.json) {
+              console.log(`  Attaching link: ${name}`);
+            }
+          } catch (err) {
+            const msg =
+              err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+            console.error(`Invalid --attach-link: ${msg}`);
+            process.exit(1);
+          }
+        }
+      }
+
       // Create the event
       const result = await createEvent({
         token: authResult.token!,
@@ -370,7 +438,9 @@ export const createEventCommand = new Command('create-event')
         recurrence,
         mailbox: options.mailbox,
         timezone: options.timezone,
-        categories: options.category && options.category.length > 0 ? options.category : undefined
+        categories: options.category && options.category.length > 0 ? options.category : undefined,
+        fileAttachments,
+        referenceAttachments
       });
 
       if (!result.ok || !result.data) {
@@ -389,11 +459,14 @@ export const createEventCommand = new Command('create-event')
               success: true,
               event: {
                 id: result.data.Id,
+                changeKey: result.data.ChangeKey,
                 subject: result.data.Subject,
                 start: result.data.Start.DateTime,
                 end: result.data.End.DateTime,
                 webLink: result.data.WebLink,
                 onlineMeetingUrl: result.data.OnlineMeetingUrl,
+                fileAttachments: fileAttachments?.length ?? 0,
+                referenceAttachments: referenceAttachments?.length ?? 0,
                 recurring: !!recurrence,
                 recurrence: recurrence
                   ? {

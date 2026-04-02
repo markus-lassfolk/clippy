@@ -1,10 +1,15 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { Command } from 'commander';
+import { AttachmentLinkSpecError, parseAttachLinkSpec } from '../lib/attach-link-spec.js';
+import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.js';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay, toLocalUnzonedISOString } from '../lib/dates.js';
 import {
+  addAttachmentToDraft,
+  addReferenceAttachmentToDraft,
   forwardEmail,
+  forwardEmailDraft,
   getAttachment,
   getAttachments,
   getEmail,
@@ -14,9 +19,12 @@ import {
   replyToEmail,
   replyToEmailDraft,
   SENSITIVITY_MAP,
+  sendDraftById,
+  updateDraft,
   updateEmail
 } from '../lib/ews-client.js';
 import { markdownToHtml } from '../lib/markdown.js';
+import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 function formatDate(dateStr: string): string {
@@ -43,6 +51,80 @@ function truncate(str: string, maxLen: number): string {
   return `${str.substring(0, maxLen - 1)}\u2026`;
 }
 
+async function applyDraftCategoriesAttachments(
+  token: string,
+  draftId: string,
+  mailbox: string | undefined,
+  opts: {
+    withCategory?: string[];
+    attach?: string;
+    attachLink?: string[];
+    json?: boolean;
+  }
+): Promise<void> {
+  const cats = (opts.withCategory ?? []).map((c) => c.trim()).filter(Boolean);
+  if (cats.length > 0) {
+    const r = await updateDraft(token, draftId, { categories: cats, mailbox });
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message || 'Failed to set categories on draft'}`);
+      process.exit(1);
+    }
+  }
+  const wd = process.cwd();
+  if (opts.attach) {
+    const filePaths = opts.attach
+      .split(',')
+      .map((f) => f.trim())
+      .filter(Boolean);
+    for (const filePath of filePaths) {
+      try {
+        const validated = await validateAttachmentPath(filePath, wd);
+        const content = await readFile(validated.absolutePath);
+        const contentType = lookupMimeType(validated.fileName) || 'application/octet-stream';
+        const ar = await addAttachmentToDraft(
+          token,
+          draftId,
+          { name: validated.fileName, contentType, contentBytes: content.toString('base64') },
+          mailbox
+        );
+        if (!ar.ok) {
+          console.error(`Failed to attach ${validated.fileName}: ${ar.error?.message}`);
+          process.exit(1);
+        }
+        if (!opts.json) console.log(`  Attached: ${validated.fileName}`);
+      } catch (err) {
+        if (err instanceof AttachmentPathError) {
+          console.error(err.message);
+        } else {
+          console.error(`Failed to read attachment: ${filePath}`);
+        }
+        process.exit(1);
+      }
+    }
+  }
+  for (const spec of opts.attachLink ?? []) {
+    try {
+      const { name, url } = parseAttachLinkSpec(spec);
+      const linkRes = await addReferenceAttachmentToDraft(
+        token,
+        draftId,
+        { name, url, contentType: 'text/html' },
+        mailbox
+      );
+      if (!linkRes.ok) {
+        console.error(`Failed to attach link ${name}: ${linkRes.error?.message}`);
+        process.exit(1);
+      }
+      if (!opts.json) console.log(`  Attached link: ${name}`);
+    } catch (err) {
+      const msg =
+        err instanceof AttachmentLinkSpecError ? err.message : err instanceof Error ? err.message : String(err);
+      console.error(`Invalid --attach-link: ${msg}`);
+      process.exit(1);
+    }
+  }
+}
+
 export const mailCommand = new Command('mail')
   .description('List and read emails')
   .argument('[folder]', 'Folder: inbox, sent, drafts, deleted, archive, junk', 'inbox')
@@ -67,10 +149,23 @@ export const mailCommand = new Command('mail')
   .option('--to <folder>', 'Destination folder for move (inbox, archive, deleted, junk)')
   .option('--reply <id>', 'Reply to email by ID')
   .option('--reply-all <id>', 'Reply all to email by ID')
-  .option('--draft', 'Create a reply draft (do not send)')
+  .option('--draft', 'Create a reply or forward draft (do not send); use with --reply, --reply-all, or --forward')
   .option('--forward <id>', 'Forward email by ID (use with --to-addr)')
   .option('--to-addr <emails>', 'Forward recipients (comma-separated)')
   .option('--message <text>', 'Reply/forward message text')
+  .option('--attach <files>', 'On reply/forward: comma-separated file paths (uses draft + send)')
+  .option(
+    '--attach-link <spec>',
+    'On reply/forward: link attachment (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option(
+    '--with-category <name>',
+    'On reply/forward: Outlook category on outgoing message (repeatable; not for --set-categories)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .option('--markdown', 'Parse message as markdown (bold, links, lists)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
@@ -79,6 +174,14 @@ export const mailCommand = new Command('mail')
     'Delegated or shared mailbox (list, read, move, flags, attachments, reply, forward; X-AnchorMailbox)'
   )
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
+  .option('--set-categories <id>', 'Set categories on message (use with --category, repeatable)')
+  .option('--clear-categories <id>', 'Remove all categories from message')
+  .option(
+    '--category <name>',
+    'Category label (repeatable; use with --set-categories)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
   .action(
     async (
       folder: string,
@@ -114,6 +217,12 @@ export const mailCommand = new Command('mail')
         draft?: boolean;
         mailbox?: string;
         identity?: string;
+        setCategories?: string;
+        clearCategories?: string;
+        category?: string[];
+        attach?: string;
+        attachLink?: string[];
+        withCategory?: string[];
       },
       cmd: any
     ) => {
@@ -127,7 +236,9 @@ export const mailCommand = new Command('mail')
         options.move ||
         options.reply ||
         options.replyAll ||
-        options.forward;
+        options.forward ||
+        options.setCategories ||
+        options.clearCategories;
 
       if (isMutating) {
         checkReadOnly(cmd);
@@ -231,6 +342,9 @@ export const mailCommand = new Command('mail')
         }
         console.log(`Subject: ${email.Subject || '(no subject)'}`);
         console.log(`Date: ${email.ReceivedDateTime ? new Date(email.ReceivedDateTime).toLocaleString() : 'Unknown'}`);
+        if (email.Categories?.length) {
+          console.log(`Categories: ${email.Categories.join(', ')}`);
+        }
 
         if (email.ToRecipients && email.ToRecipients.length > 0) {
           const to = email.ToRecipients.map((r) => r.EmailAddress?.Address)
@@ -253,8 +367,13 @@ export const mailCommand = new Command('mail')
             if (atts.length > 0) {
               console.log('Attachments:');
               for (const att of atts) {
-                const sizeKB = Math.round(att.Size / 1024);
-                console.log(`  - ${att.Name} (${sizeKB} KB)`);
+                if (att.Kind === 'reference' && att.AttachLongPathName) {
+                  console.log(`  - ${att.Name} (link)`);
+                  console.log(`    ${att.AttachLongPathName}`);
+                } else {
+                  const sizeKB = Math.round(att.Size / 1024);
+                  console.log(`  - ${att.Name} (${sizeKB} KB)`);
+                }
               }
             }
           }
@@ -301,7 +420,43 @@ export const mailCommand = new Command('mail')
         const usedPaths = new Set<string>();
 
         for (const att of attachments) {
-          // Get full attachment with content
+          if (att.Kind === 'reference' || att.AttachLongPathName) {
+            let url = att.AttachLongPathName;
+            if (!url) {
+              const fullRef = await getAttachment(authResult.token!, emailSummary.data.Id, att.Id, options.mailbox);
+              if (fullRef.ok && fullRef.data?.AttachLongPathName) {
+                url = fullRef.data.AttachLongPathName;
+              }
+            }
+            if (!url) {
+              console.error(`  Failed to resolve link: ${att.Name}`);
+              continue;
+            }
+            const safeBase = (att.Name || 'link').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'link';
+            let filePath = join(options.output, `${safeBase}.url`);
+            let counter = 1;
+            while (usedPaths.has(filePath)) {
+              filePath = join(options.output, `${safeBase} (${counter}).url`);
+              counter++;
+            }
+            if (!options.force) {
+              while (true) {
+                try {
+                  await access(filePath);
+                  filePath = join(options.output, `${safeBase} (${counter}).url`);
+                  counter++;
+                } catch {
+                  break;
+                }
+              }
+            }
+            usedPaths.add(filePath);
+            const shortcut = `[InternetShortcut]\r\nURL=${url}\r\n`;
+            await writeFile(filePath, shortcut, 'utf8');
+            console.log(`  \u2713 ${filePath.split(/[\\/]/).pop()} (link)`);
+            continue;
+          }
+
           const fullAtt = await getAttachment(authResult.token!, emailSummary.data.Id, att.Id, options.mailbox);
           if (!fullAtt.ok || !fullAtt.data?.ContentBytes) {
             console.error(`  Failed to download: ${att.Name}`);
@@ -371,6 +526,40 @@ export const mailCommand = new Command('mail')
         }
 
         console.log(`\u2713 Marked as ${isRead ? 'read' : 'unread'}: ${id}`);
+        return;
+      }
+
+      // Handle Outlook categories (names; colors come from mailbox master list in Outlook)
+      if (options.setCategories || options.clearCategories) {
+        const id = (options.setCategories || options.clearCategories)?.trim();
+        if (!id) {
+          console.error('Error: --set-categories/--clear-categories requires a message ID');
+          process.exit(1);
+        }
+        if (options.setCategories && options.clearCategories) {
+          console.error('Error: use either --set-categories or --clear-categories, not both');
+          process.exit(1);
+        }
+        if (options.setCategories) {
+          const cats = (options.category ?? []).map((c) => c.trim()).filter(Boolean);
+          if (cats.length === 0) {
+            console.error('Error: --set-categories requires at least one --category <name>');
+            process.exit(1);
+          }
+          const result = await updateEmail(authResult.token!, id, { categories: cats }, options.mailbox);
+          if (!result.ok) {
+            console.error(`Error: ${result.error?.message || 'Failed to set categories'}`);
+            process.exit(1);
+          }
+          console.log(`\u2713 Categories set (${cats.join(', ')}): ${id}`);
+        } else {
+          const result = await updateEmail(authResult.token!, id, { clearCategories: true }, options.mailbox);
+          if (!result.ok) {
+            console.error(`Error: ${result.error?.message || 'Failed to clear categories'}`);
+            process.exit(1);
+          }
+          console.log(`\u2713 Categories cleared: ${id}`);
+        }
         return;
       }
 
@@ -551,7 +740,12 @@ export const mailCommand = new Command('mail')
           isHtml = true;
         }
 
-        if (options.draft) {
+        const withCat = options.withCategory ?? [];
+        const hasAttach = !!options.attach?.trim();
+        const hasLinks = (options.attachLink?.length ?? 0) > 0;
+        const hasOutgoingExtras = hasAttach || hasLinks || withCat.filter((c) => c.trim()).length > 0;
+
+        if (options.draft && !hasOutgoingExtras) {
           const result = await replyToEmailDraft(authResult.token!, id, message, isReplyAll, isHtml, options.mailbox);
 
           if (!result.ok || !result.data) {
@@ -561,6 +755,34 @@ export const mailCommand = new Command('mail')
 
           const replyType = isReplyAll ? 'Reply all' : 'Reply';
           console.log(`\u2713 ${replyType} draft created: ${result.data.draftId}`);
+          return;
+        }
+
+        if (hasOutgoingExtras) {
+          const draftR = await replyToEmailDraft(authResult.token!, id, message, isReplyAll, isHtml, options.mailbox);
+          if (!draftR.ok || !draftR.data) {
+            console.error(`Error: ${draftR.error?.message || 'Failed to create reply draft'}`);
+            process.exit(1);
+          }
+          const draftId = draftR.data.draftId;
+          await applyDraftCategoriesAttachments(authResult.token!, draftId, options.mailbox, {
+            withCategory: withCat,
+            attach: options.attach,
+            attachLink: options.attachLink,
+            json: options.json
+          });
+          if (options.draft) {
+            const replyType = isReplyAll ? 'Reply all' : 'Reply';
+            console.log(`\u2713 ${replyType} draft created: ${draftId}`);
+            return;
+          }
+          const sendR = await sendDraftById(authResult.token!, draftId, options.mailbox);
+          if (!sendR.ok) {
+            console.error(`Error: ${sendR.error?.message || 'Failed to send reply'}`);
+            process.exit(1);
+          }
+          const replyType = isReplyAll ? 'Reply all' : 'Reply';
+          console.log(`\u2713 ${replyType} sent (with attachments/categories): ${id}`);
           return;
         }
 
@@ -595,6 +817,48 @@ export const mailCommand = new Command('mail')
           console.error('Error: --forward requires a message ID');
           process.exit(1);
         }
+
+        const withCat = options.withCategory ?? [];
+        const hasAttach = !!options.attach?.trim();
+        const hasLinks = (options.attachLink?.length ?? 0) > 0;
+        const hasOutgoingExtras = hasAttach || hasLinks || withCat.filter((c) => c.trim()).length > 0;
+
+        if (options.draft && !hasOutgoingExtras) {
+          const result = await forwardEmailDraft(authResult.token!, id, recipients, options.message, options.mailbox);
+          if (!result.ok || !result.data) {
+            console.error(`Error: ${result.error?.message || 'Failed to create forward draft'}`);
+            process.exit(1);
+          }
+          console.log(`\u2713 Forward draft created: ${result.data.draftId}`);
+          return;
+        }
+
+        if (hasOutgoingExtras) {
+          const draftR = await forwardEmailDraft(authResult.token!, id, recipients, options.message, options.mailbox);
+          if (!draftR.ok || !draftR.data) {
+            console.error(`Error: ${draftR.error?.message || 'Failed to create forward draft'}`);
+            process.exit(1);
+          }
+          const draftId = draftR.data.draftId;
+          await applyDraftCategoriesAttachments(authResult.token!, draftId, options.mailbox, {
+            withCategory: withCat,
+            attach: options.attach,
+            attachLink: options.attachLink,
+            json: options.json
+          });
+          if (options.draft) {
+            console.log(`\u2713 Forward draft created: ${draftId}`);
+            return;
+          }
+          const sendR = await sendDraftById(authResult.token!, draftId, options.mailbox);
+          if (!sendR.ok) {
+            console.error(`Error: ${sendR.error?.message || 'Failed to send forward'}`);
+            process.exit(1);
+          }
+          console.log(`\u2713 Forwarded to ${recipients.join(', ')} (with attachments/categories): ${id}`);
+          return;
+        }
+
         const result = await forwardEmail(authResult.token!, id, recipients, options.message, options.mailbox);
 
         if (!result.ok) {
@@ -625,7 +889,8 @@ export const mailCommand = new Command('mail')
                 isRead: e.IsRead,
                 hasAttachments: e.HasAttachments,
                 importance: e.Importance,
-                flagged: e.Flag?.FlagStatus === 'Flagged'
+                flagged: e.Flag?.FlagStatus === 'Flagged',
+                categories: e.Categories
               }))
             },
             null,
@@ -668,6 +933,9 @@ export const mailCommand = new Command('mail')
           `  [${idx.toString().padStart(2)}] ${marks} ${fromTrunc.padEnd(20)} ${subjectTrunc.padEnd(35)} ${date}`
         );
         console.log(`       ID: ${email.Id}`);
+        if (email.Categories?.length) {
+          console.log(`       Categories: ${email.Categories.join(', ')}`);
+        }
       }
 
       console.log(`\n${'\u2500'.repeat(70)}`);

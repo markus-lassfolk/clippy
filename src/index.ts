@@ -39,6 +39,7 @@ export type {
   Recurrence,
   RecurrencePattern,
   RecurrenceRange,
+  ReferenceAttachmentInput,
   RespondToEventOptions,
   ResponseType,
   Room,
@@ -48,6 +49,8 @@ export type {
 } from './lib/ews-client.js';
 export {
   addAttachmentToDraft,
+  addCalendarEventAttachments,
+  addReferenceAttachmentToDraft,
   cancelEvent,
   createDraft,
   createEvent,
