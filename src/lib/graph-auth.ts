@@ -20,7 +20,8 @@ function assertCachedGraphToken(data: unknown): CachedGraphToken {
   if (!data || typeof data !== 'object') throw new Error('invalid graph token cache');
   const o = data as Record<string, unknown>;
   if (typeof o.accessToken !== 'string' || o.accessToken.length > 100_000) throw new Error('invalid graph token cache');
-  if (typeof o.refreshToken !== 'string' || o.refreshToken.length > 100_000) throw new Error('invalid graph token cache');
+  if (typeof o.refreshToken !== 'string' || o.refreshToken.length > 100_000)
+    throw new Error('invalid graph token cache');
   if (typeof o.expiresAt !== 'number' || !Number.isFinite(o.expiresAt)) throw new Error('invalid graph token cache');
   return { accessToken: o.accessToken, refreshToken: o.refreshToken, expiresAt: o.expiresAt };
 }
