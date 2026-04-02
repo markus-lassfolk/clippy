@@ -40,8 +40,8 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 File and link attachments are supported on **messages** and **calendar items** (not on Planner/To Do in this CLI).
 
 | Flow | Command / flags |
-|------|-----------------|
-| Send email with files or links | **`send --attach <paths>`** (comma-separated), **`send --attach-link <spec>`** (repeatable; spec is **`Title|https://url`** or a bare **`https://`** URL) |
+| ------ | ----------------- |
+| Send email with files or links | **`send --attach <paths>`** (comma-separated), **`send --attach-link <spec>`** (repeatable; spec is **`Title&#124;https://url`** or a bare **`https://`** URL) |
 | Drafts | **`drafts --create` / `--edit`** with **`--attach`** and **`--attach-link`** (same pattern as `send`) |
 | Download from a message | **`mail -d <id>`** (or **`--download`**), **`--output <dir>`** for save location |
 | Reply / forward with attachments or outgoing categories | **`mail --reply` / `--reply-all` / `--forward`** with **`--attach`**, **`--attach-link`**, **`--with-category`** (uses draft + send; **`--draft`** to save only). Use **message id** from list/read, not the numeric index, for non-interactive scripts. |
@@ -65,7 +65,7 @@ Do **not** combine these flags with each other or with an explicit **`[end]`** d
 ## Command map (high level)
 
 | Area | Commands / notes |
-|------|------------------|
+| ------ | ------------------ |
 | Calendar | `calendar` (**`--list-attachments`**, **`--download-attachments`**), `create-event` / `update-event` (**`--attach`**, **`--attach-link`**), `delete-event`, `respond`, `findtime`, `forward-event`, `counter`, `schedule`, `suggest` |
 | Mail | `mail` (**`-d`**, reply/forward **`--attach`**, **`--attach-link`**, **`--with-category`**), `send`, `drafts`, `folders` |
 | Outlook categories (Graph) | `outlook-categories` **`list`**, **`create`**, **`update`**, **`delete`** — master list **names + colors** |

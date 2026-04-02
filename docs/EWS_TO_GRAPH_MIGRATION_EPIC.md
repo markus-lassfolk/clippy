@@ -46,7 +46,7 @@ Until a slice is marked **EWS removed**, implementations should follow a consist
 ## Inventory: EWS touchpoints in this repo
 
 | Area | Commands / modules | Graph direction | Notes | Issue | Status |
-|------|-------------------|-----------------|-------|-------|--------|
+| --- | --- | --- | --- | --- | --- |
 | Phase 0 foundation | Router, env, Azure scopes inventory | — | Backend `auto`, permissions audit | [#205](https://github.com/markus-lassfolk/m365-agent-cli/issues/205) | ⬜ |
 | Calendar read | `calendar` | `GET calendarView` / shared calendars | Replace `getCalendarEvents` | [#206](https://github.com/markus-lassfolk/m365-agent-cli/issues/206) | ⬜ |
 | Free-busy / findtime | `findtime`, parts of schedule | `calendar/getSchedule` | Drop `getScheduleViaOutlook` | [#207](https://github.com/markus-lassfolk/m365-agent-cli/issues/207) | ⬜ |
@@ -144,10 +144,10 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done (EWS fallback removable 
 ## Open decisions (record answers here)
 
 | Question | Decision |
-|----------|----------|
-| One env var vs per-area (`MAIL`, `CALENDAR`, …)? | _TBD_ |
-| Default during migration: `auto` everywhere? | _TBD_ (recommended: yes) |
-| Breaking CLI changes for `delegates`? | _TBD_ |
+| --- | --- |
+| One env var vs per-area (`MAIL`, `CALENDAR`, …)? | *TBD* |
+| Default during migration: `auto` everywhere? | *TBD* (recommended: yes) |
+| Breaking CLI changes for `delegates`? | *TBD* |
 
 ---
 
