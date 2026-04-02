@@ -969,7 +969,7 @@ export async function patchPlannerUser(
     favoritePlanReferences?: Record<string, unknown> | null;
     recentPlanReferences?: Record<string, unknown> | null;
   }
-): Promise<GraphResponse<PlannerUser | void>> {
+): Promise<GraphResponse<PlannerUser | undefined>> {
   try {
     const result = await callGraphAt<PlannerUser>(
       GRAPH_BETA_URL,
@@ -1004,7 +1004,7 @@ export async function addPlannerFavoritePlan(
   token: string,
   planId: string,
   planTitle: string
-): Promise<GraphResponse<PlannerUser | void>> {
+): Promise<GraphResponse<PlannerUser | undefined>> {
   const ur = await getPlannerUser(token);
   if (!ur.ok || !ur.data) {
     return graphError(ur.error?.message || 'Failed to get planner user', ur.error?.code, ur.error?.status);
@@ -1026,7 +1026,7 @@ export async function addPlannerFavoritePlan(
 export async function removePlannerFavoritePlan(
   token: string,
   planId: string
-): Promise<GraphResponse<PlannerUser | void>> {
+): Promise<GraphResponse<PlannerUser | undefined>> {
   const ur = await getPlannerUser(token);
   if (!ur.ok || !ur.data) {
     return graphError(ur.error?.message || 'Failed to get planner user', ur.error?.code, ur.error?.status);
