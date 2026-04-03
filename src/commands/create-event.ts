@@ -589,12 +589,14 @@ export const createEventCommand = new Command('create-event')
           if (gr.ok) {
             const ev = gr.event;
             const joinUrl = ev.onlineMeeting?.joinUrl;
+            const hasPartialSuccess = 'partialSuccess' in gr && gr.partialSuccess;
             if (options.json) {
               console.log(
                 JSON.stringify(
                   {
                     success: true,
                     backend: 'graph',
+                    ...(hasPartialSuccess ? { warning: gr.attachmentError } : {}),
                     event: {
                       id: ev.id,
                       changeKey: ev.changeKey,
@@ -671,6 +673,9 @@ export const createEventCommand = new Command('create-event')
                 recurrenceDesc += ` (${recurrence.Range.NumberOfOccurrences} occurrences)`;
               }
               console.log(`  Repeat: ${recurrenceDesc}`);
+            }
+            if (hasPartialSuccess) {
+              console.log(`\n  Warning: ${gr.attachmentError}`);
             }
             console.log();
             return;

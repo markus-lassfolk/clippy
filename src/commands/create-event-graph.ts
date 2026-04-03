@@ -205,7 +205,11 @@ export async function createEventViaGraph(opts: {
   recurrence?: Recurrence;
   fileAttachments?: Array<{ name: string; contentType: string; contentBytes: string }>;
   referenceAttachments?: Array<{ name: string; sourceUrl: string }>;
-}): Promise<{ ok: true; event: GraphCalendarEvent } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; event: GraphCalendarEvent }
+  | { ok: false; error: string }
+  | { ok: true; event: GraphCalendarEvent; partialSuccess: true; attachmentError: string }
+> {
   const payload = buildGraphCreateEventRequest(opts);
   const result = await createCalendarEvent(opts.token, payload, opts.mailbox?.trim() || undefined);
   if (!result.ok || !result.data) {
@@ -223,7 +227,12 @@ export async function createEventViaGraph(opts: {
       links
     );
     if (!ar.ok) {
-      return { ok: false, error: ar.error?.message || 'Failed to add attachments to event' };
+      return {
+        ok: true,
+        event,
+        partialSuccess: true,
+        attachmentError: ar.error?.message || 'Failed to add attachments to event'
+      };
     }
   }
   return { ok: true, event };
