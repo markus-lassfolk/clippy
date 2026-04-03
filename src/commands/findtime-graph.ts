@@ -206,6 +206,7 @@ export async function runFindTimeGraphSchedule(opts: {
     const hour = t0.getHours();
     if (hour >= opts.workStartHour && hour < opts.workEndHour) {
       freeSlots.push({ start: t0.toISOString(), end: t1.toISOString() });
+      i += needSlots - 1;
     }
   }
 
