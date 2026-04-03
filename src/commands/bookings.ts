@@ -589,7 +589,22 @@ bookingsCommand
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
     }
-    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${(r.data as any).id ?? ''}`);
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    const items = (r.data as any).staffAvailabilityItem ?? [];
+    for (const item of items) {
+      const staffId = item.staffId ?? '';
+      const availCount = item.availabilityItems?.length ?? 0;
+      console.log(`${staffId}\t${availCount} availability items`);
+      for (const avail of item.availabilityItems ?? []) {
+        const status = avail.status ?? '';
+        const start = avail.startDateTime?.dateTime ?? '';
+        const end = avail.endDateTime?.dateTime ?? '';
+        console.log(`  ${status}\t${start}\t${end}`);
+      }
+    }
   });
 
 function jsonFileAction(
