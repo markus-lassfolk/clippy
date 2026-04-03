@@ -35,6 +35,21 @@ export const contactsCommand = new Command('contacts').description(contactsDesc)
 
 // ─── folders (list — backward compatible) ───────────────────────────────────
 
+async function listContactFoldersAction(opts: { json?: boolean; token?: string; identity?: string; user?: string }) {
+  const token = await requireGraphAuth(opts);
+  const r = await listContactFolders(token, opts.user);
+  if (!r.ok || !r.data) {
+    console.error(`Error: ${r.error?.message}`);
+    process.exit(1);
+  }
+  if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+  else {
+    for (const f of r.data) {
+      console.log(`${f.displayName ?? '(folder)'}\t${f.id}`);
+    }
+  }
+}
+
 contactsCommand
   .command('folders')
   .description('List contact folders (Graph GET /contactFolders); see also `contacts folder list`')
@@ -42,20 +57,7 @@ contactsCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user (delegated / shared mailbox)')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
-    const token = await requireGraphAuth(opts);
-    const r = await listContactFolders(token, opts.user);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else {
-      for (const f of r.data) {
-        console.log(`${f.displayName ?? '(folder)'}\t${f.id}`);
-      }
-    }
-  });
+  .action(listContactFoldersAction);
 
 // ─── folder (CRUD + children) ───────────────────────────────────────────────
 
@@ -68,20 +70,7 @@ folderCmd
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
-    const token = await requireGraphAuth(opts);
-    const r = await listContactFolders(token, opts.user);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else {
-      for (const f of r.data) {
-        console.log(`${f.displayName ?? '(folder)'}\t${f.id}`);
-      }
-    }
-  });
+  .action(listContactFoldersAction);
 
 folderCmd
   .command('get')
