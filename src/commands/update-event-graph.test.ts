@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { mergeGraphEventAttendees } from './update-event-graph.js';
 import type { GraphCalendarEvent } from '../lib/graph-calendar-client.js';
+import { mergeGraphEventAttendees } from './update-event-graph.js';
 
 describe('mergeGraphEventAttendees', () => {
   test('removes and adds', () => {

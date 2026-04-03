@@ -18,16 +18,16 @@ import {
   createMailReplyAllDraft,
   createMailReplyDraft,
   downloadMailMessageAttachmentBytes,
+  type GraphMailMessageAttachment,
   getMailMessageAttachment,
   getMessage,
   listAllMailFoldersRecursive,
   listMailMessageAttachments,
   listMessagesInFolder,
   moveMailMessage,
+  type OutlookMessage,
   patchMailMessage,
-  sendMailMessage,
-  type GraphMailMessageAttachment,
-  type OutlookMessage
+  sendMailMessage
 } from '../lib/outlook-graph-client.js';
 
 export interface MailGraphCommandOptions {
@@ -152,7 +152,7 @@ function mailOpsMatch(
 }
 
 /** True when only --mark-read/--mark-unread (by id) — handled via Graph PATCH. */
-export function isGraphMailMarkReadOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailMarkReadOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean(
     (opts.markRead || opts.markUnread) &&
       mailOpsMatch(opts, { markRead: true }) &&
@@ -163,7 +163,7 @@ export function isGraphMailMarkReadOnlyOptions(opts: MailGraphCommandOptions): b
 }
 
 /** True when only --set-categories / --clear-categories (by message id). */
-export function isGraphMailCategoriesOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailCategoriesOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean(
     (opts.setCategories || opts.clearCategories) &&
       mailOpsMatch(opts, { categoryEdit: true }) &&
@@ -173,26 +173,26 @@ export function isGraphMailCategoriesOnlyOptions(opts: MailGraphCommandOptions):
   );
 }
 
-export function isGraphMailMoveOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailMoveOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean(
     opts.move && opts.to && mailOpsMatch(opts, { move: true }) && !opts.startDate && !opts.due && !opts.flagged
   );
 }
 
-export function isGraphMailDownloadOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailDownloadOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean(opts.download && mailOpsMatch(opts, { download: true }) && !opts.flagged);
 }
 
-export function isGraphMailFlagOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailFlagOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean((opts.flag || opts.unflag || opts.complete) && mailOpsMatch(opts, { flag: true }) && !opts.flagged);
 }
 
-export function isGraphMailSensitivityOnlyOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailSensitivityOnlyOptions(opts: MailGraphCommandOptions): boolean {
   return Boolean(opts.sensitivity && opts.level && mailOpsMatch(opts, { sensitivity: true }) && !opts.flagged);
 }
 
 /** Reply, reply-all, or forward — Graph create draft + optional extras + send. */
-export function isGraphMailReplyForwardGraphOptions(opts: MailGraphCommandOptions): boolean {
+function isGraphMailReplyForwardGraphOptions(opts: MailGraphCommandOptions): boolean {
   if (opts.reply || opts.replyAll) {
     if (!opts.message?.trim()) return false;
     return mailOpsMatch(opts, { reply: true }) && !opts.flagged;
@@ -375,7 +375,7 @@ export async function tryMailGraphPortion(
     console.log(`\nDownloading ${attachments.length} attachment(s) to ${outDir}/\n`);
 
     const usedPaths = new Set<string>();
-    const wd = process.cwd();
+    const _wd = process.cwd();
 
     for (const att of attachments) {
       const odataType = att['@odata.type'] || '';

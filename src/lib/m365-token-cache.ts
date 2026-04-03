@@ -44,7 +44,7 @@ function isLegacyFlat(data: Record<string, unknown>): boolean {
   );
 }
 
-export function tokenCachePath(identity: string): string {
+function tokenCachePath(identity: string): string {
   return TOKEN_CACHE_TEMPLATE.replace('{identity}', identity);
 }
 

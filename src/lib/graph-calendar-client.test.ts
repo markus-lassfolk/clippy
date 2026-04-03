@@ -209,7 +209,7 @@ describe('cancelCalendarEvent', () => {
     const originalFetch = globalThis.fetch;
 
     try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         body = typeof init?.body === 'string' ? init.body : '';
         return new Response(null, { status: 204 });
       }) as typeof fetch;

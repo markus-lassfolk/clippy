@@ -31,10 +31,10 @@ import {
   listCalendarView,
   updateCalendarEvent
 } from '../lib/graph-calendar-client.js';
+import { resolveRoomDisplayNameToPlace } from '../lib/graph-places-helpers.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 import { buildGraphUpdatePatch } from './update-event-graph.js';
-import { resolveRoomDisplayNameToPlace } from '../lib/graph-places-helpers.js';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);

@@ -15,7 +15,6 @@ import {
   cancelCalendarEvent,
   deleteCalendarEvent,
   type GraphCalendarEvent,
-  getEvent,
   listCalendarView
 } from '../lib/graph-calendar-client.js';
 import { checkReadOnly } from '../lib/utils.js';

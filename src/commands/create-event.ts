@@ -17,12 +17,12 @@ import {
   searchRooms
 } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   findFirstAvailableRoomGraph,
   listGraphRooms,
   resolveRoomDisplayNameToPlace
 } from '../lib/graph-places-helpers.js';
-import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 import { createEventViaGraph } from './create-event-graph.js';

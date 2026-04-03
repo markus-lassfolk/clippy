@@ -134,7 +134,7 @@ function mapSensitivity(s: 'Normal' | 'Personal' | 'Private' | 'Confidential'): 
   return m[s] ?? 'normal';
 }
 
-export function buildGraphCreateEventRequest(opts: {
+function buildGraphCreateEventRequest(opts: {
   subject: string;
   body?: string;
   start: Date;

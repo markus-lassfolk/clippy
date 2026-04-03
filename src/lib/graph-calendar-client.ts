@@ -385,7 +385,7 @@ export async function addFileAttachmentToCalendarEvent(
 }
 
 /** `POST /me/events/{id}/attachments` — link (`referenceAttachment`) on an event. */
-export async function addReferenceAttachmentToCalendarEvent(
+async function addReferenceAttachmentToCalendarEvent(
   token: string,
   eventId: string,
   attachment: { name: string; sourceUrl: string },
