@@ -27,4 +27,16 @@ describe('Graph OData fixtures', () => {
     expect(Array.isArray(j.message?.toRecipients)).toBe(true);
     expect(j.saveToSentItems).toBe(true);
   });
+
+  test('oauth-token-error.example.json matches Azure AD token endpoint error shape', () => {
+    const raw = readFileSync(join(fixturesDir, 'oauth-token-error.example.json'), 'utf8');
+    const j = JSON.parse(raw) as {
+      error?: string;
+      error_description?: string;
+      error_codes?: number[];
+    };
+    expect(j.error).toBe('invalid_grant');
+    expect(j.error_description).toContain('AADSTS');
+    expect(Array.isArray(j.error_codes)).toBe(true);
+  });
 });

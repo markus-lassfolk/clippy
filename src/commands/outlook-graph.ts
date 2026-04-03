@@ -789,12 +789,16 @@ outlookGraphCommand
   .command('create-contact')
   .description('Create a contact (JSON body per Graph contact resource)')
   .requiredOption('--json-file <path>', 'Path to JSON file')
+  .option('-f, --folder <folderId>', 'Create under this contact folder')
   .option('--json', 'Echo created contact as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user (Graph delegation)')
   .action(
-    async (opts: { jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string }, cmd: any) => {
+    async (
+      opts: { jsonFile: string; folder?: string; json?: boolean; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success) {
@@ -803,7 +807,7 @@ outlookGraphCommand
       }
       const raw = await readFile(opts.jsonFile, 'utf-8');
       const body = JSON.parse(raw) as Record<string, unknown>;
-      const r = await createContact(auth.token!, body, opts.user);
+      const r = await createContact(auth.token!, body, opts.user, opts.folder);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);

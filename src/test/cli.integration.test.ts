@@ -7,7 +7,7 @@
  */
 import '../lib/global-env.js';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { clearMockFetch, createMockFetch } from '../test/mocks/index.js';
+import { clearMockFetch, createMockFetch, setMockFetch } from '../test/mocks/index.js';
 
 // Track console output to assert on it
 let stdout = '';
@@ -105,12 +105,16 @@ afterAll(() => {
 });
 
 let savedExchangeBackend: string | undefined;
+let savedEwsUsername: string | undefined;
 
 beforeEach(() => {
   clearMockFetch();
   globalThis.fetch = createMockFetch();
   savedExchangeBackend = process.env.M365_EXCHANGE_BACKEND;
   process.env.M365_EXCHANGE_BACKEND = 'ews';
+  savedEwsUsername = process.env.EWS_USERNAME;
+  // `getOwaUserInfo` reads `EWS_USERNAME` at call time; empty entry must match mock whoami routing.
+  process.env.EWS_USERNAME = '';
 });
 
 afterEach(() => {
@@ -118,6 +122,11 @@ afterEach(() => {
     delete process.env.M365_EXCHANGE_BACKEND;
   } else {
     process.env.M365_EXCHANGE_BACKEND = savedExchangeBackend;
+  }
+  if (savedEwsUsername === undefined) {
+    delete process.env.EWS_USERNAME;
+  } else {
+    process.env.EWS_USERNAME = savedEwsUsername;
   }
 });
 
@@ -343,6 +352,17 @@ describe('whoami', () => {
     expect(result.exitCode).toBe(0);
     // With a valid token, should show user info
     expect(result.stdout).toContain('test@example.com');
+  });
+
+  test('non-empty EWS_USERNAME uses people-search mock routing (not empty-whoami mock)', async () => {
+    process.env.EWS_USERNAME = 'lookup@example.com';
+    try {
+      const result = await runM365AgentCli('whoami --token test-token-12345');
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('john.doe@example.com');
+    } finally {
+      delete process.env.EWS_USERNAME;
+    }
   });
 
   test('--help shows help text', async () => {
@@ -1145,6 +1165,7 @@ describe('Graph backend (M365_EXCHANGE_BACKEND=graph)', () => {
   });
 
   afterEach(() => {
+    clearMockFetch();
     if (prevBackend === undefined) {
       delete process.env.M365_EXCHANGE_BACKEND;
     } else {
@@ -1202,5 +1223,111 @@ describe('Graph backend (M365_EXCHANGE_BACKEND=graph)', () => {
     const data = JSON.parse(result.stdout.trim());
     expect(data.backend).toBe('graph');
     expect(Array.isArray(data.pendingEvents)).toBe(true);
+  });
+
+  test('whoami does not fall back to EWS when GET /me returns 401 (graph-only mode)', async () => {
+    setMockFetch((url) => {
+      if (url.includes('graph.microsoft.com/v1.0/me')) {
+        return {
+          status: 401,
+          body: JSON.stringify({ error: { message: 'Unauthorized', code: 'InvalidAuthenticationToken' } }),
+          contentType: 'application/json'
+        };
+      }
+      return null;
+    });
+    await expect(runM365AgentCli('whoami --token test-graph-token')).rejects.toThrow();
+  });
+});
+
+describe('Auto backend (M365_EXCHANGE_BACKEND=auto)', () => {
+  let prevBackend: string | undefined;
+
+  beforeEach(() => {
+    prevBackend = process.env.M365_EXCHANGE_BACKEND;
+    process.env.M365_EXCHANGE_BACKEND = 'auto';
+  });
+
+  afterEach(() => {
+    clearMockFetch();
+    if (prevBackend === undefined) {
+      delete process.env.M365_EXCHANGE_BACKEND;
+    } else {
+      process.env.M365_EXCHANGE_BACKEND = prevBackend;
+    }
+  });
+
+  test('whoami uses Microsoft Graph when token resolves and GET /me succeeds', async () => {
+    const result = await runM365AgentCli('whoami --token test-graph-token');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Microsoft Graph');
+    expect(result.stdout).toContain('Graph Test User');
+  });
+
+  test('whoami falls back to EWS when Graph GET /me is unauthorized', async () => {
+    setMockFetch((url) => {
+      if (url.includes('graph.microsoft.com/v1.0/me')) {
+        return {
+          status: 401,
+          body: JSON.stringify({ error: { message: 'Unauthorized' } }),
+          contentType: 'application/json'
+        };
+      }
+      return null;
+    });
+    const result = await runM365AgentCli('whoami --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Authenticated (EWS)');
+    expect(result.stdout).toContain('test@example.com');
+  });
+
+  test('delegates list does not call EWS when Graph returns empty calendar permissions', async () => {
+    const result = await runM365AgentCli('delegates list --token test-graph-token');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('No calendar permissions (Graph)');
+    expect(result.stdout).not.toMatch(/Delegates — EWS/i);
+  });
+
+  test('whoami --json reports backend graph when Graph GET /me succeeds', async () => {
+    const result = await runM365AgentCli('whoami --json --token test-graph-token');
+    expect(result.exitCode).toBe(0);
+    const data = JSON.parse(result.stdout.trim()) as { backend: string; email: string };
+    expect(data.backend).toBe('graph');
+    expect(data.email).toBe('graph.user@example.com');
+  });
+
+  test('whoami --json falls back to EWS when Graph GET /me is unauthorized', async () => {
+    setMockFetch((url) => {
+      if (url.includes('graph.microsoft.com/v1.0/me')) {
+        return {
+          status: 401,
+          body: JSON.stringify({
+            error: { message: 'Unauthorized', code: 'InvalidAuthenticationToken' }
+          }),
+          contentType: 'application/json'
+        };
+      }
+      return null;
+    });
+    const result = await runM365AgentCli('whoami --json --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    const data = JSON.parse(result.stdout.trim()) as { backend: string; email: string };
+    expect(data.backend).toBe('ews');
+    expect(data.email).toBe('test@example.com');
+  });
+
+  test('calendar today uses Graph path with graph token (parity with M365_EXCHANGE_BACKEND=graph)', async () => {
+    const result = await runM365AgentCli('calendar today --token test-graph-token');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/Standup|Team Standup/i);
+  });
+
+  test('delete-event --json list uses Graph backend with graph token', async () => {
+    const result = await runM365AgentCli('delete-event --json --day today --token test-graph-token');
+    expect(result.exitCode).toBe(0);
+    const data = JSON.parse(result.stdout.trim()) as { backend: string; events: unknown[] };
+    expect(data.backend).toBe('graph');
+    expect(Array.isArray(data.events)).toBe(true);
+    expect(data.events.length).toBeGreaterThan(0);
   });
 });

@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { GRAPH_DEVICE_CODE_LOGIN_SCOPES, GRAPH_REFRESH_SCOPE_CANDIDATES } from './graph-oauth-scopes.js';
+import {
+  GRAPH_CRITICAL_DELEGATED_SCOPES,
+  GRAPH_DEVICE_CODE_LOGIN_SCOPES,
+  GRAPH_REFRESH_SCOPE_CANDIDATES
+} from './graph-oauth-scopes.js';
 
 describe('graph-oauth-scopes', () => {
   test('login scope string includes Shared mail/calendar and Places/People/User.Read.All', () => {
@@ -14,6 +18,8 @@ describe('graph-oauth-scopes', () => {
       'User.Read.All',
       'MailboxSettings.ReadWrite',
       'Contacts.ReadWrite',
+      'Contacts.Read.Shared',
+      'Contacts.ReadWrite.Shared',
       'OnlineMeetings.ReadWrite',
       'Notes.ReadWrite.All'
     ]) {
@@ -28,6 +34,8 @@ describe('graph-oauth-scopes', () => {
     expect(joined).toContain('https://graph.microsoft.com/Place.Read.All');
     expect(joined).toContain('https://graph.microsoft.com/Mail.Read.Shared');
     expect(joined).toContain('https://graph.microsoft.com/Notes.ReadWrite.All');
+    expect(GRAPH_CRITICAL_DELEGATED_SCOPES).toContain('Mail.Send');
+    expect(GRAPH_CRITICAL_DELEGATED_SCOPES.length).toBeGreaterThanOrEqual(4);
     const withoutUserReadAll = GRAPH_REFRESH_SCOPE_CANDIDATES.find(
       (c) => c.includes('Mail.Read.Shared') && !c.includes('User.Read.All')
     );

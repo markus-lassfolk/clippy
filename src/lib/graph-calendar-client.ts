@@ -38,7 +38,15 @@ export interface GraphCalendarEvent {
   }>;
   location?: { displayName?: string };
   webLink?: string;
-  onlineMeeting?: { joinUrl?: string };
+  /** Teams / Skype meeting details when `isOnlineMeeting` is true ([onlineMeetingInfo](https://learn.microsoft.com/en-us/graph/api/resources/onlinemeetinginfo)). */
+  onlineMeeting?: {
+    joinUrl?: string;
+    conferenceId?: string;
+    quickDial?: string;
+    tollNumber?: string;
+    tollFreeNumbers?: string[];
+    phones?: unknown[];
+  };
   changeKey?: string;
   sensitivity?: string;
   hasAttachments?: boolean;

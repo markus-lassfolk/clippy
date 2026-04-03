@@ -25,9 +25,23 @@ export const GRAPH_DEVICE_CODE_LOGIN_SCOPES = [
   'Tasks.ReadWrite',
   'Group.ReadWrite.All',
   'Contacts.ReadWrite',
+  'Contacts.Read.Shared',
+  'Contacts.ReadWrite.Shared',
   'OnlineMeetings.ReadWrite',
   'Notes.ReadWrite.All'
 ].join(' ');
+
+/**
+ * If a cached Graph access token is missing any of these short scope names, it may be a **narrow**
+ * token from an older refresh (e.g. Windows vs WSL separate `token-cache-*.json`). Force refresh unless
+ * `graphNarrowScopeAccepted` is set on the cache after a refresh still returned a narrow token.
+ */
+export const GRAPH_CRITICAL_DELEGATED_SCOPES: readonly string[] = [
+  'Mail.Send',
+  'Contacts.ReadWrite',
+  'Notes.ReadWrite.All',
+  'OnlineMeetings.ReadWrite'
+];
 
 /** Primary delegated resource scopes (URL form) for refresh_token grant, without `offline_access` / `User.Read`. */
 const GRAPH_RESOURCE_SCOPES_FULL = [
@@ -47,6 +61,8 @@ const GRAPH_RESOURCE_SCOPES_FULL = [
   G('Tasks.ReadWrite'),
   G('Group.ReadWrite.All'),
   G('Contacts.ReadWrite'),
+  G('Contacts.Read.Shared'),
+  G('Contacts.ReadWrite.Shared'),
   G('OnlineMeetings.ReadWrite'),
   G('Notes.ReadWrite.All')
 ].join(' ');
@@ -70,6 +86,8 @@ const GRAPH_RESOURCE_SCOPES_WITHOUT_USER_READ_ALL = [
   G('Tasks.ReadWrite'),
   G('Group.ReadWrite.All'),
   G('Contacts.ReadWrite'),
+  G('Contacts.Read.Shared'),
+  G('Contacts.ReadWrite.Shared'),
   G('OnlineMeetings.ReadWrite'),
   G('Notes.ReadWrite.All')
 ].join(' ');

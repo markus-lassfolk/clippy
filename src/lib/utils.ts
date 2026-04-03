@@ -20,6 +20,46 @@ export function getGlobalEnvFilePath(): string {
   return resolve(raw);
 }
 
+/**
+ * Resolve a user-supplied path (e.g. `~/.config/m365-agent-cli/.env.beta`) for `--env-file`.
+ */
+export function resolveEnvFilePathArgument(raw: string): string {
+  const s = raw.trim();
+  if (!s) {
+    return join(homedir(), '.config', 'm365-agent-cli', '.env');
+  }
+  if (s === '~') {
+    return homedir();
+  }
+  if (s.startsWith('~/') || s.startsWith('~\\')) {
+    return join(homedir(), s.slice(2));
+  }
+  return resolve(s);
+}
+
+/**
+ * Parse a `.env` file and set `process.env` (overwrites existing keys).
+ * Use with `login --env-file` / `verify-token --env-file` so the beta app id and tokens apply
+ * even when `M365_AGENT_ENV_FILE` was not exported before starting the process.
+ */
+export function applyEnvFileOverrides(envPath: string): void {
+  if (!existsSync(envPath)) {
+    return;
+  }
+  const content = readFileSync(envPath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^\s*([^#\s=]+)\s*=\s*(.*)$/);
+    if (match) {
+      const key = match[1];
+      let val = match[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      process.env[key] = val;
+    }
+  }
+}
+
 export function loadGlobalEnv() {
   const globalEnvPath = getGlobalEnvFilePath();
   if (existsSync(globalEnvPath)) {

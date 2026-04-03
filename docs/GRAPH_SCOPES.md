@@ -29,9 +29,11 @@ Configure the same permissions on your **Entra ID app registration** (API permis
 | `Sites.ReadWrite.All` | SharePoint / site pages |
 | `Tasks.ReadWrite` | Microsoft To Do |
 | `Group.ReadWrite.All` | Planner (groups), group-related Graph calls |
-| `Contacts.ReadWrite` | **`contacts`** command — `/me/contacts`, `/me/contactFolders` (also `outlook-graph` contact subcommands) |
-| `OnlineMeetings.ReadWrite` | **`meeting create` / `meeting get`** — `POST/GET /me/onlineMeetings` (standalone Teams meeting link). Calendar events with Teams use **`create-event --teams`** (`Calendars.ReadWrite`). |
-| `Notes.ReadWrite.All` | **`onenote`** — notebooks, sections, pages, HTML content, create page |
+| `Contacts.ReadWrite` | **`contacts`** — `/me/contacts`, `/me/contactFolders`, photo, attachments, delta, `$search` |
+| `Contacts.Read.Shared` | Read contacts in **shared / delegated** mailboxes (`--user` on `contacts`) |
+| `Contacts.ReadWrite.Shared` | Create/update/delete contacts for mailboxes you have delegate access to |
+| `OnlineMeetings.ReadWrite` | **`meeting`** — `POST/PATCH/DELETE/GET /me/onlineMeetings` (standalone Teams meeting; **`meeting create --json-file`** for full Graph body). **`Calendars.ReadWrite`** + **`create-event … --teams`** — calendar invitations with Teams; parse **`--json`** → `event.teamsMeeting` / `event.onlineMeeting` for assistants. |
+| `Notes.ReadWrite.All` | **`onenote`** — notebooks / section groups / sections (CRUD), pages (list, get, HTML, export, create, **delete**, **patch-page-content**, **copy-page**), async **operation** poll for copy |
 
 **Note:** `Group.ReadWrite.All` implies broad group read/write. For **`find`** group listing, this is sufficient; a narrower `Group.Read.All` is **not** requested separately to avoid redundant consent alongside `Group.ReadWrite.All`.
 

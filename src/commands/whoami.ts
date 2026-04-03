@@ -3,7 +3,7 @@ import { resolveAuth } from '../lib/auth.js';
 import { getOwaUserInfo } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
-import { callGraph, type GraphResponse } from '../lib/graph-client.js';
+import { callGraph, GraphApiError, type GraphResponse } from '../lib/graph-client.js';
 
 interface GraphMe {
   displayName?: string;
@@ -200,12 +200,19 @@ export const whoamiCommand = new Command('whoami')
       identity: options.identity
     });
     if (graphAuth.success && graphAuth.token) {
-      const userInfo = await fetchGraphMe(graphAuth.token);
-      if (userInfo.ok && userInfo.data) {
-        const displayName = userInfo.data.displayName || '(unknown)';
-        const email = userInfo.data.mail || userInfo.data.userPrincipalName || '';
-        outputGraph(displayName, email, options);
-        return;
+      try {
+        const userInfo = await fetchGraphMe(graphAuth.token);
+        if (userInfo.ok && userInfo.data) {
+          const displayName = userInfo.data.displayName || '(unknown)';
+          const email = userInfo.data.mail || userInfo.data.userPrincipalName || '';
+          outputGraph(displayName, email, options);
+          return;
+        }
+      } catch (err) {
+        if (!(err instanceof GraphApiError)) {
+          throw err;
+        }
+        // Graph /me failed (e.g. HTTP 401) — fall back to EWS in auto mode
       }
     }
 

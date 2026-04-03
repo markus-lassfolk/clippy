@@ -103,7 +103,9 @@ Or:
 
 To **only** create the app in Entra and print the Client ID (no `.env` changes), set `M365_ENTRA_SKIP_ENV=1` (bash) or `$env:M365_ENTRA_SKIP_ENV = "1"` (PowerShell) before running the main script.
 
-Then point the CLI at the beta file and run `login` / `verify-token`:
+Then point the CLI at the beta file and run `login` / `verify-token`.
+
+**Option A — shell (applies to every command in that session):** set `M365_AGENT_ENV_FILE` **before** starting the CLI (it is not read from inside `.env`):
 
 ```bash
 export M365_AGENT_ENV_FILE="$HOME/.config/m365-agent-cli/.env.beta"
@@ -111,7 +113,18 @@ m365-agent-cli login
 m365-agent-cli verify-token
 ```
 
-`M365_AGENT_ENV_FILE` must be set in the shell **before** starting the CLI (it is not read from inside `.env`).
+**Option B — per command (no export):** pass the same file explicitly so `EWS_CLIENT_ID` and refresh tokens are read from `.env.beta` even if your default `~/.config/m365-agent-cli/.env` has another app id:
+
+```bash
+m365-agent-cli login --env-file "$HOME/.config/m365-agent-cli/.env.beta"
+m365-agent-cli verify-token --env-file "$HOME/.config/m365-agent-cli/.env.beta"
+```
+
+After login, `verify-token` prints **App ID (from access token)** and **EWS_CLIENT_ID** — they must match the same Entra registration. If they differ, you likely have a **stale Graph access token** in `~/.config/m365-agent-cli/token-cache-{identity}.json` from another app; the CLI now refreshes when the cache’s app id does not match `EWS_CLIENT_ID`, or you can delete that cache file and run `login` again.
+
+If `verify-token` shows **fewer `scp` scopes** than you expect, run it with **`--env-file`** pointing at `.env.beta` (or set **`M365_AGENT_ENV_FILE`** before starting the CLI) so the refresh token and client id come from the right file.
+
+**WSL vs Windows:** `~/.config/m365-agent-cli/token-cache-default.json` (Linux) and `%USERPROFILE%\.config\m365-agent-cli\token-cache-default.json` (Windows) are **different files**. A **narrow** Graph access token cached on one OS (missing `Mail.Send`, `Contacts.ReadWrite`, etc.) was still reused when `EWS_CLIENT_ID` matched. The CLI now **refreshes** when the cache is missing critical delegated scopes (unless the cache was already marked as accepting a narrow token after refresh).
 
 ---
 

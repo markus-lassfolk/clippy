@@ -2,7 +2,7 @@
 
 **Purpose:** Single place to see **🟢 migrated**, **🟡 partial**, and **🔴 no Graph path** (or no 1:1 parity) for Exchange-related CLI behavior when `M365_EXCHANGE_BACKEND=graph` (default in [`exchange-backend.ts`](../src/lib/exchange-backend.ts); was introduced on `dev_v2`).
 
-**Related:** [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md) (branch status log), [`EWS_TO_GRAPH_MIGRATION_EPIC.md`](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (epic).
+**Related:** [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md) (Graph vs EWS differences, `auto` verification, manual checklist), [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md) (branch status log), [`EWS_TO_GRAPH_MIGRATION_EPIC.md`](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (epic).
 
 ### Graph-first policy and `M365_EXCHANGE_BACKEND=auto`
 
@@ -54,9 +54,9 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 | `graph-calendar` | 🟢 | Graph calendar helpers (parallel surface). |
 | `rules` | 🟢 | Graph inbox rules. |
 | `todo` (core) | 🟢 | Graph To Do. `create --link` uses Graph **get message**. |
-| `contacts` | 🟢 | Graph **`/me/contacts`** / **`/me/contactFolders`** (`Contacts.ReadWrite`). |
-| `meeting` | 🟢 | Graph **`/me/onlineMeetings`** (`OnlineMeetings.ReadWrite`). Distinct from **`create-event --teams`** (calendar + Teams on the event). |
-| `onenote` | 🟢 | Graph OneNote (`Notes.ReadWrite.All`). |
+| `contacts` | 🟢 | Graph contacts + folders CRUD, **`$search`**, **delta**, **photo**, **attachments**, **`$filter`** on list; shared mailbox: **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** + **`--user`**. |
+| `meeting` | 🟢 | Graph **`/me/onlineMeetings`**: **create** (simple or **`--json-file`**), **get**, **update**, **delete** (`OnlineMeetings.ReadWrite`). **Invitations on the user’s calendar with Teams:** use **`create-event … --teams`** — `--json` includes **`event.onlineMeeting`**, **`event.teamsMeeting`**, **`onlineMeetingUrl`**. |
+| `onenote` | 🟢 | **Graph only** — Exchange Web Services has **no OneNote API**; there is nothing to merge from EWS. Graph: **notebook** / **section-group** / **section** CRUD (incl. **section copy-to-notebook**), **list-pages** (global `GET …/onenote/pages`), **page-preview**, legacy **notebooks|sections|pages|page|content|export|create-page**, **delete-page**, **patch-page-content**, **copy-page** + **operation**, optional **`--group`** / **`--site`** roots (`/groups/{id}/onenote`, `/sites/{id}/onenote`). |
 | `planner`, `files`, `sharepoint`, `find`, `rooms`, `subscribe`, … | 🟢 | Graph (no EWS in path). |
 
 ---
