@@ -208,8 +208,8 @@ export const whoamiCommand = new Command('whoami')
           outputGraph(displayName, email, options);
           return;
         }
-      } catch (_err) {
-        // Any Graph failure (GraphApiError, network errors, etc.) — fall back to EWS in auto mode
+      } catch {
+        // Any Graph /me failure (GraphApiError from callGraph, network errors, etc.) — fall back to EWS in auto mode
       }
     }
 

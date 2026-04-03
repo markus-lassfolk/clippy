@@ -240,6 +240,7 @@ contactsCommand
       user?: string;
     }) => {
       const token = await requireGraphAuth(opts);
+      // Single encoding: only the OData filter expression is encoded; `$filter=` stays literal (not URLSearchParams, which encodes `$` as %24).
       let odata: string | undefined;
       if (opts.filter?.trim()) {
         odata = `$filter=${opts.filter.trim()}`;
