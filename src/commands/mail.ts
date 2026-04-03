@@ -274,6 +274,15 @@ export const mailCommand = new Command('mail')
           if (handled) return;
         }
         if (backend === 'graph') {
+          if (!ga.success || !ga.token) {
+            const msg = ga.error || 'Graph authentication failed';
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg }, null, 2));
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(1);
+          }
           console.error(
             'This mail subcommand or options require EWS. Set M365_EXCHANGE_BACKEND=ews or auto, or use outlook-graph for Graph mail REST.'
           );
