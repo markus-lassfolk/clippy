@@ -117,44 +117,50 @@ export const draftsCommand = new Command('drafts')
               'subject,body,bodyPreview,toRecipients,ccRecipients,categories,lastModifiedDateTime,receivedDateTime';
             const full = await getMessage(ga.token, id, user, select);
             if (!full.ok || !full.data) {
-              if (options.json) {
-                console.log(JSON.stringify({ error: full.error?.message || 'Failed to fetch draft' }, null, 2));
-              } else {
-                console.error(`Error: ${full.error?.message || 'Failed to fetch draft'}`);
+              if (backend === 'graph') {
+                if (options.json) {
+                  console.log(JSON.stringify({ error: full.error?.message || 'Failed to fetch draft' }, null, 2));
+                } else {
+                  console.error(`Error: ${full.error?.message || 'Failed to fetch draft'}`);
+                }
+                process.exit(1);
               }
-              process.exit(1);
-            }
-            const d = full.data;
+              if (!options.json) {
+                console.warn(`[drafts] Graph failed (${full.error?.message || 'unknown'}); falling back to EWS.`);
+              }
+            } else {
+              const d = full.data;
 
-            if (options.json) {
-              console.log(JSON.stringify({ backend: 'graph', draft: d }, null, 2));
+              if (options.json) {
+                console.log(JSON.stringify({ backend: 'graph', draft: d }, null, 2));
+                return;
+              }
+
+              const toLine =
+                d.toRecipients
+                  ?.map((x) => x.emailAddress?.address)
+                  .filter(Boolean)
+                  .join(', ') || '(none)';
+              console.log(`\n${'\u2500'.repeat(60)}`);
+              console.log(`To: ${toLine}`);
+              if (d.ccRecipients?.length) {
+                console.log(
+                  `Cc: ${
+                    d.ccRecipients
+                      .map((x) => x.emailAddress?.address)
+                      .filter(Boolean)
+                      .join(', ') || '(none)'
+                  }`
+                );
+              }
+              console.log(`Subject: ${d.subject || '(no subject)'}`);
+              if (d.categories?.length) console.log(`Categories: ${d.categories.join(', ')}`);
+              console.log(`${'\u2500'.repeat(60)}\n`);
+              const content = d.body?.content ?? d.bodyPreview ?? '(no content)';
+              console.log(content);
+              console.log(`\n${'\u2500'.repeat(60)}\n`);
               return;
             }
-
-            const toLine =
-              d.toRecipients
-                ?.map((x) => x.emailAddress?.address)
-                .filter(Boolean)
-                .join(', ') || '(none)';
-            console.log(`\n${'\u2500'.repeat(60)}`);
-            console.log(`To: ${toLine}`);
-            if (d.ccRecipients?.length) {
-              console.log(
-                `Cc: ${
-                  d.ccRecipients
-                    .map((x) => x.emailAddress?.address)
-                    .filter(Boolean)
-                    .join(', ') || '(none)'
-                }`
-              );
-            }
-            console.log(`Subject: ${d.subject || '(no subject)'}`);
-            if (d.categories?.length) console.log(`Categories: ${d.categories.join(', ')}`);
-            console.log(`${'\u2500'.repeat(60)}\n`);
-            const content = d.body?.content ?? d.bodyPreview ?? '(no content)';
-            console.log(content);
-            console.log(`\n${'\u2500'.repeat(60)}\n`);
-            return;
           }
 
           const limit = parseInt(options.limit, 10) || 10;
@@ -163,60 +169,66 @@ export const draftsCommand = new Command('drafts')
             orderby: 'lastModifiedDateTime desc'
           });
           if (!r.ok || !r.data) {
-            if (options.json) {
-              console.log(JSON.stringify({ error: r.error?.message || 'Failed to fetch drafts' }, null, 2));
-            } else {
-              console.error(`Error: ${r.error?.message || 'Failed to fetch drafts'}`);
+            if (backend === 'graph') {
+              if (options.json) {
+                console.log(JSON.stringify({ error: r.error?.message || 'Failed to fetch drafts' }, null, 2));
+              } else {
+                console.error(`Error: ${r.error?.message || 'Failed to fetch drafts'}`);
+              }
+              process.exit(1);
             }
-            process.exit(1);
-          }
-          const graphDrafts = r.data;
-          if (options.json) {
-            console.log(
-              JSON.stringify(
-                {
-                  backend: 'graph',
-                  drafts: graphDrafts.map((d, i) => ({
-                    index: i + 1,
-                    id: d.id,
-                    to: d.toRecipients?.map((x) => x.emailAddress?.address),
-                    subject: d.subject,
-                    preview: d.bodyPreview,
-                    lastModified: d.lastModifiedDateTime || d.receivedDateTime,
-                    categories: d.categories
-                  }))
-                },
-                null,
-                2
-              )
-            );
-            return;
-          }
+            if (!options.json) {
+              console.warn(`[drafts] Graph failed (${r.error?.message || 'unknown'}); falling back to EWS.`);
+            }
+          } else {
+            const graphDrafts = r.data;
+            if (options.json) {
+              console.log(
+                JSON.stringify(
+                  {
+                    backend: 'graph',
+                    drafts: graphDrafts.map((d, i) => ({
+                      index: i + 1,
+                      id: d.id,
+                      to: d.toRecipients?.map((x) => x.emailAddress?.address),
+                      subject: d.subject,
+                      preview: d.bodyPreview,
+                      lastModified: d.lastModifiedDateTime || d.receivedDateTime,
+                      categories: d.categories
+                    }))
+                  },
+                  null,
+                  2
+                )
+              );
+              return;
+            }
 
-          console.log(`\n\ud83d\udcdd Drafts (Graph)${options.mailbox ? ` — ${options.mailbox}` : ''}:\n`);
-          console.log('\u2500'.repeat(70));
-          if (graphDrafts.length === 0) {
-            console.log('\n  No drafts found.\n');
+            console.log(`\n\ud83d\udcdd Drafts (Graph)${options.mailbox ? ` — ${options.mailbox}` : ''}:\n`);
+            console.log('\u2500'.repeat(70));
+            if (graphDrafts.length === 0) {
+              console.log('\n  No drafts found.\n');
+              return;
+            }
+            for (let i = 0; i < graphDrafts.length; i++) {
+              const draft = graphDrafts[i];
+              const to = draft.toRecipients?.map((x) => x.emailAddress?.address).join(', ') || '(no recipient)';
+              const subject = draft.subject || '(no subject)';
+              const when = draft.lastModifiedDateTime || draft.receivedDateTime;
+              const date = when ? formatDate(when) : '';
+              console.log(
+                `  [${(i + 1).toString().padStart(2)}] ${truncate(to, 25).padEnd(25)} ${truncate(subject, 32).padEnd(32)} ${date}`
+              );
+              console.log(`       ID: ${draft.id}`);
+              if (draft.categories?.length) console.log(`       Categories: ${draft.categories.join(', ')}`);
+            }
+            console.log(`\n${'\u2500'.repeat(70)}`);
+            console.log('\nCommands:');
+            console.log('  m365-agent-cli drafts -r <id>                  # Read draft by id');
+            console.log('  m365-agent-cli drafts --create --to "..." ...   # Graph when backend=graph|auto');
+            console.log('');
             return;
           }
-          for (let i = 0; i < graphDrafts.length; i++) {
-            const draft = graphDrafts[i];
-            const to = draft.toRecipients?.map((x) => x.emailAddress?.address).join(', ') || '(no recipient)';
-            const subject = draft.subject || '(no subject)';
-            const when = draft.lastModifiedDateTime || draft.receivedDateTime;
-            const date = when ? formatDate(when) : '';
-            console.log(
-              `  [${(i + 1).toString().padStart(2)}] ${truncate(to, 25).padEnd(25)} ${truncate(subject, 32).padEnd(32)} ${date}`
-            );
-            console.log(`       ID: ${draft.id}`);
-            if (draft.categories?.length) console.log(`       Categories: ${draft.categories.join(', ')}`);
-          }
-          console.log(`\n${'\u2500'.repeat(70)}`);
-          console.log('\nCommands:');
-          console.log('  m365-agent-cli drafts -r <id>                  # Read draft by id');
-          console.log('  m365-agent-cli drafts --create --to "..." ...   # Graph when backend=graph|auto');
-          console.log('');
-          return;
         }
         if (backend === 'graph') {
           console.error(
