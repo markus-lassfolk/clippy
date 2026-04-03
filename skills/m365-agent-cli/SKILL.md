@@ -26,11 +26,11 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 ## Delegation and shared access
 
 - **EWS shared mailbox:** `--mailbox <email>` on calendar, mail, send, folders, drafts, respond, findtime, delegates, auto-reply (and similar) to act as that mailbox where supported.
-- **Graph delegation:** **`--user <upn-or-id>`** on supported commands (e.g. inbox **rules**, **oof**, **todo**, **outlook-categories**, **schedule** / meeting-time helpers, **`graph-calendar`**, **`outlook-graph`**, **subscribe**, **rooms**/places, **files** where implemented) — calls Graph as `/users/{id}/...` instead of `/me/...`. Requires app permissions + admin consent where applicable.
+- **Graph delegation:** **`--user <upn-or-id>`** on supported commands (e.g. inbox **rules**, **oof**, **todo**, **outlook-categories**, **contacts**, **schedule** / meeting-time helpers, **`graph-calendar`**, **`outlook-graph`**, **subscribe**, **rooms**/places, **files** where implemented) — calls Graph as `/users/{id}/...` instead of `/me/...`. Requires app permissions + admin consent where applicable (**`Contacts.Read*.Shared`** for delegated contacts).
 
 ## Safety
 
-- **`--read-only`** (root) or **`READ_ONLY_MODE=true`** in env / `.env` runs `checkReadOnly()` before specific mutating actions (exits before the request). The **authoritative list** is the **Read-Only Mode** table in this repo’s `README.md` (kept in sync with `grep checkReadOnly src` in source).
+- **`--read-only`** (root) or **`READ_ONLY_MODE=true`** in env / `.env` runs `checkReadOnly()` before specific mutating actions (exits before the request). The **authoritative list** is the **Read-Only Mode** table in this repo’s `README.md` (includes **`contacts`**, **`onenote`**, **`meeting`** mutating subcommands; kept in sync with `grep checkReadOnly src` in source).
 - Read/query commands (e.g. `calendar`, `schedule`, `suggest`, **`outlook-graph list-mail` / `list-messages` / `get-message` / attachment list-get-download** / folder list-get, `subscriptions list`, `rules list`, **`outlook-categories list`**) are **not** gated unless they call `checkReadOnly`—see README. **`outlook-categories create` / `update` / `delete`** are mutating and **are** gated.
 - **`m365-agent-cli --help`** only lists root flags (e.g. `--read-only`). Per-command flags are on each subcommand’s help.
 
@@ -74,9 +74,12 @@ Do **not** combine the span modes (`--days` / `--previous-days` / `--business-da
 
 | Area | Commands / notes |
 | ------ | ------------------ |
-| Calendar | `calendar` (**`--list-attachments`**, **`--download-attachments`**), `create-event` / `update-event` (**`--attach`**, **`--attach-link`**), `delete-event`, `respond`, `findtime`, `forward-event`, `counter`, `schedule`, `suggest`, **`graph-calendar`** (Graph list/view/get + invitation responses) |
+| Calendar | `calendar` (**`--list-attachments`**, **`--download-attachments`**), `create-event` / `update-event` (**`--attach`**, **`--attach-link`**), `delete-event` (**`--scope all` \| `this` \| `future`**; recurring: **`--occurrence`**, **`--instance`**), `respond`, `findtime`, `forward-event`, `counter`, `schedule`, `suggest`, **`graph-calendar`** (Graph list/view/get + invitation responses) |
 | Mail | `mail` (**`-d`**, reply/forward **`--attach`**, **`--attach-link`**, **`--with-category`**), `send`, `drafts`, `folders`; **`outlook-graph`** (Graph mail: **`list-mail`**, **`send-mail`**, **`patch-message`**, move/copy, attachments, reply/forward drafts + **`send-message`**) |
 | Outlook categories (Graph) | `outlook-categories` **`list`**, **`create`**, **`update`**, **`delete`** — master list **names + colors** |
+| Contacts (Graph only) | **`contacts`** — **`folders`** / **`folder`** (list/get/create/update/delete/children), **`list`** (**`--filter`**), **`show`**, **`create`** / **`update`** / **`delete`** (**`--json-file`**), **`search`**, **`delta`**, **`photo`** get/set/delete, **`attachments`** list/add file/**`add-link`**/show/download/delete; **`--user`** for delegated mailbox |
+| OneNote (Graph only) | **`onenote`** — **`notebooks`** / **`notebook`** (list/get/create/update/delete/**`from-web-url`**), **`section-group`**, **`section`** (list/get/create/update/delete/**`copy-to-notebook`**/**`copy-to-section-group`**), **`pages`** / **`list-pages`**, **`page`**, **`page-preview`**, **`content`**, **`export`**, **`create-page`**, **`delete-page`**, **`patch-page-content`**, **`copy-page`**, **`operation`** (poll async copy); **`--group`** / **`--site`** OneNote roots |
+| Online meetings (Graph) | **`meeting`** — create (simple or **`--json-file`**), get, update, delete (`/me/onlineMeetings`). Calendar+Teams invites: **`create-event … --teams`**. |
 | Files | `files` (list, search, upload, download, share, versions, …) |
 | Planner | `planner` (tasks, plans, buckets; **labels** on tasks) |
 | SharePoint | `sharepoint` / `sp`, `pages` (site pages) |

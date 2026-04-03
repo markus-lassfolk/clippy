@@ -54,9 +54,9 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 | `graph-calendar` | 🟢 | Graph calendar helpers (parallel surface). |
 | `rules` | 🟢 | Graph inbox rules. |
 | `todo` (core) | 🟢 | Graph To Do. `create --link` uses Graph **get message**. |
-| `contacts` | 🟢 | Graph contacts + folders CRUD, **`$search`**, **delta**, **photo**, **attachments**, **`$filter`** on list; shared mailbox: **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** + **`--user`**. |
+| `contacts` | 🟢 | Graph contacts + folders CRUD, **`$search`**, **delta**, **photo**, file attachments + **`attachments add-link`** (referenceAttachment), **`$filter`** on list; shared mailbox: **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** + **`--user`**. |
 | `meeting` | 🟢 | Graph **`/me/onlineMeetings`**: **create** (simple or **`--json-file`**), **get**, **update**, **delete** (`OnlineMeetings.ReadWrite`). **Invitations on the user’s calendar with Teams:** use **`create-event … --teams`** — `--json` includes **`event.onlineMeeting`**, **`event.teamsMeeting`**, **`onlineMeetingUrl`**. |
-| `onenote` | 🟢 | **Graph only** — Exchange Web Services has **no OneNote API**; there is nothing to merge from EWS. Graph: **notebook** / **section-group** / **section** CRUD (incl. **section copy-to-notebook**), **list-pages** (global `GET …/onenote/pages`), **page-preview**, legacy **notebooks|sections|pages|page|content|export|create-page**, **delete-page**, **patch-page-content**, **copy-page** + **operation**, optional **`--group`** / **`--site`** roots (`/groups/{id}/onenote`, `/sites/{id}/onenote`). |
+| `onenote` | 🟢 | **Graph only** — Exchange Web Services has **no OneNote API**; there is nothing to merge from EWS. Graph: **notebook** CRUD + **`notebook from-web-url`** (GetNotebookFromWebUrl), **section-group** / **section** CRUD (**copy-to-notebook**, **copy-to-section-group**), **list-pages** (global `GET …/onenote/pages`), **page-preview**, legacy **notebooks|sections|pages|page|content|export|create-page**, **delete-page**, **patch-page-content**, **copy-page** + **operation**, optional **`--group`** / **`--site`** roots (`/groups/{id}/onenote`, `/sites/{id}/onenote`). |
 | `planner`, `files`, `sharepoint`, `find`, `rooms`, `subscribe`, … | 🟢 | Graph (no EWS in path). |
 
 ---
@@ -76,7 +76,7 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 2. **🔴** — decide product direction (drop feature, new Graph-native UX, or document “use Outlook”).
 3. After each migration, update this file and [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md).
 
-*Last updated: 2026-04-03 — Graph **`delete-event --scope future`** (series truncation); **`Contacts.ReadWrite`**, **`OnlineMeetings.ReadWrite`**, **`Notes.ReadWrite.All`** in `graph-oauth-scopes.ts` + Entra scripts; **`contacts`**, **`meeting`**, **`onenote`** commands.*
+*Last updated: 2026-04-03 — Graph **`delete-event --scope future`**; contacts **link** attachments; OneNote **notebook from-web-url** + **section copy-to-section-group**; scopes in `graph-oauth-scopes.ts` + Entra scripts.*
 
 ---
 

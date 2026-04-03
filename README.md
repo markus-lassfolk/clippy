@@ -91,7 +91,7 @@ EWS_TARGET_MAILBOX=shared@company.com
 
 Or pass `--mailbox <email>` per command.
 
-**Microsoft Graph vs EWS:** Exchange delegation / shared access in Outlook does **not** automatically grant the same rights to Graph API calls. For **`M365_EXCHANGE_BACKEND=graph`** (default on recent versions), reading or updating **another user’s** mail or calendar requires **delegated Graph permissions** `Mail.Read.Shared`, `Mail.ReadWrite.Shared`, `Calendars.Read.Shared`, and `Calendars.ReadWrite.Shared` on your Entra app, in addition to `Mail.ReadWrite` / `Calendars.ReadWrite`. Add those in the Azure Portal (see [`docs/ENTRA_SETUP.md`](docs/ENTRA_SETUP.md)), then run **`m365-agent-cli login`** again so the refresh token includes the new scopes. If you see **Access is denied** only when using `--mailbox` for another user, missing **\*.Shared** scopes is the usual cause.
+**Microsoft Graph vs EWS:** Exchange delegation / shared access in Outlook does **not** automatically grant the same rights to Graph API calls. For **`M365_EXCHANGE_BACKEND=graph`** (default on recent versions), reading or updating **another user’s** mail or calendar requires **delegated Graph permissions** `Mail.Read.Shared`, `Mail.ReadWrite.Shared`, `Calendars.Read.Shared`, and `Calendars.ReadWrite.Shared` on your Entra app, in addition to `Mail.ReadWrite` / `Calendars.ReadWrite`. For **contacts** in another mailbox, add **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** and use **`contacts --user <email>`** (Graph path). Add those in the Azure Portal (see [`docs/ENTRA_SETUP.md`](docs/ENTRA_SETUP.md)), then run **`m365-agent-cli login`** again so the refresh token includes the new scopes. If you see **Access is denied** only when using `--mailbox` for another user, missing **\*.Shared** scopes is the usual cause.
 
 ### How It Works
 
@@ -164,6 +164,9 @@ The table below matches **`checkReadOnly` in the source** (search the repo for `
 | `outlook-categories` | `create`, `update`, `delete` (not `list`) |
 | `outlook-graph` | `create-folder`, `update-folder`, `delete-folder`, `send-mail`, `patch-message`, `delete-message`, `move-message`, `copy-message`, `create-reply`, `create-reply-all`, `create-forward`, `send-message`, `create-contact`, `update-contact`, `delete-contact` |
 | `graph-calendar` | `accept`, `decline`, `tentative` |
+| `contacts` | Mutating: `folder` (create/update/delete), `create` / `update` / `delete`, `photo` (set/delete), `attachments` (add file, **add-link**, delete) |
+| `onenote` | Mutating: notebook/section-group/section create/update/delete, `create-page`, `delete-page`, `patch-page-content`, `copy-page`, `section copy-to-notebook`, `section copy-to-section-group` (read helpers such as `notebook from-web-url`, list/get/page-preview are not gated) |
+| `meeting` | `create`, `update`, `delete` |
 
 **Intentionally not gated** (no `checkReadOnly` today): read/query helpers such as `schedule`, `suggest`, `findtime`, `calendar`, `graph-calendar list-calendars` / `get-calendar` / `list-view` / `get-event`, `outlook-graph list-mail` / `list-messages` / `list-message-attachments` / `get-message-attachment` / `download-message-attachment` / `get-message` / `list-folders` / `list-contacts` / `get-contact` / `get-folder`, `subscriptions list`, `rules list` / `rules get`, `todo` list-only usage, **`outlook-categories list`** (mutating `outlook-categories create|update|delete` **are** gated), `files` list/search/meta/download/convert/analytics/versions, etc. Those calls do not use the guard in code; if a new subcommand adds writes, it should call `checkReadOnly` and this table should be updated.
 
@@ -327,12 +330,18 @@ m365-agent-cli update-event --id <eventId> --title "Updated Title" --mailbox sha
 
 ### Delete/Cancel Events
 
+**Scopes:** `--scope all` (default: entire series or single meeting), **`--scope this`** (one occurrence of a recurring series), **`--scope future`** (this occurrence and all later — **Graph:** truncates recurrence on the series master via `…/instances` + PATCH; **EWS:** SOAP `deleteEvent`). Use **`--occurrence N`** or **`--instance YYYY-MM-DD`** with a recurring master/occurrence id when you need a specific occurrence.
+
 ```bash
 # List your events
 m365-agent-cli delete-event
 
 # Delete event by ID
 m365-agent-cli delete-event --id <eventId>
+
+# Recurring: only this occurrence, or this and all future
+m365-agent-cli delete-event --id <eventId> --scope this
+m365-agent-cli delete-event --id <eventId> --scope future
 
 # With cancellation message
 m365-agent-cli delete-event --id <eventId> --message "Sorry, need to reschedule"
@@ -834,6 +843,9 @@ These commands are not expanded step-by-step above; use **`m365-agent-cli <comma
 
 | Command | What it does |
 | --- | --- |
+| **`contacts`** | **Graph-only** Outlook contacts: folders (CRUD), list/search/delta, photo, attachments (file + **link** via `attachments add-link`), **`--user`** for delegated mailboxes ([`GRAPH_SCOPES.md`](docs/GRAPH_SCOPES.md)). |
+| **`onenote`** | **Graph-only** OneNote: notebooks (incl. **resolve by web URL** — `notebook from-web-url`), section groups, sections (**copy-to-notebook**, **copy-to-section-group**), pages, HTML export/create, **patch-page-content**, **copy-page**, async **operation** poll; **`--group`** / **`--site`** roots. |
+| **`meeting`** | **Graph** standalone Teams meetings (`/me/onlineMeetings`): create (simple or **`--json-file`**), get, update, delete. Calendar invitations with Teams: use **`create-event … --teams`**. |
 | **`forward-event`** (`forward`) | Forward a calendar invitation to more recipients (Graph). |
 | **`graph-calendar`** | Graph **calendars**, **calendarView**, **get-event**, **accept** / **decline** / **tentative** (vs EWS `calendar` / `respond`). |
 | **`counter`** (`propose-new-time`) | Propose a new time for an existing event (Graph). |

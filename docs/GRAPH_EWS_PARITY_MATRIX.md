@@ -39,7 +39,7 @@ These commands **branch** on `getExchangeBackend()` in code (see `src/commands/*
 Commands that **do not** read `M365_EXCHANGE_BACKEND` for mail/calendar (always Microsoft Graph or other APIs):  
 `contacts`, `meeting`, `onenote`, `todo`, `planner`, `files`, `sharepoint`, `find`, `rooms`, `rules`, `oof`, `outlook-graph`, `graph-calendar`, `forward-event`, `counter`, `subscribe`, …
 
-**OneNote:** Implemented exclusively via **Microsoft Graph** OneNote APIs (notebooks, section groups, sections, pages, HTML create/read, content PATCH, global page list, preview, page **copyToSection**, section **copyToNotebook**, async **onenoteOperation** poll, optional `/groups` and `/sites` roots). **EWS does not expose OneNote** — there is no EWS parity row or fallback. Less common Graph-only features (e.g. page **resources** / attachment binaries) are not wrapped in this CLI; use Graph directly if needed.
+**OneNote:** Implemented exclusively via **Microsoft Graph** OneNote APIs (notebooks including **GetNotebookFromWebUrl**, section groups, sections, pages, HTML create/read, content PATCH, global page list, preview, page **copyToSection**, section **copyToNotebook** and **copyToSectionGroup**, async **onenoteOperation** poll, optional `/groups` and `/sites` roots). **EWS does not expose OneNote** — there is no EWS parity row or fallback. Less common Graph-only features (e.g. page **resources** / attachment binaries) are not wrapped in this CLI; use Graph directly if needed.
 
 ---
 
@@ -62,7 +62,7 @@ Commands that **do not** read `M365_EXCHANGE_BACKEND` for mail/calendar (always 
 | --- | --- | --- |
 | Mode parsing | [`src/lib/exchange-backend.test.ts`](../src/lib/exchange-backend.test.ts) | `graph` / `auto` / `ews` / invalid env |
 | Graph auth cache | [`src/test/graph-auth.test.ts`](../src/test/graph-auth.test.ts) | App id + critical `scp` invalidate stale cache; refresh fallback |
-| CLI integration (mocked HTTP) | [`src/test/cli.integration.test.ts`](../src/test/cli.integration.test.ts) | Default `ews` for most tests; **`graph`** block: `whoami`, `update-event`, `delete-event`, `respond` use Graph mocks |
+| CLI integration (mocked HTTP) | [`src/test/cli.integration.test.ts`](../src/test/cli.integration.test.ts) | Default `ews` for most tests; **`graph`** block: `whoami`, `update-event`, `delete-event` (incl. **`--scope future`** truncation path), `respond` use Graph mocks |
 | Auto routing | [`src/test/cli.integration.test.ts`](../src/test/cli.integration.test.ts) (`describe('Auto backend (M365_EXCHANGE_BACKEND=auto)')`) | `whoami` / `whoami --json`: Graph success vs `/me` 401 → EWS; `delegates list`: empty Graph permissions → **no** EWS substitute; `calendar` / `delete-event --json` with graph token |
 | Graph-only contrast | Same file (`describe('Graph backend (M365_EXCHANGE_BACKEND=graph)')`) | `whoami` on `/me` **401** → **throws** (no EWS fallback) |
 | `getOwaUserInfo` + `EWS_USERNAME` | [`src/test/ews-client.test.ts`](../src/test/ews-client.test.ts) | `ResolveNames` SOAP embeds **current** `process.env.EWS_USERNAME` per call |
@@ -90,4 +90,4 @@ Optional: set `M365_AGENT_ENV_FILE` to `.env.beta` for a second app registration
 - **Same backend, wrong CLI behavior** → file an issue with command, flags, and redacted error JSON.
 - **`auto` calls EWS** when Graph returned **200 + empty array** for a list operation → likely **bug** vs documented policy — verify against §1.
 
-*Last updated: 2026-04-03 — parity matrix + routing tests.*
+*Last updated: 2026-04-03 — OneNote copy APIs + integration test note for `delete-event --scope future`.*

@@ -101,6 +101,8 @@ src/
     outlook-master-categories.ts — Graph `GET .../outlook/masterCategories`
     planner-client.ts — Planner tasks, plans, buckets, plan details (label names)
     graph-calendar-client.ts — Graph `GET .../calendars`, `calendarView`, `GET .../events/{id}`
+    graph-calendar-recurrence.ts — Graph recurring series truncation (`delete-event --scope future`)
+    onenote-graph-client.ts — OneNote notebooks, sections, pages, copy operations
     todo-client.ts    — Microsoft To Do lists/tasks (including `categories`)
     url-utils.ts      — URL sanitization, safe filename handling
   commands/
@@ -155,7 +157,9 @@ Preferred for new features:
 | Room discovery | `GET /places`, `/roomLists`, `/rooms` | Richer than EWS |
 | Mail | `GET/POST/PATCH/DELETE /me/mailFolders`, folder + `/me/messages`, `POST /sendMail`, `POST .../move|copy|send`, `POST .../createReply|createReplyAll|createForward`, attachments | CLI `outlook-graph` (Graph REST); EWS `mail` / `folders` remains primary for many flows |
 | Message rules | `GET/POST/PATCH/DELETE /me/mailFolders/inbox/rules` | Partial — no template replies |
-| Contacts | `GET/POST/PATCH/DELETE /me/contacts` | Personal contacts; CLI `outlook-graph contacts` |
+| Contacts | `GET/POST/PATCH/DELETE /me/contacts`, contactFolders, photo, attachments, delta | Primary CLI **`contacts`**; parallel **`outlook-graph`** contact helpers |
+| OneNote | `GET/POST/PATCH/DELETE …/onenote/...` | CLI **`onenote`**; no EWS equivalent |
+| Online meetings | `GET/POST/PATCH/DELETE /me/onlineMeetings` | CLI **`meeting`** |
 | People | `GET /me/people` | Relevance-ranked, not true GAL |
 | Directory | `GET /users`, `/groups/{id}/members` | Requires `Directory.Read.All` |
 | To-Do | `GET/POST/PATCH/DELETE /me/todo/lists/{id}/tasks`, checklistItems CRUD, `GET .../attachments/{id}/$value` for file bytes | Use To-Do API, NOT Outlook Tasks (deprecated) |

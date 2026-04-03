@@ -29,7 +29,7 @@ Configure the same permissions on your **Entra ID app registration** (API permis
 | `Sites.ReadWrite.All` | SharePoint / site pages |
 | `Tasks.ReadWrite` | Microsoft To Do |
 | `Group.ReadWrite.All` | Planner (groups), group-related Graph calls |
-| `Contacts.ReadWrite` | **`contacts`** — `/me/contacts`, `/me/contactFolders`, photo, attachments, delta, `$search` |
+| `Contacts.ReadWrite` | **`contacts`** — `/me/contacts`, `/me/contactFolders`, photo, file + **reference (link)** attachments, delta, `$search`, `$filter` on list |
 | `Contacts.Read.Shared` | Read contacts in **shared / delegated** mailboxes (`--user` on `contacts`) |
 | `Contacts.ReadWrite.Shared` | Create/update/delete contacts for mailboxes you have delegate access to |
 | `OnlineMeetings.ReadWrite` | **`meeting`** — `POST/PATCH/DELETE/GET /me/onlineMeetings` (standalone Teams meeting; **`meeting create --json-file`** for full Graph body). **`Calendars.ReadWrite`** + **`create-event … --teams`** — calendar invitations with Teams; parse **`--json`** → `event.teamsMeeting` / `event.onlineMeeting` for assistants. |
@@ -57,4 +57,4 @@ These commonly require **admin consent** in tenant consent policies (especially 
 - [README](../README.md) — authentication overview  
 - [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md) — Graph vs EWS, `--mailbox` behavior  
 
-_Last updated: 2026-04-03 — added Contacts, Online Meetings, OneNote scopes; aligned with `graph-oauth-scopes.ts`._
+_Last updated: 2026-04-03 — Contacts link attachments, OneNote notebook-from-URL + section copy-to-section-group; aligned with `graph-oauth-scopes.ts`._
