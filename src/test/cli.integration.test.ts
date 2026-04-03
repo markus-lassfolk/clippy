@@ -1331,6 +1331,14 @@ describe('Graph backend (M365_EXCHANGE_BACKEND=graph)', () => {
     });
     await expect(runM365AgentCli('whoami --token test-graph-token')).rejects.toThrow();
   });
+
+  test('auto-reply exits on graph backend with JSON hint to use oof', async () => {
+    const result = await runM365AgentCli('auto-reply --json');
+    expect(result.exitCode).toBe(1);
+    const data = JSON.parse(result.stdout.trim()) as { error: string };
+    expect(data.error).toMatch(/oof/i);
+    expect(data.error).toMatch(/M365_EXCHANGE_BACKEND/i);
+  });
 });
 
 describe('Auto backend (M365_EXCHANGE_BACKEND=auto)', () => {

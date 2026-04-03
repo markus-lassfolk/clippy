@@ -45,7 +45,7 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 | `delete-event` | 🟢 | **Graph-first** cancel/delete + occurrence/instance matching via **`seriesMasterId`**. **`--scope future`:** truncates the series via **`GET …/instances`** + **PATCH** recurrence on the **series master** (`graph-calendar-recurrence.ts`). **EWS** still implements the same intent via SOAP `deleteEvent`. With **`auto`**, EWS is used only when the listing path is EWS (e.g. Graph list failed). |
 | `respond` | 🟢 | **Graph is the primary path** when `graph` / **`auto`**: list via **`calendarView`** + pending filter; **`accept` / `decline` / `tentative`** via Graph invitation APIs. **EWS** only when **`auto`** and Graph auth or **`getEvent`** fails (then list/respond use EWS). |
 | `forward-event` / `counter` | 🟢 | Graph-only (`graph-event`). |
-| `auto-reply` | 🔴 | EWS **Inbox Rules**–based templates (this command’s SOAP model). **Graph** offers **`oof`** (automatic replies) and **`rules`** (inbox rules), but **not** this CLI’s template UX — **no 1:1 replacement**. Prefer **`oof`** for OOF-style mail; use **`rules`** for Graph mail rules. |
+| `auto-reply` | 🔴 | EWS **Inbox Rules**–based templates (this command’s SOAP model). **`M365_EXCHANGE_BACKEND=graph`:** command exits with a hint to use **`oof`** or set **`ews`/`auto`**. **Graph** also offers **`rules`** (inbox rules), but **not** this CLI’s template UX — **no 1:1 replacement**. Prefer **`oof`** for OOF-style mail; use **`rules`** for Graph mail rules. |
 | `oof` | 🟢 | Graph mailboxSettings. |
 | `delegates` **list** | 🟢 | Graph **`calendarPermissions`** when `graph`. **`auto`:** Graph first; an **empty** Graph result is final (same message as `graph`). EWS **`GetDelegates`** only if the Graph **request fails** (auth/call error), not to “supplement” Graph. **`ews`:** EWS only. |
 | `delegates` **add / update / remove** | 🔴 | EWS **delegate matrix** (folder permissions + deliver options) has **no 1:1 Graph API** — Graph uses **calendar sharing / permissions** with a different model. Use Outlook or a future redesigned CLI. |
@@ -76,7 +76,7 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 2. **🔴** — decide product direction (drop feature, new Graph-native UX, or document “use Outlook”).
 3. After each migration, update this file and [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md).
 
-*Last updated: 2026-04-03 — Graph **`delete-event --scope future`**; contacts **link** attachments; OneNote **notebook from-web-url** + **section copy-to-section-group**; scopes in `graph-oauth-scopes.ts` + Entra scripts.*
+*Last updated: 2026-04-03 — `auto-reply` fails fast when `graph`; `update-event` Graph id hint; mail/drafts Graph error UX.*
 
 ---
 

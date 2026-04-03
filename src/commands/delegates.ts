@@ -84,7 +84,7 @@ listCommand
     if (backend === 'graph') {
       const ga = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!ga.success || !ga.token) {
-        console.error('Auth failed:', ga.error);
+        console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
         process.exit(1);
       }
       const result = await listCalendarPermissions(ga.token, opts.mailbox);
