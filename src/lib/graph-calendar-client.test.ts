@@ -122,7 +122,7 @@ describe('getEvent', () => {
     const originalFetch = globalThis.fetch;
 
     try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         headers.push(new Headers(init?.headers as HeadersInit));
         return new Response(JSON.stringify({ id: 'evt-1' }), {
           status: 200,

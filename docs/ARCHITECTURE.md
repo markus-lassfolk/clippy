@@ -107,7 +107,7 @@ src/
     graph-bookings-client.ts — Microsoft Bookings (businesses, appointments, services, staff, calendarView, …)
     graph-calendar-client.ts — Graph `GET .../calendars`, `calendarView`, `GET .../events/{id}`
     graph-calendar-recurrence.ts — Graph recurring series truncation (`delete-event --scope future`)
-    graph-excel-client.ts — Excel worksheets, range, tables, used range on drive items
+    graph-excel-client.ts — Excel worksheets CRUD, range read/patch, tables/rows/names/charts on drive items
     graph-presence-client.ts — `GET /me/presence`, `GET /users/{id}/presence`
     graph-teams-client.ts — Teams channels (incl. all/incoming), messages, chats, tabs, members, apps
     onenote-graph-client.ts — OneNote notebooks, sections, pages, copy operations

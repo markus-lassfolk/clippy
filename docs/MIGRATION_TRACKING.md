@@ -59,11 +59,11 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 | `meeting` | 🟢 | Graph **`/me/onlineMeetings`**: **create** (simple or **`--json-file`**), **get**, **update**, **delete** (`OnlineMeetings.ReadWrite`). **Invitations on the user’s calendar with Teams:** use **`create-event … --teams`** — `--json` includes **`event.onlineMeeting`**, **`event.teamsMeeting`**, **`onlineMeetingUrl`**. |
 | `onenote` | 🟢 | **Graph only** — Exchange Web Services has **no OneNote API**; there is nothing to merge from EWS. Graph: **notebook** CRUD + **`notebook from-web-url`** (GetNotebookFromWebUrl), **section-group** / **section** CRUD (**copy-to-notebook**, **copy-to-section-group**), **list-pages** (global `GET …/onenote/pages`), **page-preview**, legacy **notebooks**, **sections**, **pages**, **page**, **content**, **export**, **create-page**, **delete-page**, **patch-page-content**, **copy-page** + **operation**, optional **`--group`** / **`--site`** roots (`/groups/{id}/onenote`, `/sites/{id}/onenote`). |
 | `planner`, `files`, `sharepoint`, `find`, `rooms`, `subscribe`, … | 🟢 | Graph (no EWS in path). |
-| `teams` | 🟢 | **Graph only** — joined teams, channels (**incl. all-channels, incoming-channels**), messages, chats, tabs, members, apps (`graph-teams-client.ts`). |
-| `bookings` | 🟢 | **Graph only** — businesses, **business-get**, appointments, customers, services (**service-get**), staff (**staff-get**), calendar view (`graph-bookings-client.ts`). |
-| `excel` | 🟢 | **Graph only** — worksheets, range, tables, used range on a drive item (`graph-excel-client.ts`). |
+| `teams` | 🟢 | **Graph only** — channel + chat **message get**, **list replies**, **send** + **reply** (`graph-teams-client.ts`). |
+| `bookings` | 🟢 | **Graph only** — CRUD + **staff-availability** (app-only POST) (`graph-bookings-client.ts`). |
+| `excel` | 🟢 | **Graph only** — worksheet CRUD, range patch, table rows/add, names, charts (`graph-excel-client.ts`). |
 | `graph` (`invoke`, `batch`) | 🟢 | **Graph only** — arbitrary JSON REST + `$batch` (`graph-advanced-client.ts`). |
-| `presence` | 🟢 | **Graph only** — `/me/presence` and `/users/{id}/presence` (`graph-presence-client.ts`). |
+| `presence` | 🟢 | **Graph only** — single + **bulk** read, **setPresence** for self/other (`graph-presence-client.ts`). |
 | `graph-search` | 🟢 | **Graph only** — `POST /search/query`. |
 
 ---

@@ -1,10 +1,4 @@
-import {
-  callGraph,
-  GraphApiError,
-  type GraphResponse,
-  graphError,
-  graphResult
-} from './graph-client.js';
+import { callGraph, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
 
 export interface BookingBusiness {
   id: string;
@@ -62,15 +56,9 @@ export async function listBookingBusinesses(token: string): Promise<GraphRespons
   }
 }
 
-export async function getBookingBusiness(
-  token: string,
-  businessId: string
-): Promise<GraphResponse<BookingBusiness>> {
+export async function getBookingBusiness(token: string, businessId: string): Promise<GraphResponse<BookingBusiness>> {
   try {
-    const r = await callGraph<BookingBusiness>(
-      token,
-      `/solutions/bookingBusinesses/${encodeURIComponent(businessId)}`
-    );
+    const r = await callGraph<BookingBusiness>(token, `/solutions/bookingBusinesses/${encodeURIComponent(businessId)}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get booking business', r.error?.code, r.error?.status);
     }
@@ -100,10 +88,7 @@ export async function listBookingAppointments(
   }
 }
 
-export async function listBookingServices(
-  token: string,
-  businessId: string
-): Promise<GraphResponse<BookingService[]>> {
+export async function listBookingServices(token: string, businessId: string): Promise<GraphResponse<BookingService[]>> {
   try {
     const r = await callGraph<{ value: BookingService[] }>(
       token,
@@ -165,10 +150,7 @@ export async function getBookingStaffMember(
   try {
     const b = encodeURIComponent(businessId);
     const s = encodeURIComponent(staffId);
-    const r = await callGraph<BookingStaffMember>(
-      token,
-      `/solutions/bookingBusinesses/${b}/staffMembers/${s}`
-    );
+    const r = await callGraph<BookingStaffMember>(token, `/solutions/bookingBusinesses/${b}/staffMembers/${s}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get staff member', r.error?.code, r.error?.status);
     }
@@ -296,5 +278,369 @@ export async function listBookingCurrencies(token: string): Promise<GraphRespons
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to list booking currencies');
+  }
+}
+
+function businessPath(businessId: string): string {
+  return `/solutions/bookingBusinesses/${encodeURIComponent(businessId.trim())}`;
+}
+
+export async function createBookingAppointment(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingAppointment>> {
+  try {
+    const r = await callGraph<BookingAppointment>(token, `${businessPath(businessId)}/appointments`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create appointment', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create appointment');
+  }
+}
+
+export async function updateBookingAppointment(
+  token: string,
+  businessId: string,
+  appointmentId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingAppointment>> {
+  try {
+    const path = `${businessPath(businessId)}/appointments/${encodeURIComponent(appointmentId)}`;
+    const r = await callGraph<BookingAppointment>(token, path, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update appointment', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update appointment');
+  }
+}
+
+export async function deleteBookingAppointment(
+  token: string,
+  businessId: string,
+  appointmentId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/appointments/${encodeURIComponent(appointmentId)}`;
+    const r = await callGraph<void>(token, path, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete appointment', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete appointment');
+  }
+}
+
+export async function cancelBookingAppointment(
+  token: string,
+  businessId: string,
+  appointmentId: string,
+  body?: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/appointments/${encodeURIComponent(appointmentId)}/cancel`;
+    const r = await callGraph<void>(token, path, { method: 'POST', body: JSON.stringify(body ?? {}) }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to cancel appointment', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to cancel appointment');
+  }
+}
+
+export async function createBookingCustomer(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingCustomer>> {
+  try {
+    const r = await callGraph<BookingCustomer>(token, `${businessPath(businessId)}/customers`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create customer', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create customer');
+  }
+}
+
+export async function updateBookingCustomer(
+  token: string,
+  businessId: string,
+  customerId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingCustomer>> {
+  try {
+    const path = `${businessPath(businessId)}/customers/${encodeURIComponent(customerId)}`;
+    const r = await callGraph<BookingCustomer>(token, path, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update customer', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update customer');
+  }
+}
+
+export async function deleteBookingCustomer(
+  token: string,
+  businessId: string,
+  customerId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/customers/${encodeURIComponent(customerId)}`;
+    const r = await callGraph<void>(token, path, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete customer', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete customer');
+  }
+}
+
+export async function createBookingService(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingService>> {
+  try {
+    const r = await callGraph<BookingService>(token, `${businessPath(businessId)}/services`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create service', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create service');
+  }
+}
+
+export async function updateBookingService(
+  token: string,
+  businessId: string,
+  serviceId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingService>> {
+  try {
+    const path = `${businessPath(businessId)}/services/${encodeURIComponent(serviceId)}`;
+    const r = await callGraph<BookingService>(token, path, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update service', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update service');
+  }
+}
+
+export async function deleteBookingService(
+  token: string,
+  businessId: string,
+  serviceId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/services/${encodeURIComponent(serviceId)}`;
+    const r = await callGraph<void>(token, path, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete service', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete service');
+  }
+}
+
+export async function createBookingStaffMember(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingStaffMember>> {
+  try {
+    const r = await callGraph<BookingStaffMember>(token, `${businessPath(businessId)}/staffMembers`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create staff member', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create staff member');
+  }
+}
+
+export async function updateBookingStaffMember(
+  token: string,
+  businessId: string,
+  staffId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingStaffMember>> {
+  try {
+    const path = `${businessPath(businessId)}/staffMembers/${encodeURIComponent(staffId)}`;
+    const r = await callGraph<BookingStaffMember>(token, path, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update staff member', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update staff member');
+  }
+}
+
+export async function deleteBookingStaffMember(
+  token: string,
+  businessId: string,
+  staffId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/staffMembers/${encodeURIComponent(staffId)}`;
+    const r = await callGraph<void>(token, path, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete staff member', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete staff member');
+  }
+}
+
+export async function createBookingCustomQuestion(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingCustomQuestion>> {
+  try {
+    const r = await callGraph<BookingCustomQuestion>(token, `${businessPath(businessId)}/customQuestions`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create custom question', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create custom question');
+  }
+}
+
+export async function updateBookingCustomQuestion(
+  token: string,
+  businessId: string,
+  questionId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingCustomQuestion>> {
+  try {
+    const path = `${businessPath(businessId)}/customQuestions/${encodeURIComponent(questionId)}`;
+    const r = await callGraph<BookingCustomQuestion>(token, path, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update custom question', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update custom question');
+  }
+}
+
+export async function deleteBookingCustomQuestion(
+  token: string,
+  businessId: string,
+  questionId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = `${businessPath(businessId)}/customQuestions/${encodeURIComponent(questionId)}`;
+    const r = await callGraph<void>(token, path, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete custom question', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete custom question');
+  }
+}
+
+export async function updateBookingBusiness(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingBusiness>> {
+  try {
+    const r = await callGraph<BookingBusiness>(token, businessPath(businessId), {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update booking business', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update booking business');
+  }
+}
+
+/** Microsoft Graph documents **application-only** for this API (no delegated). Use an app-only access token (`--token`). */
+export async function getBookingStaffAvailability(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<unknown>> {
+  try {
+    const r = await callGraph<unknown>(token, `${businessPath(businessId)}/getStaffAvailability`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get staff availability', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get staff availability');
   }
 }

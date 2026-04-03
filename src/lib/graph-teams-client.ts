@@ -1,10 +1,4 @@
-import {
-  callGraph,
-  GraphApiError,
-  type GraphResponse,
-  graphError,
-  graphResult
-} from './graph-client.js';
+import { callGraph, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
 
 export interface GraphTeam {
   id: string;
@@ -99,15 +93,9 @@ export async function getTeam(token: string, teamId: string): Promise<GraphRespo
 }
 
 /** Default “General” channel. Least privilege: Channel.ReadBasic.All */
-export async function getTeamPrimaryChannel(
-  token: string,
-  teamId: string
-): Promise<GraphResponse<GraphChannel>> {
+export async function getTeamPrimaryChannel(token: string, teamId: string): Promise<GraphResponse<GraphChannel>> {
   try {
-    const r = await callGraph<GraphChannel>(
-      token,
-      `/teams/${encodeURIComponent(teamId.trim())}/primaryChannel`
-    );
+    const r = await callGraph<GraphChannel>(token, `/teams/${encodeURIComponent(teamId.trim())}/primaryChannel`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get primary channel', r.error?.code, r.error?.status);
     }
@@ -118,15 +106,9 @@ export async function getTeamPrimaryChannel(
   }
 }
 
-export async function listTeamChannels(
-  token: string,
-  teamId: string
-): Promise<GraphResponse<GraphChannel[]>> {
+export async function listTeamChannels(token: string, teamId: string): Promise<GraphResponse<GraphChannel[]>> {
   try {
-    const r = await callGraph<{ value: GraphChannel[] }>(
-      token,
-      `/teams/${encodeURIComponent(teamId)}/channels`
-    );
+    const r = await callGraph<{ value: GraphChannel[] }>(token, `/teams/${encodeURIComponent(teamId)}/channels`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list channels', r.error?.code, r.error?.status);
     }
@@ -144,8 +126,7 @@ export async function listTeamAllChannels(
   filter?: string
 ): Promise<GraphResponse<GraphChannel[]>> {
   try {
-    const q =
-      filter && filter.trim() ? `?$filter=${encodeURIComponent(filter.trim())}` : '';
+    const q = filter?.trim() ? `?$filter=${encodeURIComponent(filter.trim())}` : '';
     const r = await callGraph<{ value: GraphChannel[] }>(
       token,
       `/teams/${encodeURIComponent(teamId.trim())}/allChannels${q}`
@@ -161,21 +142,14 @@ export async function listTeamAllChannels(
 }
 
 /** Channels shared into this team from other tenants. GET /teams/{id}/incomingChannels (Channel.ReadBasic.All). */
-export async function listTeamIncomingChannels(
-  token: string,
-  teamId: string
-): Promise<GraphResponse<GraphChannel[]>> {
+export async function listTeamIncomingChannels(token: string, teamId: string): Promise<GraphResponse<GraphChannel[]>> {
   try {
     const r = await callGraph<{ value: GraphChannel[] }>(
       token,
       `/teams/${encodeURIComponent(teamId.trim())}/incomingChannels`
     );
     if (!r.ok || !r.data) {
-      return graphError(
-        r.error?.message || 'Failed to list incoming channels',
-        r.error?.code,
-        r.error?.status
-      );
+      return graphError(r.error?.message || 'Failed to list incoming channels', r.error?.code, r.error?.status);
     }
     return graphResult(r.data.value ?? []);
   } catch (err) {
@@ -219,10 +193,7 @@ export async function listTeamChannelMembers(
     const c = encodeURIComponent(channelId.trim());
     const n = top && top > 0 ? Math.min(top, 999) : undefined;
     const qs = n ? `?$top=${n}` : '';
-    const r = await callGraph<{ value: GraphTeamMember[] }>(
-      token,
-      `/teams/${t}/channels/${c}/members${qs}`
-    );
+    const r = await callGraph<{ value: GraphTeamMember[] }>(token, `/teams/${t}/channels/${c}/members${qs}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list channel members', r.error?.code, r.error?.status);
     }
@@ -230,6 +201,77 @@ export async function listTeamChannelMembers(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to list channel members');
+  }
+}
+
+/** Reply in a channel thread. Same permission as `sendChannelMessage`. */
+export async function sendChannelMessageReply(
+  token: string,
+  teamId: string,
+  channelId: string,
+  parentMessageId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(parentMessageId.trim());
+    const r = await callGraph<GraphChatMessage>(token, `/teams/${t}/channels/${c}/messages/${m}/replies`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to send reply', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send reply');
+  }
+}
+
+/** `body` is a full `chatMessage` resource (or minimal `{ body: { contentType, content } }`). Requires `ChannelMessage.Send`. */
+export async function sendChannelMessage(
+  token: string,
+  teamId: string,
+  channelId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const r = await callGraph<GraphChatMessage>(token, `/teams/${t}/channels/${c}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to send channel message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send channel message');
+  }
+}
+
+/** Requires `Chat.ReadWrite` (or narrower send scope where applicable). */
+export async function sendChatMessage(
+  token: string,
+  chatId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const r = await callGraph<GraphChatMessage>(token, `/chats/${encodeURIComponent(chatId.trim())}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to send chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send chat message');
   }
 }
 
@@ -282,6 +324,94 @@ export async function listChannelMessageReplies(
   }
 }
 
+/** Single channel message. `ChannelMessage.Read.All` (or compatible). */
+export async function getChannelMessage(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const r = await callGraph<GraphChatMessage>(token, `/teams/${t}/channels/${c}/messages/${m}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get channel message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get channel message');
+  }
+}
+
+/** Single chat message. `Chat.ReadWrite` (or `Chat.Read` where granted). */
+export async function getChatMessage(
+  token: string,
+  chatId: string,
+  messageId: string
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const r = await callGraph<GraphChatMessage>(token, `/chats/${c}/messages/${m}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get chat message');
+  }
+}
+
+export async function listChatMessageReplies(
+  token: string,
+  chatId: string,
+  messageId: string,
+  top?: number
+): Promise<GraphResponse<GraphChatMessage[]>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const n = top && top > 0 ? Math.min(top, 50) : undefined;
+    const qs = n ? `?$top=${n}` : '';
+    const r = await callGraph<{ value: GraphChatMessage[] }>(token, `/chats/${c}/messages/${m}/replies${qs}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to list chat replies', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data.value ?? []);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list chat replies');
+  }
+}
+
+/** Reply in a 1:1 or group chat thread. `Chat.ReadWrite`. */
+export async function sendChatMessageReply(
+  token: string,
+  chatId: string,
+  parentMessageId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(parentMessageId.trim());
+    const r = await callGraph<GraphChatMessage>(token, `/chats/${c}/messages/${m}/replies`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to send chat reply', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send chat reply');
+  }
+}
+
 export async function listTeamMembers(
   token: string,
   teamId: string,
@@ -290,10 +420,7 @@ export async function listTeamMembers(
   try {
     const t = top && top > 0 ? Math.min(top, 999) : undefined;
     const qs = t ? `?$top=${t}` : '';
-    const r = await callGraph<{ value: GraphTeamMember[] }>(
-      token,
-      `/teams/${encodeURIComponent(teamId)}/members${qs}`
-    );
+    const r = await callGraph<{ value: GraphTeamMember[] }>(token, `/teams/${encodeURIComponent(teamId)}/members${qs}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list team members', r.error?.code, r.error?.status);
     }
@@ -308,15 +435,10 @@ export async function listTeamMembers(
  * `expand` e.g. `members`, `lastMessagePreview`, or `members,lastMessagePreview` (Graph `$expand`).
  * Least privilege: Chat.ReadBasic without expand; Chat.Read for richer expands where required.
  */
-export async function getChat(
-  token: string,
-  chatId: string,
-  expand?: string
-): Promise<GraphResponse<GraphChatDetail>> {
+export async function getChat(token: string, chatId: string, expand?: string): Promise<GraphResponse<GraphChatDetail>> {
   try {
     const enc = encodeURIComponent(chatId.trim());
-    const q =
-      expand && expand.trim() ? `?$expand=${encodeURIComponent(expand.trim())}` : '';
+    const q = expand?.trim() ? `?$expand=${encodeURIComponent(expand.trim())}` : '';
     const r = await callGraph<GraphChatDetail>(token, `/chats/${enc}${q}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get chat', r.error?.code, r.error?.status);
@@ -374,10 +496,7 @@ export async function listChatPinnedMessages(
   try {
     const enc = encodeURIComponent(chatId.trim());
     const q = expandMessage ? '?$expand=message' : '';
-    const r = await callGraph<{ value: PinnedChatMessageInfo[] }>(
-      token,
-      `/chats/${enc}/pinnedMessages${q}`
-    );
+    const r = await callGraph<{ value: PinnedChatMessageInfo[] }>(token, `/chats/${enc}/pinnedMessages${q}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list pinned messages', r.error?.code, r.error?.status);
     }
@@ -388,15 +507,9 @@ export async function listChatPinnedMessages(
   }
 }
 
-export async function listChatMembers(
-  token: string,
-  chatId: string
-): Promise<GraphResponse<GraphTeamMember[]>> {
+export async function listChatMembers(token: string, chatId: string): Promise<GraphResponse<GraphTeamMember[]>> {
   try {
-    const r = await callGraph<{ value: GraphTeamMember[] }>(
-      token,
-      `/chats/${encodeURIComponent(chatId)}/members`
-    );
+    const r = await callGraph<{ value: GraphTeamMember[] }>(token, `/chats/${encodeURIComponent(chatId)}/members`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list chat members', r.error?.code, r.error?.status);
     }

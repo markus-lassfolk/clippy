@@ -51,11 +51,11 @@
 | Graph area | CLI | Notes |
 | --- | --- | --- |
 | Drive / SharePoint (subset) | **Implemented** | `files`, `sharepoint` |
-| Excel workbook (worksheets, range read) | **Partial** | **`excel`** — worksheets, **tables**, **range**, **used-range** (`valuesOnly`); no session/chart mutations |
-| Teams (joined teams, channels, messages) | **Partial** | **`teams`** — **all-channels** (`$filter`), **incoming-channels**, **channel-get**, **channel-members**, primary-channel, **tabs** (`$expand=teamsApp`), chat-get / chat-pinned / chat-messages / chat-members, team **members**, **apps**, list **channels** / **messages** / **message-replies**; not full meetings / RSC |
-| Bookings | **Partial** | **`bookings`** — businesses + **business-get**, **`currencies`**, appointments + appointment get, customers + **customer** get, custom-questions, services + **service-get**, staff + **staff-get**, calendar-view |
-| Bookings **getStaffAvailability** | **Gap (delegated)** | Microsoft documents **no delegated** support — application-only; use **`graph invoke`** with app-only token if applicable |
-| Presence | **Partial** | **`presence`** — `/me/presence` and `/users/.../presence` |
+| Excel workbook (worksheets, range, tables, charts) | **Partial** | **`excel`** — worksheet CRUD, range read/**patch**, used-range, tables + rows + **rows/add**, **names**, **charts**; no chart/image create, no long-lived **createSession** workflow |
+| Teams (joined teams, channels, messages) | **Partial** | **`teams`** — **channel-message-get**, **`channel-message-send`**, **`message-replies`**, **`channel-message-reply`**; **chat-message-get**, **chat-message-replies**, **`chat-message-send`**, **`chat-message-reply`**; not meetings lifecycle, reactions, or full RSC |
+| Bookings | **Partial** | **`bookings`** — full CRUD + **staff-availability** (POST; **app-only** token) + **appointment-cancel** |
+| Bookings **getStaffAvailability** | **Partial (app-only)** | Microsoft documents **no delegated** access — **`bookings staff-availability`** accepts **`--token`** with an application token; delegated **`graph invoke`** will fail |
+| Presence | **Partial** | **`presence`** — **me**, **user**, **bulk**, **set-me** / **set-user** (prints `sessionId`), **clear-me** / **clear-user** |
 | Raw REST + JSON `$batch` | **Partial** | **`graph invoke`**, **`graph batch`** — escape hatch for any JSON Graph API |
 | Online meetings | **Implemented** | `meeting` |
 | To Do | **Implemented** | `todo` |
@@ -84,4 +84,4 @@
 
 ---
 
-*Last updated: 2026-04-03 — **`teams incoming-channels`**; **`bookings` business-get / service-get / staff-get**.*
+*Last updated: 2026-04-03 — **`teams` message get + chat replies/reply** subcommands.*

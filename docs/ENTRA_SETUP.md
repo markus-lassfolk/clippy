@@ -194,10 +194,10 @@ The application requires specific Delegated permissions for both Microsoft Graph
    - `Contacts.Read.Shared` / `Contacts.ReadWrite.Shared` (shared/delegated contact folders — `contacts --user`, etc.)
    - `OnlineMeetings.ReadWrite` (`meeting` — standalone Teams online meetings)
    - `Notes.ReadWrite.All` (`onenote`)
-   - `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All` (`teams` — incl. **all-channels**, **incoming-channels**, chats; channel messages often need **admin consent**)
-   - `Presence.Read` (`presence`)
-   - `Bookings.Read.All` (`bookings` — businesses, **business-get**, appointments, services, **service-get**, staff, **staff-get**, calendar view, …)
-   - `Chat.Read` (`teams chats`, `teams chat-messages`, `teams chat-members`)
+   - `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `ChannelMessage.Send` (`teams` — channels, messages, **channel-message-send**; message read often needs **admin consent**)
+   - `Presence.Read.All`, `Presence.ReadWrite` (`presence` — **bulk**, **set-me** / **set-user**)
+   - `Bookings.ReadWrite.All` (`bookings` — read + create/update/delete appointments, customers, services, staff, custom questions, **business-update**)
+   - `Chat.ReadWrite` (`teams` chats, **chat-message-send**, members, pinned, …)
    - `offline_access`
 4. Click **Add permissions**.
 
