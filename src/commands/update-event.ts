@@ -174,6 +174,17 @@ export const updateEventCommand = new Command('update-event')
               }
               eventsGraph = evs;
               graphToken = ga.token;
+            } else if (backend === 'graph') {
+              if (options.json) {
+                console.log(JSON.stringify({ error: 'Failed to determine user email' }, null, 2));
+              } else {
+                console.error('Error: Failed to determine user email');
+              }
+              process.exit(1);
+            } else if (!options.json) {
+              console.warn(
+                '[update-event] Graph did not return a mailbox identity (/me); falling back to EWS for listing.'
+              );
             }
           } else if (backend === 'graph') {
             if (options.json) {
