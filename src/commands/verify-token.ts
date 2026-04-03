@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import { getJwtPayloadAppId } from '../lib/jwt-utils.js';
 import { applyEnvFileOverrides, getGlobalEnvFilePath, resolveEnvFilePathArgument } from '../lib/utils.js';
 
 export const verifyTokenCommand = new Command('verify-token')
@@ -51,7 +52,8 @@ export const verifyTokenCommand = new Command('verify-token')
       console.log('');
 
       console.log('\u2713 Token Verified\n');
-      console.log(`  App ID (from access token): ${payload.appid || 'N/A'}`);
+      const tokenAppId = getJwtPayloadAppId(token);
+      console.log(`  App ID (from access token): ${tokenAppId ?? 'N/A'}`);
       console.log(`  Tenant: ${payload.tid || 'N/A'}`);
       console.log(`  User:   ${payload.upn || payload.email || 'N/A'}`);
       console.log(`  Name:   ${payload.name || 'N/A'}`);
@@ -75,7 +77,7 @@ export const verifyTokenCommand = new Command('verify-token')
       }
 
       const envClient = process.env.EWS_CLIENT_ID?.trim();
-      const tokenApp = (payload.appid as string | undefined)?.trim();
+      const tokenApp = tokenAppId?.trim();
       if (envClient && tokenApp && envClient.toLowerCase() !== tokenApp.toLowerCase()) {
         console.log(
           '\n  Warning: Access token app id does not match EWS_CLIENT_ID. Use verify-token --env-file for .env.beta, set M365_AGENT_ENV_FILE before starting the CLI, or delete ~/.config/m365-agent-cli/token-cache-*.json and run login again.'

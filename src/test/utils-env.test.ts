@@ -1,7 +1,7 @@
+import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, test } from 'bun:test';
 import { applyEnvFileOverrides, resolveEnvFilePathArgument } from '../lib/utils.js';
 
 describe('resolveEnvFilePathArgument', () => {
@@ -32,7 +32,7 @@ describe('applyEnvFileOverrides', () => {
 
   test('no-op when file does not exist', () => {
     process.env.EWS_CLIENT_ID = 'unchanged';
-    applyEnvFileOverrides(join(tmpdir(), 'm365-cli-missing-env-' + Date.now()));
+    applyEnvFileOverrides(join(tmpdir(), `m365-cli-missing-env-${Date.now()}`));
     expect(process.env.EWS_CLIENT_ID).toBe('unchanged');
   });
 

@@ -6,9 +6,9 @@ import {
   copyOneNoteSectionToNotebook,
   createOneNoteNotebook,
   createOneNotePageFromHtml,
+  createSectionGroupInNotebook,
   createSectionInNotebook,
   createSectionInSectionGroup,
-  createSectionGroupInNotebook,
   deleteOneNoteNotebook,
   deleteOneNotePage,
   deleteOneNoteSection,
@@ -459,12 +459,13 @@ addOneNoteRootOptions(
     const { user, scope } = parseOneNoteRoot(opts);
     const patch = JSON.parse(await readFile(opts.jsonFile, 'utf-8')) as Record<string, unknown>;
     const r = await updateOneNoteNotebook(token, notebookId, patch, user, scope);
-    if (!r.ok || !r.data) {
+    if (!r.ok) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
     }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(`Updated notebook: ${r.data.id}`);
+    if (opts.json) console.log(JSON.stringify(r.data ?? null, null, 2));
+    else if (r.data) console.log(`Updated notebook: ${r.data.id}`);
+    else console.log('Notebook updated.');
   }
 );
 
@@ -639,12 +640,13 @@ addOneNoteRootOptions(
     const { user, scope } = parseOneNoteRoot(opts);
     const patch = JSON.parse(await readFile(opts.jsonFile, 'utf-8')) as Record<string, unknown>;
     const r = await updateOneNoteSectionGroup(token, sectionGroupId, patch, user, scope);
-    if (!r.ok || !r.data) {
+    if (!r.ok) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
     }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(`Updated section group: ${r.data.id}`);
+    if (opts.json) console.log(JSON.stringify(r.data ?? null, null, 2));
+    else if (r.data) console.log(`Updated section group: ${r.data.id}`);
+    else console.log('Section group updated.');
   }
 );
 
@@ -832,12 +834,13 @@ addOneNoteRootOptions(
     const { user, scope } = parseOneNoteRoot(opts);
     const patch = JSON.parse(await readFile(opts.jsonFile, 'utf-8')) as Record<string, unknown>;
     const r = await updateOneNoteSection(token, sectionId, patch, user, scope);
-    if (!r.ok || !r.data) {
+    if (!r.ok) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
     }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(`Updated section: ${r.data.id}`);
+    if (opts.json) console.log(JSON.stringify(r.data ?? null, null, 2));
+    else if (r.data) console.log(`Updated section: ${r.data.id}`);
+    else console.log('Section updated.');
   }
 );
 
@@ -875,7 +878,7 @@ addOneNoteRootOptions(
 addOneNoteRootOptions(
   sectionCmd
     .command('copy-to-notebook')
-    .description('Copy a section into another notebook (async — poll Operation-Location with `onenote operation get`)')
+    .description('Copy a section into another notebook (async — poll Operation-Location with `onenote operation`)')
     .argument('<sectionId>', 'Source section id')
     .requiredOption('--notebook <notebookId>', 'Destination notebook id')
     .option('--group-id <id>', 'Request body `groupId` when the destination is a Microsoft 365 group notebook')
@@ -917,7 +920,7 @@ addOneNoteRootOptions(
       console.log(`Copy accepted (HTTP ${r.data.status}).`);
       if (r.data.operationLocation) {
         console.log(`Operation-Location: ${r.data.operationLocation}`);
-        console.log('Poll with: m365-agent-cli onenote operation get "<url>"');
+        console.log('Poll with: m365-agent-cli onenote operation "<url>"');
       }
     }
   }
@@ -989,7 +992,7 @@ addOneNoteRootOptions(
 addOneNoteRootOptions(
   onenoteCommand
     .command('copy-page')
-    .description('Copy a page to another section (async — use Operation-Location with `onenote operation get`)')
+    .description('Copy a page to another section (async — use Operation-Location with `onenote operation`)')
     .argument('<pageId>', 'Source page id')
     .requiredOption('--section <sectionId>', 'Destination section id')
     .option(
@@ -1029,7 +1032,7 @@ addOneNoteRootOptions(
       console.log(`Copy accepted (HTTP ${r.data.status}).`);
       if (r.data.operationLocation) {
         console.log(`Operation-Location: ${r.data.operationLocation}`);
-        console.log('Poll with: m365-agent-cli onenote operation get "<url>"');
+        console.log('Poll with: m365-agent-cli onenote operation "<url>"');
       }
     }
   }

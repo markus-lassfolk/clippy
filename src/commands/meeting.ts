@@ -1,11 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import type { GraphResponse } from '../lib/graph-client.js';
 import {
   createOnlineMeeting,
   createOnlineMeetingFromBody,
   deleteOnlineMeeting,
   getOnlineMeeting,
+  type OnlineMeeting,
   updateOnlineMeeting
 } from '../lib/online-meetings-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
@@ -50,7 +52,7 @@ meetingCommand
         process.exit(1);
       }
 
-      let r;
+      let r: GraphResponse<OnlineMeeting>;
       if (opts.jsonFile?.trim()) {
         const raw = await readFile(opts.jsonFile.trim(), 'utf-8');
         const body = JSON.parse(raw) as Record<string, unknown>;

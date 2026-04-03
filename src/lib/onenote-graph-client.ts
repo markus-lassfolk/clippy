@@ -168,14 +168,14 @@ export async function updateOneNoteNotebook(
   patch: Record<string, unknown>,
   user?: string,
   scope?: OneNoteGraphScope
-): Promise<GraphResponse<OneNoteNotebook>> {
+): Promise<GraphResponse<OneNoteNotebook | undefined>> {
   try {
     const result = await callGraph<OneNoteNotebook>(
       token,
       `${notebooksPath(user, scope)}/${encodeURIComponent(notebookId)}`,
       { method: 'PATCH', body: JSON.stringify(patch) }
     );
-    if (!result.ok || !result.data) {
+    if (!result.ok) {
       return graphError(result.error?.message || 'Failed to update notebook', result.error?.code, result.error?.status);
     }
     return graphResult(result.data);
@@ -275,14 +275,14 @@ export async function updateOneNoteSectionGroup(
   patch: Record<string, unknown>,
   user?: string,
   scope?: OneNoteGraphScope
-): Promise<GraphResponse<OneNoteSectionGroup>> {
+): Promise<GraphResponse<OneNoteSectionGroup | undefined>> {
   try {
     const result = await callGraph<OneNoteSectionGroup>(
       token,
       `${sectionGroupsPath(user, scope)}/${encodeURIComponent(sectionGroupId)}`,
       { method: 'PATCH', body: JSON.stringify(patch) }
     );
-    if (!result.ok || !result.data) {
+    if (!result.ok) {
       return graphError(
         result.error?.message || 'Failed to update section group',
         result.error?.code,
@@ -414,14 +414,14 @@ export async function updateOneNoteSection(
   patch: Record<string, unknown>,
   user?: string,
   scope?: OneNoteGraphScope
-): Promise<GraphResponse<OneNoteSection>> {
+): Promise<GraphResponse<OneNoteSection | undefined>> {
   try {
     const result = await callGraph<OneNoteSection>(
       token,
       `${sectionsPath(user, scope)}/${encodeURIComponent(sectionId)}`,
       { method: 'PATCH', body: JSON.stringify(patch) }
     );
-    if (!result.ok || !result.data) {
+    if (!result.ok) {
       return graphError(result.error?.message || 'Failed to update section', result.error?.code, result.error?.status);
     }
     return graphResult(result.data);
