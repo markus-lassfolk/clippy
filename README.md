@@ -26,8 +26,14 @@ mkdir -p ~/.openclaw/workspace/skills
 cp -r skills/* ~/.openclaw/workspace/skills/
 
 
-# Run directly
+# Run directly (Bun — recommended; matches CI and `npm run start`)
 bun run src/cli.ts <command>
+# or
+npm run start -- <command>
+
+# Without Bun: TypeScript entry uses `.js` imports for ESM; use tsx (not plain ts-node)
+npm install
+npx tsx src/cli.ts <command>
 
 # Or link globally
 bun link
@@ -75,15 +81,17 @@ EWS_ENDPOINT=https://outlook.office365.com/EWS/Exchange.asmx
 EWS_TENANT_ID=common  # or your tenant ID
 ```
 
-### Shared Mailbox Access
+### Shared and delegated mailboxes (`--mailbox`)
 
-To send from or access a shared mailbox, set the default in your env:
+To send from or access another mailbox, set the default in your env:
 
 ```bash
 EWS_TARGET_MAILBOX=shared@company.com
 ```
 
-Or pass `--mailbox` per-command (see examples below).
+Or pass `--mailbox <email>` per command.
+
+**Microsoft Graph vs EWS:** Exchange delegation / shared access in Outlook does **not** automatically grant the same rights to Graph API calls. For **`M365_EXCHANGE_BACKEND=graph`** (default on recent versions), reading or updating **another user’s** mail or calendar requires **delegated Graph permissions** `Mail.Read.Shared`, `Mail.ReadWrite.Shared`, `Calendars.Read.Shared`, and `Calendars.ReadWrite.Shared` on your Entra app, in addition to `Mail.ReadWrite` / `Calendars.ReadWrite`. Add those in the Azure Portal (see [`docs/ENTRA_SETUP.md`](docs/ENTRA_SETUP.md)), then run **`m365-agent-cli login`** again so the refresh token includes the new scopes. If you see **Access is denied** only when using `--mailbox` for another user, missing **\*.Shared** scopes is the usual cause.
 
 ### How It Works
 

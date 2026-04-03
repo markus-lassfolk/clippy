@@ -16,6 +16,7 @@
   },
   "scripts": {
     "start": "bun run src/cli.ts",
+    "cli:tsx": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint --max-diagnostics=none --diagnostic-level=error .",
     "lint:fix": "biome lint --write --unsafe --diagnostic-level=error .",
@@ -46,6 +47,7 @@
     "@types/bun": "latest",
     "@types/semver": "^7.5.8",
     "knip": "^5.46.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0"
   }
 }

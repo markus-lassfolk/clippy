@@ -43,7 +43,11 @@ cat <<EOF > "$TEMP_JSON"
     "resourceAccess": [
       { "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope" },
       { "id": "1ec239c2-d7c9-4623-a91a-a9775856bb36", "type": "Scope" },
+      { "id": "2b9c4092-424d-4249-948d-b43879977640", "type": "Scope" },
+      { "id": "12466101-c9b8-439a-8589-dd09ee67e8e9", "type": "Scope" },
       { "id": "024d486e-b451-40bb-833d-3e66d98c5c73", "type": "Scope" },
+      { "id": "7b9103a5-4610-446b-9670-80643382c1fa", "type": "Scope" },
+      { "id": "5df07973-7d5d-46ed-9847-1271055cbd51", "type": "Scope" },
       { "id": "863451e7-0667-486c-a5d6-d135439485f0", "type": "Scope" },
       { "id": "89fe6a52-be36-487e-b7d8-d061c450a026", "type": "Scope" },
       { "id": "2219042f-cab5-40cc-b0d2-16b1540b4c5f", "type": "Scope" },

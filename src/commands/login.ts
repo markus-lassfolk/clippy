@@ -163,7 +163,7 @@ export const loginCommand = new Command('login')
 
     // Use a single Graph Device Code flow to obtain a multi-resource refresh token
     const graphScope =
-      'offline_access User.Read Calendars.ReadWrite Mail.ReadWrite MailboxSettings.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All Tasks.ReadWrite Group.ReadWrite.All';
+      'offline_access User.Read Calendars.ReadWrite Calendars.Read.Shared Calendars.ReadWrite.Shared Mail.ReadWrite Mail.Read.Shared Mail.ReadWrite.Shared MailboxSettings.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All Tasks.ReadWrite Group.ReadWrite.All';
     const rawToken = await performDeviceCodeFlow(clientId, tenant, graphScope, 'Microsoft 365');
     const refreshToken = rawToken.replace(/[\r\n]/g, '');
 

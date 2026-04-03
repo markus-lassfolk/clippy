@@ -15,7 +15,11 @@ Write-Host "Creating Entra ID App Registration: $AppName..."
 $GraphResourceAccess = @(
     @{ Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; Type = "Scope" }, # User.Read
     @{ Id = "1ec239c2-d7c9-4623-a91a-a9775856bb36"; Type = "Scope" }, # Calendars.ReadWrite
+    @{ Id = "2b9c4092-424d-4249-948d-b43879977640"; Type = "Scope" }, # Calendars.Read.Shared
+    @{ Id = "12466101-c9b8-439a-8589-dd09ee67e8e9"; Type = "Scope" }, # Calendars.ReadWrite.Shared
     @{ Id = "024d486e-b451-40bb-833d-3e66d98c5c73"; Type = "Scope" }, # Mail.ReadWrite
+    @{ Id = "7b9103a5-4610-446b-9670-80643382c1fa"; Type = "Scope" }, # Mail.Read.Shared
+    @{ Id = "5df07973-7d5d-46ed-9847-1271055cbd51"; Type = "Scope" }, # Mail.ReadWrite.Shared
     @{ Id = "863451e7-0667-486c-a5d6-d135439485f0"; Type = "Scope" }, # Files.ReadWrite.All
     @{ Id = "89fe6a52-be36-487e-b7d8-d061c450a026"; Type = "Scope" }, # Sites.ReadWrite.All
     @{ Id = "2219042f-cab5-40cc-b0d2-16b1540b4c5f"; Type = "Scope" }, # Tasks.ReadWrite

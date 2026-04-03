@@ -14,6 +14,10 @@
 
 Helpers in [`exchange-backend.ts`](../src/lib/exchange-backend.ts): `shouldTryGraphFirst()`, `isAutoMode()`, `isGraphOnlyMode()`, `isEwsExclusiveMode()`, `mayUseEws()`.
 
+### Delegated / shared mailbox (`--mailbox`) on Graph
+
+EWS delegate access does **not** imply the same Microsoft Graph token scopes. Calling `GET /users/{other}/...` requires **delegated** Graph permissions including **`Mail.Read.Shared`**, **`Mail.ReadWrite.Shared`**, **`Calendars.Read.Shared`**, and **`Calendars.ReadWrite.Shared`** on the Entra app, then **`m365-agent-cli login`** again. Without them, Graph may return **Access is denied** for another user’s mailbox while the primary mailbox still works. See [`ENTRA_SETUP.md`](./ENTRA_SETUP.md) and the README “Shared and delegated mailboxes” section.
+
 ### Legend
 
 | Marker | Meaning |
@@ -69,4 +73,4 @@ Helpers in [`exchange-backend.ts`](../src/lib/exchange-backend.ts): `shouldTryGr
 2. **🔴** — decide product direction (drop feature, new Graph-native UX, or document “use Outlook”).
 3. After each migration, update this file and [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md).
 
-*Last updated: 2026-04-02 — Clarified **`update-event`** / **`delete-event`** / **`auto-reply`** rows (why 🟡/🔴; Graph alternatives for OOF vs rules).*
+*Last updated: 2026-04-03 — Documented **\*.Shared** Graph scopes for delegated `--mailbox`; see README / ENTRA_SETUP.*

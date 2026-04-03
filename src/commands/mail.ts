@@ -247,6 +247,21 @@ export const mailCommand = new Command('mail')
         checkReadOnly(cmd);
       }
 
+      if (folder.trim().toLowerCase() === 'folders') {
+        if (options.json) {
+          console.log(
+            JSON.stringify({
+              error: 'There is no `mail folders` subcommand. Use the top-level `folders` command to list mail folders.',
+              hint: 'm365-agent-cli folders [--mailbox <email>]'
+            })
+          );
+        } else {
+          console.error('To list mail folders, use the top-level command (not `mail folders`):');
+          console.error('  m365-agent-cli folders [--mailbox <email>]');
+        }
+        process.exit(1);
+      }
+
       const backend = getExchangeBackend();
       const mailGraphOpts = options as unknown as MailGraphCommandOptions;
       const tryGraphMail =

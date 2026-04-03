@@ -61,7 +61,11 @@ The application requires specific Delegated permissions for both Microsoft Graph
 3. Search for and select the following scopes:
    - `User.Read`
    - `Calendars.ReadWrite`
+   - `Calendars.Read.Shared` (delegate / shared calendars via Graph)
+   - `Calendars.ReadWrite.Shared`
    - `Mail.ReadWrite`
+   - `Mail.Read.Shared` (delegate / shared mailboxes via Graph — required for `mail` / `calendar` with `--mailbox` to another user)
+   - `Mail.ReadWrite.Shared`
    - `MailboxSettings.ReadWrite` (automatic replies / `oof`)
    - `Files.ReadWrite.All`
    - `Sites.ReadWrite.All`
