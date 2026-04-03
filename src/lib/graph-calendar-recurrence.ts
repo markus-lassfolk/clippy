@@ -21,8 +21,6 @@ export function graphEventStartMs(st?: { dateTime?: string; timeZone?: string })
   const raw = st.dateTime.trim();
   if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(raw)) return Date.parse(raw);
   const base = raw.replace(/\.\d+$/, '');
-  const tz = (st.timeZone || '').toUpperCase();
-  if (tz === 'UTC' || tz === 'GMT' || tz === 'ETC/UTC') return Date.parse(`${base}Z`);
   return Date.parse(`${base}Z`);
 }
 
