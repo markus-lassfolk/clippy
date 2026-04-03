@@ -61,7 +61,7 @@ export async function truncateRecurringSeriesBeforeCut(
   token: string,
   user: string | undefined,
   target: GraphCalendarEvent,
-  options: { forceDelete?: boolean }
+  options: { forceDelete?: boolean; message?: string }
 ): Promise<GraphResponse<TruncateSeriesResult>> {
   const masterId = target.seriesMasterId ?? target.id;
   const masterRes = await getEvent(
@@ -84,7 +84,7 @@ export async function truncateRecurringSeriesBeforeCut(
   if (!rec?.pattern) {
     const attCount = graphNonResourceAttendeeCount(master);
     if (attCount > 0 && !options.forceDelete) {
-      const c = await cancelCalendarEvent(token, masterId, { user, comment: '' });
+      const c = await cancelCalendarEvent(token, masterId, { user, comment: options.message });
       if (!c.ok) return { ok: false, error: c.error };
       return graphResult({ action: 'cancelled', attendeesNotified: attCount });
     }
@@ -112,7 +112,7 @@ export async function truncateRecurringSeriesBeforeCut(
   if (!lastKept) {
     const attCount = graphNonResourceAttendeeCount(master);
     if (attCount > 0 && !options.forceDelete) {
-      const c = await cancelCalendarEvent(token, masterId, { user, comment: '' });
+      const c = await cancelCalendarEvent(token, masterId, { user, comment: options.message });
       if (!c.ok) return { ok: false, error: c.error };
       return graphResult({ action: 'cancelled', attendeesNotified: attCount });
     }

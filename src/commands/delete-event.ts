@@ -458,7 +458,8 @@ export const deleteEventCommand = new Command('delete-event')
 
       if (useGraph && graphToken && scope === 'future') {
         const tr = await truncateRecurringSeriesBeforeCut(graphToken, options.mailbox, targetGraph!, {
-          forceDelete: options.forceDelete
+          forceDelete: options.forceDelete,
+          message: options.message
         });
         if (!tr.ok) {
           if (options.json) {
