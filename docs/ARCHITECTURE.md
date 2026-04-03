@@ -76,27 +76,11 @@ Token cache:
 
 ### Scope Strategy
 
-Scopes are requested incrementally. The base token covers:
+**Authoritative delegated Graph list and feature mapping:** [GRAPH_SCOPES.md](./GRAPH_SCOPES.md). **Code:** [`src/lib/graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts) (`GRAPH_DEVICE_CODE_LOGIN_SCOPES`, `GRAPH_REFRESH_SCOPE_CANDIDATES`).
 
-**EWS (required):**
-- `https://outlook.office365.com/EWS.AccessAsUser.All`
+**EWS (Exchange Online SOAP):** `https://outlook.office365.com/EWS.AccessAsUser.All` — see `auth.ts`.
 
-**Graph base (required):**
-- `User.Read`
-- `Files.ReadWrite`
-- `OfflineAccess`
-
-**Graph additions (added as features require):**
-| Feature | Additional Scope |
-|---------|----------------|
-| Calendar read/write | `Calendars.ReadWrite` |
-| Mail read/write | `Mail.ReadWrite` |
-| Room discovery | `Place.Read.All` |
-| People/GAL lookup | `People.Read` |
-| To-Do tasks | `Tasks.ReadWrite` |
-| OOF / mailbox settings | `MailboxSettings.ReadWrite` |
-| Outlook master categories (names + colors) | `MailboxSettings.Read` (list), **`MailboxSettings.ReadWrite`** (create/update/delete) |
-| Delegate management | (EWS SOAP — same token) |
+**Summary:** `login` requests mail/calendar **\*.Shared** scopes for delegated **`--mailbox`**, **`Place.Read.All`** (Places / `rooms`), **`People.Read`** and **`User.Read.All`** (`find`), plus Files, Sites, Tasks, Groups, MailboxSettings. **User.Read.All** and **Place.Read.All** often require **admin consent**. Graph token refresh tries a **full** scope string and a **fallback without `User.Read.All`** when tenants restrict directory read consent.
 
 ## Directory Structure
 
@@ -105,7 +89,8 @@ src/
   cli.ts              — entry point, argument parsing
   lib/
     auth.ts           — EWS OAuth2 (token cache, refresh, validation)
-    graph-auth.ts     — Graph OAuth2 (reuses EWS token via incremental consent)
+    graph-auth.ts     — Graph OAuth2 (refresh; scope strings from graph-oauth-scopes.ts)
+    graph-oauth-scopes.ts — canonical Graph delegated scope strings for login + refresh
     ews-client.ts     — all EWS SOAP operations
     graph-client.ts   — all Microsoft Graph REST calls
     jwt-utils.ts       — JWT parsing (expiry, structure validation)

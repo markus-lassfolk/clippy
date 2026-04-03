@@ -6,7 +6,7 @@
 
 This file is the working log for `dev_v2`. Update it when slices land or decisions change.
 
-**🟢 / 🟡 / 🔴 matrix (command-by-command):** [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md).
+**🟢 / 🟡 / 🔴 matrix (command-by-command):** [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md). **Graph OAuth scopes (Entra):** [`GRAPH_SCOPES.md`](./GRAPH_SCOPES.md).
 
 ---
 

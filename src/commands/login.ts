@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { Command } from 'commander';
 import { atomicWriteUtf8File } from '../lib/atomic-write.js';
+import { GRAPH_DEVICE_CODE_LOGIN_SCOPES } from '../lib/graph-oauth-scopes.js';
 import { getMicrosoftTenantPathSegment } from '../lib/jwt-utils.js';
 
 async function performDeviceCodeFlow(clientId: string, tenant: string, scope: string, label: string): Promise<string> {
@@ -161,10 +162,8 @@ export const loginCommand = new Command('login')
 
     const tenant = getMicrosoftTenantPathSegment();
 
-    // Use a single Graph Device Code flow to obtain a multi-resource refresh token
-    const graphScope =
-      'offline_access User.Read Calendars.ReadWrite Calendars.Read.Shared Calendars.ReadWrite.Shared Mail.ReadWrite Mail.Read.Shared Mail.ReadWrite.Shared MailboxSettings.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All Tasks.ReadWrite Group.ReadWrite.All';
-    const rawToken = await performDeviceCodeFlow(clientId, tenant, graphScope, 'Microsoft 365');
+    // Use a single Graph Device Code flow to obtain a multi-resource refresh token (see src/lib/graph-oauth-scopes.ts)
+    const rawToken = await performDeviceCodeFlow(clientId, tenant, GRAPH_DEVICE_CODE_LOGIN_SCOPES, 'Microsoft 365');
     const refreshToken = rawToken.replace(/[\r\n]/g, '');
 
     // Save tokens immediately

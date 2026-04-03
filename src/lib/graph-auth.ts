@@ -1,3 +1,4 @@
+import { GRAPH_REFRESH_SCOPE_CANDIDATES } from './graph-oauth-scopes.js';
 import { getJwtExpiration, getMicrosoftTenantPathSegment, isValidJwtStructure } from './jwt-utils.js';
 import {
   getUnifiedRefreshTokenFromEnv,
@@ -12,20 +13,6 @@ export interface GraphAuthResult {
   error?: string;
 }
 
-/** Include *.Shared so delegated access to another user's mailbox/calendar (`/users/{upn}/...`) can succeed. */
-const GRAPH_SCOPES = [
-  // `.default` and Mail/Calendar early so refresh does not stop at a Files-only scope string.
-  'https://graph.microsoft.com/.default offline_access',
-  'https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Read.Shared https://graph.microsoft.com/Mail.ReadWrite.Shared https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Calendars.Read.Shared https://graph.microsoft.com/Calendars.ReadWrite.Shared https://graph.microsoft.com/MailboxSettings.ReadWrite https://graph.microsoft.com/Files.ReadWrite offline_access User.Read',
-  'https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Read.Shared https://graph.microsoft.com/Mail.ReadWrite.Shared https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Calendars.Read.Shared https://graph.microsoft.com/Calendars.ReadWrite.Shared https://graph.microsoft.com/Files.ReadWrite offline_access User.Read',
-  'https://graph.microsoft.com/Files.ReadWrite offline_access User.Read',
-  'https://graph.microsoft.com/Files.ReadWrite.All offline_access User.Read',
-  'https://graph.microsoft.com/Sites.ReadWrite.All offline_access User.Read',
-  'https://graph.microsoft.com/Tasks.ReadWrite offline_access User.Read',
-  'https://graph.microsoft.com/Group.ReadWrite.All offline_access User.Read',
-  'https://graph.microsoft.com/Files.Read offline_access User.Read'
-];
-
 async function refreshGraphAccessToken(
   clientId: string,
   refreshToken: string,
@@ -33,7 +20,7 @@ async function refreshGraphAccessToken(
 ): Promise<{ accessToken: string; refreshToken: string; expiresAt: number }> {
   let lastError = '';
 
-  for (const scope of GRAPH_SCOPES) {
+  for (const scope of GRAPH_REFRESH_SCOPE_CANDIDATES) {
     const response = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

@@ -20,6 +20,10 @@ $GraphResourceAccess = @(
     @{ Id = "024d486e-b451-40bb-833d-3e66d98c5c73"; Type = "Scope" }, # Mail.ReadWrite
     @{ Id = "7b9103a5-4610-446b-9670-80643382c1fa"; Type = "Scope" }, # Mail.Read.Shared
     @{ Id = "5df07973-7d5d-46ed-9847-1271055cbd51"; Type = "Scope" }, # Mail.ReadWrite.Shared
+    @{ Id = "818c620a-27a9-40bd-a6a5-d96f7d610b4b"; Type = "Scope" }, # MailboxSettings.ReadWrite
+    @{ Id = "cb8f45a0-5c2e-4ea1-b803-84b870a7d7ec"; Type = "Scope" }, # Place.Read.All
+    @{ Id = "ba47897c-39ec-4d83-8086-ee8256fa737d"; Type = "Scope" }, # People.Read
+    @{ Id = "a154be20-db9c-4678-8ab7-66f6cc099a59"; Type = "Scope" }, # User.Read.All
     @{ Id = "863451e7-0667-486c-a5d6-d135439485f0"; Type = "Scope" }, # Files.ReadWrite.All
     @{ Id = "89fe6a52-be36-487e-b7d8-d061c450a026"; Type = "Scope" }, # Sites.ReadWrite.All
     @{ Id = "2219042f-cab5-40cc-b0d2-16b1540b4c5f"; Type = "Scope" }, # Tasks.ReadWrite

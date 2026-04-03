@@ -51,7 +51,7 @@ m365-agent-cli update
 
 ## Authentication
 
-**Need help setting up the Azure AD App?** Follow our [Automated Entra ID App Setup Guide](docs/ENTRA_SETUP.md) for bash and PowerShell scripts that configure the exact permissions you need in seconds.
+**Need help setting up the Azure AD App?** Follow our [Automated Entra ID App Setup Guide](docs/ENTRA_SETUP.md) for bash and PowerShell scripts that configure the exact permissions you need in seconds. **Delegated Graph scopes (what each is for):** [docs/GRAPH_SCOPES.md](docs/GRAPH_SCOPES.md).
 
 **EWS retirement:** Microsoft is phasing out EWS for Exchange Online in favor of Microsoft Graph. Track migration work in [docs/EWS_TO_GRAPH_MIGRATION_EPIC.md](docs/EWS_TO_GRAPH_MIGRATION_EPIC.md) (phased plan, inventory, Graph-primary + EWS-fallback strategy).
 

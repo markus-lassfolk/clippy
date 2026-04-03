@@ -20,7 +20,7 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 - **Unified OAuth cache:** `token-cache-{identity}.json` — holds both EWS and Graph access-token slots (default identity: `default`). Env: **`M365_REFRESH_TOKEN`** preferred, or `GRAPH_REFRESH_TOKEN` / `EWS_REFRESH_TOKEN` (legacy aliases).
 - **`--identity <name>`** — use a named cache profile (Graph- and EWS-backed commands that expose the flag). Default is `default`.
 - **`--token <token>`** — override cached access token for that request (advanced).
-- Interactive login: `m365-agent-cli login` (device code); tokens land in `.env` / caches. For **Graph** access to **another user’s** mail/calendar (`--mailbox`), the Entra app needs **Mail/Calendars \*.Shared** delegated permissions and a fresh login after adding them (see README).
+- Interactive login: `m365-agent-cli login` (device code); tokens land in `.env` / caches. **Delegated Graph scopes** (Entra app + CLI features): **`docs/GRAPH_SCOPES.md`**. For **another user’s** mail/calendar (`--mailbox`), include **Mail/Calendars \*.Shared**; for **`find`**, **Places**/**`rooms`**, add scopes listed there; re-`login` after changing the app registration.
 - Check session: `m365-agent-cli whoami`, `m365-agent-cli verify-token [--identity <name>]`.
 
 ## Delegation and shared access

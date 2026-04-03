@@ -55,6 +55,8 @@ Both scripts will output your **Client ID** (`EWS_CLIENT_ID`) upon success. Proc
 ### 3. Configure API Permissions
 The application requires specific Delegated permissions for both Microsoft Graph and Office 365 Exchange Online.
 
+**Full table (purpose of each scope):** see **[GRAPH_SCOPES.md](./GRAPH_SCOPES.md)** — keep the portal list aligned with that file and with [`src/lib/graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts).
+
 #### Microsoft Graph Permissions
 1. Go to **API permissions**.
 2. Click **Add a permission** > **Microsoft Graph** > **Delegated permissions**.
@@ -64,13 +66,16 @@ The application requires specific Delegated permissions for both Microsoft Graph
    - `Calendars.Read.Shared` (delegate / shared calendars via Graph)
    - `Calendars.ReadWrite.Shared`
    - `Mail.ReadWrite`
-   - `Mail.Read.Shared` (delegate / shared mailboxes via Graph — required for `mail` / `calendar` with `--mailbox` to another user)
+   - `Mail.Read.Shared` (delegate / shared mailboxes — `mail` / `calendar` with `--mailbox` to another user)
    - `Mail.ReadWrite.Shared`
-   - `MailboxSettings.ReadWrite` (automatic replies / `oof`)
+   - `MailboxSettings.ReadWrite` (automatic replies / `oof`, master categories, mailbox settings)
+   - `Place.Read.All` (Places API — `rooms`, meeting rooms in `create-event`)
+   - `People.Read` (`find` — `/me/people`)
+   - `User.Read.All` (`find` — `/users` search; **often requires admin consent**)
    - `Files.ReadWrite.All`
    - `Sites.ReadWrite.All`
    - `Tasks.ReadWrite`
-   - `Group.ReadWrite.All`
+   - `Group.ReadWrite.All` (Planner groups, group-related calls; also covers `find` group search)
    - `offline_access`
 4. Click **Add permissions**.
 
@@ -92,6 +97,6 @@ After completing the setup (either manually or automatically), you need to captu
 1. **`EWS_CLIENT_ID`**: If you used the automated setup scripts, this is already appended to your `~/.config/m365-agent-cli/.env` file. If you used the manual setup, go to the **Overview** page of your App Registration, copy the **Application (client) ID**, and add it to your `~/.config/m365-agent-cli/.env` file as `EWS_CLIENT_ID=<id>`.
 2. **Refresh Tokens**: Run the `login` command — it saves **`M365_REFRESH_TOKEN`** (preferred) and legacy `GRAPH_REFRESH_TOKEN` / `EWS_REFRESH_TOKEN` (same value):
    ```bash
-   clippy login
+   m365-agent-cli login
    ```
    It will prompt you to authenticate via the Device Code flow and will automatically save the refresh tokens into your `~/.config/m365-agent-cli/.env` file upon successful authentication.
