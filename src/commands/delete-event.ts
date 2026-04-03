@@ -350,7 +350,14 @@ export const deleteEventCommand = new Command('delete-event')
             );
           }
         } else if (!targetGraph) {
-          console.error(`Invalid event id: ${options.id}`);
+          if (scope === 'future') {
+            console.error(`No occurrence found for event ID: ${options.id} on ${options.day}.`);
+            console.error(
+              `Use --instance <YYYY-MM-DD> to specify the occurrence date, or --day <date> to search a different day.`
+            );
+          } else {
+            console.error(`Invalid event id: ${options.id}`);
+          }
           process.exit(1);
         } else if (scope === 'all') {
           if (!options.json) {

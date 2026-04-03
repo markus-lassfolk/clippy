@@ -15,7 +15,7 @@ import {
 import type { GraphResponse } from './graph-client.js';
 import { graphError, graphResult } from './graph-client.js';
 
-/** Compare two Graph event starts for ordering; UTC-safe when `timeZone` is UTC. */
+/** Compare two Graph event starts for ordering; treats all timezones as UTC for consistency. */
 export function graphEventStartMs(st?: { dateTime?: string; timeZone?: string }): number {
   if (!st?.dateTime) return NaN;
   const raw = st.dateTime.trim();
@@ -23,7 +23,7 @@ export function graphEventStartMs(st?: { dateTime?: string; timeZone?: string })
   const base = raw.replace(/\.\d+$/, '');
   const tz = (st.timeZone || '').toUpperCase();
   if (tz === 'UTC' || tz === 'GMT' || tz === 'ETC/UTC') return Date.parse(`${base}Z`);
-  return Date.parse(base);
+  return Date.parse(`${base}Z`);
 }
 
 function isoInstantBeforeCut(cut: GraphCalendarEvent): string {
