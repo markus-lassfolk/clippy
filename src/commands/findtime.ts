@@ -208,17 +208,19 @@ export const findtimeCommand = new Command('findtime')
             token: options.token,
             identity: options.identity
           });
+          let myEmail: string | undefined;
           if (ga.success && ga.token) {
             graphToken = ga.token;
             const me = await callGraph<{ mail?: string; userPrincipalName?: string }>(
               graphToken,
               '/me?$select=mail,userPrincipalName'
             );
-            const myEmail = me.data?.mail || me.data?.userPrincipalName;
+            myEmail = me.data?.mail || me.data?.userPrincipalName;
             if (myEmail && !emails.includes(myEmail)) {
               emails.unshift(myEmail);
             }
-          } else {
+          }
+          if (!myEmail) {
             const authResult = await resolveAuth({
               token: options.token,
               identity: options.identity
