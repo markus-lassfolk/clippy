@@ -3,30 +3,15 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 /**
- * Path to the CLI env file. Override with `M365_AGENT_ENV_FILE` (e.g. `~/.config/m365-agent-cli/.env.beta`).
- * Must be set in the shell before starting the process (not from inside `.env`).
+ * Resolve a path with tilde expansion support.
+ * @param raw - The raw path string to resolve
+ * @param fallback - The fallback path if raw is empty
+ * @returns The resolved absolute path
  */
-export function getGlobalEnvFilePath(): string {
-  const raw = process.env.M365_AGENT_ENV_FILE?.trim();
-  if (!raw) {
-    return join(homedir(), '.config', 'm365-agent-cli', '.env');
-  }
-  if (raw === '~') {
-    return homedir();
-  }
-  if (raw.startsWith('~/') || raw.startsWith('~\\')) {
-    return join(homedir(), raw.slice(2));
-  }
-  return resolve(raw);
-}
-
-/**
- * Resolve a user-supplied path (e.g. `~/.config/m365-agent-cli/.env.beta`) for `--env-file`.
- */
-export function resolveEnvFilePathArgument(raw: string): string {
+function resolveTildePath(raw: string, fallback: string): string {
   const s = raw.trim();
   if (!s) {
-    return join(homedir(), '.config', 'm365-agent-cli', '.env');
+    return fallback;
   }
   if (s === '~') {
     return homedir();
@@ -35,6 +20,22 @@ export function resolveEnvFilePathArgument(raw: string): string {
     return join(homedir(), s.slice(2));
   }
   return resolve(s);
+}
+
+/**
+ * Path to the CLI env file. Override with `M365_AGENT_ENV_FILE` (e.g. `~/.config/m365-agent-cli/.env.beta`).
+ * Must be set in the shell before starting the process (not from inside `.env`).
+ */
+export function getGlobalEnvFilePath(): string {
+  const raw = process.env.M365_AGENT_ENV_FILE?.trim() ?? '';
+  return resolveTildePath(raw, join(homedir(), '.config', 'm365-agent-cli', '.env'));
+}
+
+/**
+ * Resolve a user-supplied path (e.g. `~/.config/m365-agent-cli/.env.beta`) for `--env-file`.
+ */
+export function resolveEnvFilePathArgument(raw: string): string {
+  return resolveTildePath(raw, join(homedir(), '.config', 'm365-agent-cli', '.env'));
 }
 
 /**

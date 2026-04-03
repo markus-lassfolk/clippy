@@ -107,7 +107,7 @@ folderCmd
       process.exit(1);
     }
     if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(JSON.stringify(r.data, null, 2));
+    else console.log(`${r.data.displayName ?? '(folder)'}\t${r.data.id}`);
   });
 
 folderCmd
@@ -251,7 +251,7 @@ contactsCommand
       const token = await requireGraphAuth(opts);
       let odata: string | undefined;
       if (opts.filter?.trim()) {
-        odata = new URLSearchParams({ $filter: opts.filter.trim() }).toString();
+        odata = `$filter=${encodeURIComponent(opts.filter.trim())}`;
       }
       const r = opts.folder
         ? await listContactsInFolder(token, opts.folder, opts.user, odata)
@@ -291,7 +291,10 @@ contactsCommand
         process.exit(1);
       }
       if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-      else console.log(JSON.stringify(r.data, null, 2));
+      else {
+        const em = r.data.emailAddresses?.[0]?.address ?? '';
+        console.log(`${r.data.displayName ?? '(no name)'}\t${em}\t${r.data.id}`);
+      }
     }
   );
 
@@ -640,7 +643,7 @@ attachCmd
         process.exit(1);
       }
       if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-      else console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`${r.data.name ?? r.data.id}\t${r.data.id}\t${r.data.contentType ?? ''}`);
     }
   );
 

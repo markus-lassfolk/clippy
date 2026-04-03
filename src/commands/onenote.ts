@@ -397,7 +397,10 @@ addOneNoteRootOptions(
       process.exit(1);
     }
     if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(JSON.stringify(r.data, null, 2));
+    else {
+      const url = r.data.links?.oneNoteWebUrl?.href ?? '';
+      console.log(`${r.data.displayName ?? '(notebook)'}\t${r.data.id}${url ? `\t${url}` : ''}`);
+    }
   }
 );
 
@@ -575,7 +578,7 @@ addOneNoteRootOptions(
       process.exit(1);
     }
     if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(JSON.stringify(r.data, null, 2));
+    else console.log(`${r.data.displayName ?? '(group)'}\t${r.data.id}`);
   }
 );
 
@@ -758,7 +761,7 @@ addOneNoteRootOptions(
       process.exit(1);
     }
     if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else console.log(JSON.stringify(r.data, null, 2));
+    else console.log(`${r.data.displayName ?? '(section)'}\t${r.data.id}`);
   }
 );
 
