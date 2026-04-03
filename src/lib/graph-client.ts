@@ -293,7 +293,7 @@ function validateGraphUrl(absoluteUrl: string): { valid: boolean; error?: string
     'graph.microsoft.de'
   ];
 
-  const isAllowedHost = allowedDomains.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
+  const isAllowedHost = allowedDomains.some((domain) => url.hostname === domain);
 
   if (!isAllowedHost) {
     return { valid: false, error: `URL hostname '${url.hostname}' is not a Microsoft Graph endpoint` };
