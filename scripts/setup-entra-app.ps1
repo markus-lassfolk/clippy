@@ -94,8 +94,8 @@ elseif ($env:M365_ENTRA_APP_NAME) { $env:M365_ENTRA_APP_NAME }
 else { "m365-agent-cli" }
 
 $defaultEnv = Join-Path -Path $HOME -ChildPath ".config/m365-agent-cli/.env"
-$ConfigEnv = if ($env:M365_ENTRA_ENV_FILE) { $env:M365_ENTRA_ENV_FILE }
-elseif ($EnvPath) { $EnvPath }
+$ConfigEnv = if ($EnvPath) { $EnvPath }
+elseif ($env:M365_ENTRA_ENV_FILE) { $env:M365_ENTRA_ENV_FILE }
 else { $defaultEnv }
 
 $skipWriteEnv = $SkipEnv -or ($env:M365_ENTRA_SKIP_ENV -in @("1", "true"))
