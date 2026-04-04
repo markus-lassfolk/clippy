@@ -20,10 +20,10 @@ describe('exchange-backend', () => {
     process.env = originalEnv;
   });
 
-  test('defaults to graph (dev_v2 pure Graph)', () => {
+  test('defaults to auto (Graph first, EWS fallback)', () => {
     delete process.env.M365_EXCHANGE_BACKEND;
     expect(getExchangeBackend()).toBe(DEFAULT_EXCHANGE_BACKEND);
-    expect(getExchangeBackend()).toBe('graph');
+    expect(getExchangeBackend()).toBe('auto');
   });
 
   test('respects M365_EXCHANGE_BACKEND', () => {
@@ -37,13 +37,13 @@ describe('exchange-backend', () => {
 
   test('invalid value falls back to default', () => {
     process.env.M365_EXCHANGE_BACKEND = 'nope';
-    expect(getExchangeBackend()).toBe('graph');
+    expect(getExchangeBackend()).toBe('auto');
   });
 
   test('shouldTryGraphFirst / mayUseEws', () => {
     delete process.env.M365_EXCHANGE_BACKEND;
     expect(shouldTryGraphFirst()).toBe(true);
-    expect(mayUseEws()).toBe(false);
+    expect(mayUseEws()).toBe(true);
 
     process.env.M365_EXCHANGE_BACKEND = 'auto';
     expect(shouldTryGraphFirst()).toBe(true);
@@ -56,8 +56,8 @@ describe('exchange-backend', () => {
 
   test('isAutoMode / isGraphOnlyMode / isEwsExclusiveMode', () => {
     delete process.env.M365_EXCHANGE_BACKEND;
-    expect(isGraphOnlyMode()).toBe(true);
-    expect(isAutoMode()).toBe(false);
+    expect(isGraphOnlyMode()).toBe(false);
+    expect(isAutoMode()).toBe(true);
     expect(isEwsExclusiveMode()).toBe(false);
 
     process.env.M365_EXCHANGE_BACKEND = 'auto';

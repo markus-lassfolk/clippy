@@ -273,6 +273,7 @@ async function runM365AgentCli(args: string): Promise<{ stdout: string; stderr: 
 
   const originalLog = console.log;
   const originalError = console.error;
+  const originalWarn = console.warn;
   const originalExit = process.exit;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
@@ -284,6 +285,10 @@ async function runM365AgentCli(args: string): Promise<{ stdout: string; stderr: 
   console.error = (...args2: any[]) => {
     capturedStderr += `${args2.map((a) => String(a)).join(' ')}\n`;
     originalError.apply(console, args2);
+  };
+  console.warn = (...args2: any[]) => {
+    capturedStderr += `${args2.map((a) => String(a)).join(' ')}\n`;
+    originalWarn.apply(console, args2);
   };
 
   process.stdout.write = ((chunk: any, encoding?: any, cb?: any) => {
@@ -321,6 +326,7 @@ async function runM365AgentCli(args: string): Promise<{ stdout: string; stderr: 
   } finally {
     console.log = originalLog;
     console.error = originalError;
+    console.warn = originalWarn;
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
     process.exit = originalExit;
@@ -1380,6 +1386,7 @@ describe('Auto backend (M365_EXCHANGE_BACKEND=auto)', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Authenticated (EWS)');
     expect(result.stdout).toContain('test@example.com');
+    expect(result.stderr).toMatch(/EWS|M365_EXCHANGE_BACKEND=auto/i);
   });
 
   test('delegates list does not call EWS when Graph returns empty calendar permissions', async () => {

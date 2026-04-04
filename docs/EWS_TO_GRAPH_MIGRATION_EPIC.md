@@ -1,6 +1,6 @@
 # Epic: Migrate Exchange Web Services (EWS) to Microsoft Graph
 
-**Status:** In progress — **`dev_v2`** uses **`M365_EXCHANGE_BACKEND`** (`graph` \| `ews` \| `auto`, default **`graph`**) and Graph-first mail/calendar flows per **[`docs/GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)** (EWS remains for gaps and `ews` / `auto` fallback). **🟢 / 🟡 / 🔴 command matrix:** **[`docs/MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md)**.  
+**Status:** In progress — **`dev_v2`** uses **`M365_EXCHANGE_BACKEND`** (`graph` \| `ews` \| `auto`, default **`auto`**: Graph first, EWS fallback) and Graph-first mail/calendar flows per **[`docs/GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)** (EWS remains for gaps; **`graph`** / **`ews`** force a single stack). **🟢 / 🟡 / 🔴 command matrix:** **[`docs/MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md)**.  
 **GitHub Epic:** [#204 — EWS → Microsoft Graph migration](https://github.com/markus-lassfolk/m365-agent-cli/issues/204) (sub-issues under the epic)  
 **Driver:** [Exchange Online retirement of EWS](https://learn.microsoft.com/en-us/graph/migrate-exchange-web-services-overview) (phased; confirm dates in Microsoft docs and Message Center).  
 **Strategy:** Phased migration with **Microsoft Graph as the primary implementation** and **EWS as fallback** until each slice is verified; then remove EWS for that slice.
@@ -9,7 +9,7 @@
 
 ## Code review snapshot (2026-04-02)
 
-**`M365_EXCHANGE_BACKEND`** (`graph` \| `ews` \| `auto`, default **`graph`** on `dev_v2`) is implemented in **`src/lib/exchange-backend.ts`**. See **[`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)** for the live matrix.
+**`M365_EXCHANGE_BACKEND`** (`graph` \| `ews` \| `auto`, default **`auto`** on `dev_v2`) is implemented in **`src/lib/exchange-backend.ts`**. See **[`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)** for the live matrix.
 
 **Graph-first when backend is `graph` or `auto` (non-exhaustive):** `whoami` (`/me`), `calendar` (calendarView), `findtime` (findMeetingTimes), `mail` (list + read), `send`, `folders`, `drafts` (list), `create-event` / `update-event` / `delete-event`, `respond`, `todo create --link` (GET message), `delegates list` (calendarPermissions). **`auto-reply`** remains EWS; **`oof`** is the Graph path for automatic replies (help text on `auto-reply` points to Graph).
 
@@ -86,7 +86,7 @@ Legend: ⬜ not started / EWS-only · 🟡 in progress / partial Graph · ✅ do
 ### Phase 0 — Foundation
 
 - [x] Create GitHub Epic + child issues from inventory table ([#204](https://github.com/markus-lassfolk/m365-agent-cli/issues/204), [#205](https://github.com/markus-lassfolk/m365-agent-cli/issues/205)–[#221](https://github.com/markus-lassfolk/m365-agent-cli/issues/221))  
-- [x] Env var **`M365_EXCHANGE_BACKEND`** + module **`exchange-backend.ts`** (default **`graph`** on `dev_v2`) — see [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)  
+- [x] Env var **`M365_EXCHANGE_BACKEND`** + module **`exchange-backend.ts`** (default **`auto`** on `dev_v2`) — see [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md)  
 - [ ] Agree default for **`main`** after merge (`graph` vs `auto`)  
 - [x] Inventory Azure AD **delegated** permissions (manual setup — see [`ENTRA_SETUP.md`](./ENTRA_SETUP.md); scripts may add subsets):
 

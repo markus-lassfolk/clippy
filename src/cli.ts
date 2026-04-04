@@ -108,11 +108,11 @@ program.addCommand(sharepointCommand);
     await program.parseAsync(process.argv);
   } catch (err) {
     captureCliException(err);
-    await flushGlitchTip(2000);
+    await flushGlitchTip(3000);
     process.exit(1);
   }
 })().catch(async (err) => {
   captureCliException(err);
-  await flushGlitchTip(2000);
+  await flushGlitchTip(3000);
   process.exit(1);
 });

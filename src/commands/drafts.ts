@@ -260,7 +260,7 @@ export const draftsCommand = new Command('drafts')
             }
           } else {
             console.error(
-              'Error: Draft operation could not be completed via Microsoft Graph. Set M365_EXCHANGE_BACKEND=auto to try EWS, or check Graph errors above.'
+              'Error: Draft operation could not be completed via Microsoft Graph. Set M365_EXCHANGE_BACKEND=auto (the default) or `ews` to try Exchange Web Services, or fix the Graph error above.'
             );
           }
           process.exit(1);

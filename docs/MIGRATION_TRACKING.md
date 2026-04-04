@@ -1,6 +1,6 @@
 # EWS → Microsoft Graph migration tracking
 
-**Purpose:** Single place to see **🟢 migrated**, **🟡 partial**, and **🔴 no Graph path** (or no 1:1 parity) for Exchange-related CLI behavior when `M365_EXCHANGE_BACKEND=graph` (default in [`exchange-backend.ts`](../src/lib/exchange-backend.ts); was introduced on `dev_v2`).
+**Purpose:** Single place to see **🟢 migrated**, **🟡 partial**, and **🔴 no Graph path** (or no 1:1 parity) for Exchange-related CLI behavior. Default backend is **`auto`** in [`exchange-backend.ts`](../src/lib/exchange-backend.ts); set **`M365_EXCHANGE_BACKEND=graph`** to evaluate **Graph-only** behavior (no EWS fallback).
 
 **Related:** [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md) (Graph vs EWS differences, `auto` verification, manual checklist), [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md) (Graph API vs CLI coverage), [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md) (branch status log), [`EWS_TO_GRAPH_MIGRATION_EPIC.md`](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (epic).
 
@@ -8,8 +8,8 @@
 
 | Value | Behavior |
 | --- | --- |
-| **`graph`** (default) | **Graph only.** No EWS fallback. Fails fast if Graph auth or the API call fails. |
-| **`auto`** | **Graph first** for every command that implements a Graph path. **EWS only when** Graph authentication fails, the Graph request fails, or the operation has **no Microsoft Graph equivalent** in this CLI (see 🔴 rows and per-command notes). A **successful** Graph result — including an empty list — is **authoritative**; the CLI does **not** replace it with EWS “for more data” (different APIs are not interchangeable). |
+| **`auto`** (default) | **Graph first** for every command that implements a Graph path. **EWS only when** Graph authentication fails, the Graph request fails, or the operation has **no Microsoft Graph equivalent** in this CLI (see 🔴 rows and per-command notes). A **successful** Graph result — including an empty list — is **authoritative**; the CLI does **not** replace it with EWS “for more data” (different APIs are not interchangeable). |
+| **`graph`** | **Graph only.** No EWS fallback. Fails fast if Graph auth or the API call fails. |
 | **`ews`** | **EWS only** (legacy / debugging). |
 
 Helpers in [`exchange-backend.ts`](../src/lib/exchange-backend.ts): `shouldTryGraphFirst()`, `isAutoMode()`, `isGraphOnlyMode()`, `isEwsExclusiveMode()`, `mayUseEws()`.

@@ -2,10 +2,10 @@
  * Exchange (mail/calendar) API backend selection for EWS → Graph migration.
  *
  * **Modes**
- * - **`graph` (default)** — Microsoft Graph only; never fall back to EWS.
- * - **`auto`** — **Graph first**: try Graph for every operation that has a Graph implementation; **EWS only as fallback**
+ * - **`auto` (default)** — **Graph first**: try Graph for every operation that has a Graph implementation; **EWS only as fallback**
  *   when Graph auth fails, the Graph API call fails, or the feature has **no Graph equivalent** (see `docs/MIGRATION_TRACKING.md`).
  *   A **successful** Graph response (including “empty list”) is **not** replaced by EWS.
+ * - **`graph`** — Microsoft Graph only; never fall back to EWS (strict Graph errors).
  * - **`ews`** — Legacy EWS-only path for troubleshooting or parity testing.
  *
  * @see docs/MIGRATION_TRACKING.md
@@ -17,8 +17,8 @@ export type ExchangeBackend = 'graph' | 'ews' | 'auto';
 
 const VALID: ReadonlySet<string> = new Set(['graph', 'ews', 'auto']);
 
-/** Default: Microsoft Graph only (no EWS fallback for commands that honor this router). */
-export const DEFAULT_EXCHANGE_BACKEND: ExchangeBackend = 'graph';
+/** Default: Graph first with EWS fallback — smooth upgrade for existing EWS-centric setups. */
+export const DEFAULT_EXCHANGE_BACKEND: ExchangeBackend = 'auto';
 
 /**
  * Reads `M365_EXCHANGE_BACKEND` (`graph` | `ews` | `auto`).

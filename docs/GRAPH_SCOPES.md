@@ -2,7 +2,7 @@
 
 This document lists **delegated** permissions the CLI is designed to use. **Source of truth in code:** [`src/lib/graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts) (`GRAPH_DEVICE_CODE_LOGIN_SCOPES` for `login`, `GRAPH_REFRESH_SCOPE_CANDIDATES` for token refresh in [`graph-auth`](../src/lib/graph-auth.ts)).
 
-Configure the same permissions on your **Entra ID app registration** (API permissions → Microsoft Graph → Delegated). Then run **`m365-agent-cli login`** so the refresh token includes them. Use **`m365-agent-cli verify-token`** to inspect granted `scp` claims.
+Configure the same permissions on your **Entra ID app registration** (API permissions → Microsoft Graph → Delegated). Then run **`m365-agent-cli login`** so the refresh token includes them. Use **`m365-agent-cli verify-token`** to inspect granted `scp` claims. Use **`m365-agent-cli verify-token --capabilities`** for a read/write checklist of CLI feature areas (Planner, SharePoint, mail, Teams, …) inferred from permission names on the token; add **`--json`** for machine-readable output.
 
 **Office 365 Exchange Online:** add **`EWS.AccessAsUser.All`** (delegated) for EWS-backed commands when `M365_EXCHANGE_BACKEND` is `ews` or `auto` (see [`ENTRA_SETUP.md`](./ENTRA_SETUP.md)).
 

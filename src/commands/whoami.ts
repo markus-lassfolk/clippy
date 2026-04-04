@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { getOwaUserInfo } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { warnAutoGraphToEwsFallback } from '../lib/exchange-fallback-hint.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { callGraph, type GraphResponse } from '../lib/graph-client.js';
 
@@ -208,9 +209,21 @@ export const whoamiCommand = new Command('whoami')
           outputGraph(displayName, email, options);
           return;
         }
-      } catch {
-        // Any Graph /me failure (GraphApiError from callGraph, network errors, etc.) — fall back to EWS in auto mode
+        warnAutoGraphToEwsFallback('whoami', {
+          json: options.json,
+          graphError: userInfo.error?.message,
+          reason: 'api'
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        warnAutoGraphToEwsFallback('whoami', { json: options.json, graphError: msg });
       }
+    } else {
+      warnAutoGraphToEwsFallback('whoami', {
+        json: options.json,
+        graphError: graphAuth.error,
+        reason: 'auth'
+      });
     }
 
     await runEws();

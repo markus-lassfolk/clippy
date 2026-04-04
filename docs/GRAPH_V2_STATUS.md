@@ -2,7 +2,7 @@
 
 **Branch:** `dev_v2`  
 **Epic:** [#204 — EWS → Microsoft Graph migration](https://github.com/markus-lassfolk/m365-agent-cli/issues/204)  
-**Goal:** Move toward **Microsoft Graph as the default** for Exchange-related flows, with **`M365_EXCHANGE_BACKEND`** to opt into EWS or `auto` during migration.
+**Goal:** **Microsoft Graph first** for Exchange-related flows, with **`M365_EXCHANGE_BACKEND`** defaulting to **`auto`** (Graph then EWS fallback) so existing EWS-centric setups keep working; use **`graph`** or **`ews`** to force one stack.
 
 This file is the working log for `dev_v2`. Update it when slices land or decisions change.
 
@@ -14,12 +14,12 @@ This file is the working log for `dev_v2`. Update it when slices land or decisio
 
 | Env | Values | Default on `dev_v2` |
 | --- | --- | --- |
-| `M365_EXCHANGE_BACKEND` | `graph` · `ews` · `auto` | **`graph`** (Graph-only for commands that honor the router) |
+| `M365_EXCHANGE_BACKEND` | `graph` · `ews` · `auto` | **`auto`** (Graph first, EWS fallback when Graph cannot satisfy the request) |
 | Refresh token | **`M365_REFRESH_TOKEN`** (preferred), or `GRAPH_REFRESH_TOKEN` / `EWS_REFRESH_TOKEN` | Same value after `login`; unified cache **`token-cache-{identity}.json`** |
 
+- **`auto`** (default) — **Graph first**. EWS **only** when Graph auth fails, the Graph request fails, or the feature has **no Graph equivalent** in the CLI — **not** to replace a successful Graph result (including empty lists). Details: [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md) (“Graph-first policy”).  
 - **`graph`** — Graph APIs only (`resolveGraphAuth` + Graph REST). No EWS fallback.  
-- **`ews`** — Legacy EWS only (`resolveAuth` + SOAP) where implemented.  
-- **`auto`** — **Graph first** (same as default behavior). EWS **only** when Graph auth fails, the Graph request fails, or the feature has **no Graph equivalent** in the CLI — **not** to replace a successful Graph result (including empty lists). Details: [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md) (“Graph-first policy”).
+- **`ews`** — Legacy EWS only (`resolveAuth` + SOAP) where implemented.
 
 Implementation: `src/lib/exchange-backend.ts` (`shouldTryGraphFirst`, `isAutoMode`, …).
 
@@ -29,7 +29,7 @@ Implementation: `src/lib/exchange-backend.ts` (`shouldTryGraphFirst`, `isAutoMod
 
 | Item | Notes |
 | --- | --- |
-| Phase 0 stub | `getExchangeBackend()`, `DEFAULT_EXCHANGE_BACKEND='graph'`, helpers for tests |
+| Phase 0 stub | `getExchangeBackend()`, `DEFAULT_EXCHANGE_BACKEND='auto'`, helpers for tests |
 | Auth / cache | **`m365-token-cache.ts`**: one **`token-cache-{identity}.json`** with EWS + Graph access slots; **`getUnifiedRefreshTokenFromEnv()`** |
 | `whoami` | Uses **`GET /me`** on Graph when `graph` or `auto`; EWS path when `ews` only |
 | `folders` | Graph: `listAllMailFoldersRecursive`, create/rename/delete via Graph mail folders; `ews` / `auto` unchanged semantics |

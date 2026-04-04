@@ -91,7 +91,7 @@ EWS_TARGET_MAILBOX=shared@company.com
 
 Or pass `--mailbox <email>` per command.
 
-**Microsoft Graph vs EWS:** Exchange delegation / shared access in Outlook does **not** automatically grant the same rights to Graph API calls. For **`M365_EXCHANGE_BACKEND=graph`** (default on recent versions), reading or updating **another user’s** mail or calendar requires **delegated Graph permissions** `Mail.Read.Shared`, `Mail.ReadWrite.Shared`, `Calendars.Read.Shared`, and `Calendars.ReadWrite.Shared` on your Entra app, in addition to `Mail.ReadWrite` / `Calendars.ReadWrite`. For **contacts** in another mailbox, add **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** and use **`contacts --user <email>`** (Graph path). Add those in the Azure Portal (see [`docs/ENTRA_SETUP.md`](docs/ENTRA_SETUP.md)), then run **`m365-agent-cli login`** again so the refresh token includes the new scopes. If you see **Access is denied** only when using `--mailbox` for another user, missing **\*.Shared** scopes is the usual cause.
+**Microsoft Graph vs EWS:** By default **`M365_EXCHANGE_BACKEND=auto`** tries Microsoft Graph first and falls back to Exchange Web Services when Graph cannot satisfy the request (see [`docs/GRAPH_V2_STATUS.md`](docs/GRAPH_V2_STATUS.md)). Set **`M365_EXCHANGE_BACKEND=graph`** to force Graph only, or **`ews`** for EWS only. Exchange delegation / shared access in Outlook does **not** automatically grant the same rights to Graph API calls. When using Graph (including **`auto`**), reading or updating **another user’s** mail or calendar requires **delegated Graph permissions** `Mail.Read.Shared`, `Mail.ReadWrite.Shared`, `Calendars.Read.Shared`, and `Calendars.ReadWrite.Shared` on your Entra app, in addition to `Mail.ReadWrite` / `Calendars.ReadWrite`. For **contacts** in another mailbox, add **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** and use **`contacts --user <email>`** (Graph path). Add those in the Azure Portal (see [`docs/ENTRA_SETUP.md`](docs/ENTRA_SETUP.md)), then run **`m365-agent-cli login`** again so the refresh token includes the new scopes. If you see **Access is denied** only when using `--mailbox` for another user, missing **\*.Shared** scopes is the usual cause.
 
 ### How It Works
 
@@ -107,8 +107,9 @@ Or pass `--mailbox <email>` per command.
 # Check who you're logged in as
 m365-agent-cli whoami
 
-# Verify your Graph API token scopes
+# Verify your Graph API token scopes (raw scp) or feature coverage matrix
 m365-agent-cli verify-token
+m365-agent-cli verify-token --capabilities
 ```
 
 ---

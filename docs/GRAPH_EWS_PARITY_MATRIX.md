@@ -10,8 +10,8 @@
 
 | Mode | Tries Graph first? | Uses EWS when? |
 | --- | --- | --- |
-| **`graph`** (default) | Yes (only path) | Never |
-| **`auto`** | Yes | Graph auth fails, Graph API call fails for the operation, or the command has **no Graph implementation** for that path. **Successful Graph result (including empty list) is final** — EWS is **not** used to “fill in” different data. |
+| **`auto`** (default) | Yes | Graph auth fails, Graph API call fails for the operation, or the command has **no Graph implementation** for that path. **Successful Graph result (including empty list) is final** — EWS is **not** used to “fill in” different data. |
+| **`graph`** | Yes (only path) | Never |
 | **`ews`** | No | Always (Exchange Web Services only) |
 
 ---

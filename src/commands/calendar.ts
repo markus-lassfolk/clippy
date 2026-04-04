@@ -20,6 +20,7 @@ import {
   getCalendarEvents
 } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { warnAutoGraphToEwsFallback } from '../lib/exchange-fallback-hint.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   downloadEventAttachmentBytes,
@@ -580,9 +581,12 @@ export const calendarCommand = new Command('calendar')
             }
             process.exit(1);
           }
-          if (!options.json) {
-            console.warn('[calendar] Graph auth failed; falling back to EWS for --list-attachments.');
-          }
+          warnAutoGraphToEwsFallback('calendar', {
+            json: options.json,
+            graphError: ga.error,
+            reason: 'auth',
+            verbose: options.verbose
+          });
         }
 
         const authResult = await resolveAuth({
@@ -724,9 +728,12 @@ export const calendarCommand = new Command('calendar')
             }
             process.exit(1);
           }
-          if (!options.json) {
-            console.warn('[calendar] Graph auth failed; falling back to EWS for --download-attachments.');
-          }
+          warnAutoGraphToEwsFallback('calendar', {
+            json: options.json,
+            graphError: ga.error,
+            reason: 'auth',
+            verbose: options.verbose
+          });
         }
 
         const authResult = await resolveAuth({
@@ -900,9 +907,12 @@ export const calendarCommand = new Command('calendar')
             }
             process.exit(1);
           }
-          if (!options.json) {
-            console.warn(`[calendar] Graph failed (${graphResult.error?.message || 'unknown'}); falling back to EWS.`);
-          }
+          warnAutoGraphToEwsFallback('calendar', {
+            json: options.json,
+            graphError: graphResult.error?.message,
+            reason: 'api',
+            verbose: options.verbose
+          });
         } else if (backend === 'graph') {
           if (options.json) {
             console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
@@ -910,6 +920,13 @@ export const calendarCommand = new Command('calendar')
             console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
           }
           process.exit(1);
+        } else if (backend === 'auto') {
+          warnAutoGraphToEwsFallback('calendar', {
+            json: options.json,
+            graphError: ga.error,
+            reason: 'auth',
+            verbose: options.verbose
+          });
         }
       }
 
