@@ -30,7 +30,7 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 
 ## Safety
 
-- **`--read-only`** (root) or **`READ_ONLY_MODE=true`** in env / `.env` runs `checkReadOnly()` before specific mutating actions (exits before the request). The **authoritative list** is the **Read-Only Mode** table in this repo’s `README.md` (includes **`contacts`**, **`onenote`**, **`meeting`** mutating subcommands; kept in sync with `grep checkReadOnly src` in source).
+- **`--read-only`** (root) or **`READ_ONLY_MODE=true`** in env / `.env` runs `checkReadOnly()` before specific mutating actions (exits before the request). The **authoritative list** is the **Read-Only Mode** table in this repo’s [`docs/CLI_REFERENCE.md`](../../docs/CLI_REFERENCE.md) (includes **`contacts`**, **`onenote`**, **`meeting`** mutating subcommands; kept in sync with `grep checkReadOnly src` in source).
 - Read/query commands (e.g. `calendar`, `schedule`, `suggest`, **`outlook-graph list-mail` / `list-messages` / `get-message` / attachment list-get-download** / folder list-get, `subscriptions list`, `rules list`, **`outlook-categories list`**) are **not** gated unless they call `checkReadOnly`—see README. **`outlook-categories create` / `update` / `delete`** are mutating and **are** gated.
 - **`m365-agent-cli --help`** only lists root flags (e.g. `--read-only`). Per-command flags are on each subcommand’s help.
 
