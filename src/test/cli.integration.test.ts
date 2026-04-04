@@ -1056,11 +1056,12 @@ describe('update command', () => {
 
   test('update --check when newer exists on npm', async () => {
     const { clearMockFetch, setMockFetch } = await import('./mocks/index.js');
+    // Must be semver-greater than local package.json (e.g. calendar majors like 2026.* beat 999.*).
     setMockFetch((url) => {
       if (url.includes('registry.npmjs.org/m365-agent-cli/latest')) {
         return {
           status: 200,
-          body: JSON.stringify({ version: '999.0.0' }),
+          body: JSON.stringify({ version: '3000.0.0' }),
           contentType: 'application/json'
         };
       }
