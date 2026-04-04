@@ -217,7 +217,7 @@ export async function initGlitchTip(): Promise<void> {
 }
 
 /** Wait for the transport to finish (call before `process.exit` after a capture). */
-export async function flushGlitchTip(timeoutMs = 2000): Promise<boolean> {
+export async function flushGlitchTip(timeoutMs = 3000): Promise<boolean> {
   if (!isInitialized()) return true;
   return flush(timeoutMs);
 }
