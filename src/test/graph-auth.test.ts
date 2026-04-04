@@ -220,7 +220,7 @@ describe('resolveGraphAuth', () => {
       return Promise.resolve(
         new Response(
           JSON.stringify({
-            access_token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature',
+            access_token: makeAccessTokenJwt('11111111-1111-1111-1111-111111111111', 'User.Read'),
             refresh_token: 'rotated',
             expires_in: 3600
           }),

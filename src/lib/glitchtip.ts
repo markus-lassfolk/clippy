@@ -263,8 +263,3 @@ export function captureCliException(
   }
   captureException(error, ctx);
 }
-
-/** True after a successful `initGlitchTip()` (DSN + eligibility). */
-export function isGlitchTipActive(): boolean {
-  return isInitialized();
-}

@@ -6,7 +6,7 @@
 const SCOPES_DOC = 'docs/GRAPH_SCOPES.md';
 
 /** Heuristic: Graph or auth layer reported something that often means scopes / consent / RBAC. */
-export function graphErrorLooksPermissionRelated(message: string | undefined): boolean {
+function graphErrorLooksPermissionRelated(message: string | undefined): boolean {
   if (!message) return false;
   const m = message.toLowerCase();
   return (

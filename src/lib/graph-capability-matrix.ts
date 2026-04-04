@@ -295,7 +295,7 @@ export function evaluateGraphCapabilities(perms: Set<string>): EvaluatedCapabili
   return GRAPH_CAPABILITY_MATRIX.map((row) => evaluateRow(perms, row));
 }
 
-export function checkbox(ok: boolean): string {
+function checkbox(ok: boolean): string {
   return ok ? '[x]' : '[ ]';
 }
 

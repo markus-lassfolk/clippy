@@ -4,7 +4,7 @@ import type { EventHint } from '@sentry/core';
  * Errno codes that usually indicate environment/network, not application bugs.
  * Used by GlitchTip `beforeSend` unless `GLITCHTIP_REPORT_ALL=1`.
  */
-export const GLITCHTIP_DEFAULT_IGNORE_ERRNO = new Set([
+const GLITCHTIP_DEFAULT_IGNORE_ERRNO = new Set([
   'ECONNREFUSED',
   'ECONNRESET',
   'ETIMEDOUT',
