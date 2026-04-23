@@ -29,10 +29,15 @@
     "knip": "knip",
     "verify:coverage": "node scripts/check-coverage.mjs",
     "test": "bun test",
-    "test:coverage": "bun test --coverage --coverage-reporter=lcov --coverage-reporter=text"
+    "test:coverage": "bun test --coverage --coverage-reporter=lcov --coverage-reporter=text",
+    "postinstall": "node scripts/postinstall.mjs",
+    "install-tools-md": "node scripts/install-tools-md.mjs"
   },
   "files": [
     "src",
+    "skills",
+    "dist",
+    "scripts",
     "package.json",
     "LICENSE",
     "CHANGELOG.md"
