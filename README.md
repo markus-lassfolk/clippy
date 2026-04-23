@@ -129,7 +129,30 @@ Every command, flag, read-only matrix, Planner/SharePoint/Graph examples, and sc
 
 Playbooks and skills for using this tool as a personal assistant live in **[openclaw-personal-assistant](https://github.com/markus-lassfolk/openclaw-personal-assistant)**.
 
-Optional: install bundled skills from this repo into OpenClaw — see [skills/README.md](skills/README.md).
+### Installing the OpenClaw Skill
+
+The `m365-agent-cli` technical manual skill is **included in the npm package** and available at:
+```
+node_modules/m365-agent-cli/skills/m365-agent-cli/SKILL.md
+```
+
+**Quick install:**
+```bash
+# Manual copy
+mkdir -p ~/.openclaw/workspace/skills
+cp -r node_modules/m365-agent-cli/skills/m365-agent-cli ~/.openclaw/workspace/skills/
+
+# Or use automatic installation via environment variable
+export OPENCLAW_SKILLS_DIR=~/.openclaw/workspace/skills
+npm install m365-agent-cli  # postinstall hook will copy the skill
+```
+
+**TOOLS.md integration:** Use the idempotent installer to add/update m365-agent-cli documentation in your OpenClaw `TOOLS.md`:
+```bash
+npm run install-tools-md -- path/to/TOOLS.md
+```
+
+See [skills/README.md](skills/README.md) for details.
 
 ---
 
