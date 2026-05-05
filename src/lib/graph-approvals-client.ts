@@ -106,10 +106,18 @@ export async function patchApprovalStep(
         ...(body.justification ? { justification: body.justification } : {})
       })
     });
-    if (!r.ok || !r.data) {
+    if (!r.ok) {
       return graphError(r.error?.message || 'Approval step PATCH failed', r.error?.code, r.error?.status);
     }
-    return graphResult(r.data);
+    // Graph returns 204 No Content on success — `callGraphAt` yields ok with no body.
+    if (r.data) {
+      return graphResult(r.data);
+    }
+    return graphResult({
+      id: stepId,
+      reviewResult: body.reviewResult,
+      ...(body.justification ? { justification: body.justification } : {})
+    });
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to PATCH approval step');
