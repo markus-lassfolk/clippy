@@ -1,7 +1,7 @@
 ---
 name: m365-agent-cli
 version: 2026.4.50
-description: Microsoft 365 CLI (EWS + Graph) for calendar, mail, OneDrive, Planner, SharePoint, To Do, Teams, Bookings, Excel-on-drive, presence, inbox rules, delegates, subscriptions, Graph Search, and raw `graph invoke`/`graph batch`. Use when the user needs Outlook/Exchange, Graph, or M365 automation from the terminal.
+description: Microsoft 365 CLI (EWS + Graph) for calendar, mail, OneDrive, Planner, SharePoint, To Do, Teams, Bookings, Excel-on-drive, presence, inbox rules, delegates, subscriptions, Graph Search, Microsoft 365 Copilot APIs (`copilot` — retrieval, search, chat, reports, packages, meeting insights, interaction export, notify-help), and raw `graph invoke`/`graph batch`. Use when the user needs Outlook/Exchange, Graph, or M365 automation from the terminal.
 # `version` matches the npm CLI release; run `npm run sync-skill` after bumping package.json.
 metadata:
   openclaw:
@@ -23,10 +23,28 @@ CLI for Microsoft 365: **Exchange Web Services (EWS)** and **Microsoft Graph**. 
 - Interactive login: `m365-agent-cli login` (device code); tokens land in `.env` / caches. **Delegated Graph scopes** (Entra app + CLI features): **`docs/GRAPH_SCOPES.md`**. For **another user’s** mail/calendar (`--mailbox`), include **Mail/Calendars \*.Shared**; for **`find`**, **Places**/**`rooms`**, add scopes listed there; re-`login` after changing the app registration.
 - Check session: `m365-agent-cli whoami`, `m365-agent-cli verify-token [--identity <name>]`, `verify-token --capabilities` for a read/write feature matrix from token scopes.
 
+## Quick command choice (agents)
+
+| User goal | Start here |
+| --- | --- |
+| Today’s calendar / shared mailbox (EWS-style) | `calendar`, `mail` — **`--mailbox`** where supported |
+| Graph REST mail (OData, folders, move) | `outlook-graph` |
+| Graph REST calendar (view, REST ids, respond) | `graph-calendar` |
+| OneDrive / SharePoint files, sharing, delta | `files` |
+| Excel workbook on drive (ranges, tables, pivots, charts, sessions, **comments beta**) | `excel` |
+| Word / PowerPoint preview, thumbnails, or download bytes | `word`, `powerpoint` — other drive ops → **`files`**; round-trip edit: **`docs/AGENT_WORKFLOWS.md`** |
+| Teams channel/chat message + **@mentions** | `teams channel-message-send` / `chat-message-send` — **`--at userId:DisplayName`** + **`--text`** with `@DisplayName` |
+| Microsoft Search (stable hits JSON) | `graph-search … --json-hits` |
+| Anything else on Graph | `graph invoke` / `graph batch` |
+
+Longer workflows (deltas, read-only, drive flags, Teams + file links): **`docs/AGENT_WORKFLOWS.md`**. **`--json`** / read-only per module: **`docs/CLI_SCRIPTING_APPENDIX.md`** + generated **`docs/CLI_SCRIPTING_INVENTORY.md`**. Optional **Cursor MCP** adapter: **`packages/m365-agent-cli-mcp`** in this repo.
+
 ## Delegation and shared access
 
+- **`delegates` vs `delegates calendar-share`:** **Classic delegates** (`delegates add|update|remove`) are **EWS-only** (per-folder matrix). **`delegates calendar-share`** uses **Microsoft Graph** `calendarPermission` on the default calendar — prefer this for Graph-first workflows. **`M365_EXCHANGE_BACKEND=graph`** blocks classic delegate mutations; use **`calendar-share`** or switch backend. Full stance: repo **`docs/GRAPH_EWS_PARITY_MATRIX.md`** §2a.
 - **EWS shared mailbox:** `--mailbox <email>` on calendar, mail, send, folders, drafts, respond, findtime, delegates, auto-reply (and similar) to act as that mailbox where supported.
-- **Graph delegation:** **`--user <upn-or-id>`** on supported commands (e.g. inbox **rules**, **oof**, **`todo`**, **`outlook-categories`**, **`contacts`**, **`schedule`** / meeting-time helpers, **`graph-calendar`**, **`outlook-graph`**, **`subscribe`**, **`rooms`/places**, **`files`**, **`excel`** where implemented) — calls Graph as `/users/{id}/...` instead of `/me/...`. Requires app permissions + admin consent where applicable (**`Contacts.Read*.Shared`** for delegated contacts). **`teams`**, **`bookings`**, **`presence`**, **`graph invoke`/`batch`** today target **`/me/...`** or fixed paths only—use **`graph invoke`** with an explicit **`/users/{id}/...`** path if you need another user and the API allows it.
+- **Graph drive roots (`files`, `excel`, `word`, `powerpoint`):** use **at most one** of **`--user <upn-or-id>`** (delegated **`/users/{id}/drive`**), **`--drive-id`**, **`--site-id`**, or **`--site-id`** + **`--library-drive-id`**. Default is **`/me/drive`**. These flags are **not** the same as EWS **`--mailbox`**.
+- **Graph delegation (other areas):** **`--user`** on supported commands (e.g. inbox **rules**, **oof**, **`todo`**, **`outlook-categories`**, **`contacts`**, **`schedule`** / meeting-time helpers, **`graph-calendar`**, **`outlook-graph`**, **`subscribe`**, **`rooms`/places**, **`teams list`**, **`org manager`**, **`org direct-reports`**) switches paths to **`/users/{id}/...`** where Graph exposes that shape. Requires scopes per **`docs/GRAPH_SCOPES.md`** (**`Contacts.Read*.Shared`** for delegated contacts; **`Team.ReadBasic.All`** for **`teams list --user`**; **`User.Read.All`** often needed for **`org … --user`**). **`teams chats`** remains **`GET /me/chats`** only—there is no delegated list of another user’s chats in Graph. **`bookings`**, most other **`teams`** subcommands, **`presence`**, and **`graph invoke`/`batch`** may still use **`/me/...`** or fixed paths—use **`graph invoke`** when you need a **`/users/{id}/...`** URL the CLI does not wrap.
 
 ## Safety
 
@@ -80,25 +98,32 @@ Do **not** combine the span modes (`--days` / `--previous-days` / `--business-da
 | Contacts (Graph only) | **`contacts`** — **`folders`** / **`folder`** (list/get/create/update/delete/children), **`list`** (**`--filter`**), **`show`**, **`create`** / **`update`** / **`delete`** (**`--json-file`**), **`search`**, **`delta`**, **`photo`** get/set/delete, **`attachments`** list/add file/**`add-link`**/show/download/delete; **`--user`** for delegated mailbox |
 | OneNote (Graph only) | **`onenote`** — **`notebooks`** / **`notebook`** (list/get/create/update/delete/**`from-web-url`**), **`section-group`**, **`section`** (list/get/create/update/delete/**`copy-to-notebook`**/**`copy-to-section-group`**), **`pages`** / **`list-pages`**, **`page`**, **`page-preview`**, **`content`**, **`export`**, **`create-page`**, **`delete-page`**, **`patch-page-content`**, **`copy-page`**, **`operation`** (poll async copy); **`--group`** / **`--site`** OneNote roots |
 | Online meetings (Graph) | **`meeting`** — create (simple or **`--json-file`**), get, update, delete (`/me/onlineMeetings`). Calendar+Teams invites: **`create-event … --teams`**. |
-| Files | `files` (list, search, upload, download, share, versions, …) |
+| Files | `files` (list, search, **delta**, **shared-with-me**, upload, **copy**, **move**, download, share, **invite**, **permissions**, **permission-remove**, **permission-update**, versions, checkout/checkin, …) — drive flags **`--user`** / **`--drive-id`** / **`--site-id`** / **`--library-drive-id`** |
 | Planner | `planner` (tasks, plans, buckets; **labels** on tasks) |
-| SharePoint | `sharepoint` / `sp`, `pages` (site pages) |
+| SharePoint | **`sharepoint`** / **`sp`** — **`resolve-site`**, lists, items, **`get-item`**, **`create-item`** / **`update-item`** (**`--fields`** or **`--json-file`**), **`delete-item`**, **`items-delta`**; **`pages`** (site pages) |
 | Directory / rooms | `find`, `rooms` |
-| Teams (Graph) | **`teams`** — **list** (joined teams), **get**, **channels** / **all-channels** (**`--filter`**) / **incoming-channels** / **primary-channel** / **channel-get**, **channel-members**, **messages** / **channel-message-get** / **channel-message-send** / **message-replies** / **channel-message-reply**, **tabs**, **members**, **apps**, **chats** / **chat-get** / **chat-messages** / **chat-message-get** / **chat-message-replies** / **chat-message-send** / **chat-message-reply** / **chat-members** / **chat-pinned** |
+| Teams (Graph) | **`teams`** — **list** (**`--user`** for another user’s joined teams), **get**, **`channel-files-folder`** (Files tab → **`files --drive-id`**), **channels** / **all-channels** (**`--filter`**) / **incoming-channels** / **primary-channel** / **channel-get**, **channel-members**, **messages** / **channel-message-get** / **channel-message-send** / **message-replies** / **channel-message-reply**, **`channel-message-react`** / **`chat-message-react`** (`--unset`), **tabs**, **members**, **apps**, **chats** / **chat-get** / **chat-messages** / **chat-message-get** / **chat-message-replies** / **chat-message-send** / **chat-message-reply** / **chat-members** / **chat-pinned** |
 | Bookings (Graph) | **`bookings`** — reads + writes (see README); **`staff-availability`** for **`POST getStaffAvailability`** — **application-only** token via **`--token`**, body **`--json-file`** |
-| Excel on drive (Graph) | **`excel`** — **worksheets** + **worksheet-get** / **worksheet-add** / **worksheet-update** / **worksheet-delete**, **range**, **range-patch** (**`--json-file`**), **used-range**, **tables** / **table-get** / **table-rows** / **table-rows-add**, **names**, **charts** |
-| Presence (Graph) | **`presence`** — **me**, **user**, **bulk**, **set-me** / **set-user** (prints **`sessionId`**), **clear-me** / **clear-user** (**`--session-id`**) |
+| Excel on drive (Graph) | **`excel`** — same drive flags as **`files`**; worksheets; **range** / **range-patch** / **range-clear**; **used-range**; **tables** (CRUD, rows, columns); **pivot-tables** + **pivot-table-***; **names** + **name-get** + **worksheet-names** / **worksheet-name-get**; **charts**; **workbook-get**; **application-calculate**; **session-create** / **session-refresh** / **session-close**; optional **`--session-id`** on mutating calls; **`comments-*`** (Graph **beta**) |
+| Presence (Graph) | **`presence`** — **me**, **user**, **bulk**, **set-me** / **set-user** (prints **`sessionId`**), **clear-me** / **clear-user** (**`--session-id`**); webhook flows → **`subscribe`** + **`serve`** |
+| Word / PowerPoint (drive item) | **`word`** / **`powerpoint`** — **`preview`**, **`meta`**, **`download`**, **`thumbnails`** — same drive flags as **`files`**; use **`files`** for share/versions/delta/copy/etc. (see **`docs/GRAPH_API_GAPS.md`** Word matrix); no CLI for drive-hosted **comment** APIs (unlike **`excel comments-*`**) — **`graph invoke`** if documented |
 | Raw Graph | **`graph`** — **invoke**, **batch** (JSON `$batch`); pair with scopes for the target API |
-| Graph Search | **`graph-search`** — `POST /search/query` (entity types + KQL-style query) |
+| Graph Search | **`graph-search`** — `POST /search/query` (`--preset default|extended|connectors` or `--types` comma list + KQL-style query) |
+| Microsoft 365 Copilot (Graph) | **`copilot`** — `retrieval`, `search`, `search-next`, `conversation-create`, `chat`, `chat-stream`, `interactions-export`, `meeting-insights-list`, `meeting-insight-get`, `reports` (summary/trend/usage-user-detail), `packages` (list/get/update/block/unblock/reassign), `notify-help`; **`subscribe copilot-interactions`** for [AI interaction change notifications](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/api/ai-services/change-notifications/aiinteraction-changenotifications) (see [Copilot APIs overview](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/copilot-apis-overview)) |
 | Graph mail extras | `rules` (inbox message rules), `oof` (automatic replies), `todo` (Microsoft To Do) |
 | EWS admin-style | `delegates`, `auto-reply` |
-| Push | `subscribe`, `subscriptions` |
+| Push | `subscribe`, `subscriptions` (incl. **`subscriptions renew-all`**) |
 | Other | `login`, `whoami`, `verify-token`, `serve` |
 
 ## EWS writes (mail/calendar)
 
 - Mutating EWS calls (reply, forward, move, flag/read state, drafts send, calendar respond/cancel/delete/update, **message categories**, etc.) are implemented in **`ews-client.ts`** to resolve **ItemId + ChangeKey** via **`GetItem`** / **`getCalendarEvent`** before **`CreateItem`**, **`UpdateItem`**, **`MoveItem`**, **`SendItem`**, and similar—especially important for **delegated/shared mailbox** use (`--mailbox`), where Exchange may return **`ErrorChangeKeyRequiredForWriteOperations`** if ChangeKey is omitted.
 - Callers pass **message or event IDs** from list/read output as today; they do **not** supply ChangeKey manually.
+
+## Graph maintainers
+
+- Repo docs: **[`docs/GRAPH_SCOPES.md`](../../docs/GRAPH_SCOPES.md)** (scopes), **[`docs/GRAPH_TROUBLESHOOTING.md`](../../docs/GRAPH_TROUBLESHOOTING.md)** (OData headers, `$search`, people edge cases).
+- Live Graph behavior and **`$filter`** checks: use the **msgraph** Cursor skill — [graph.pm introduction](https://graph.pm/getting-started/introduction/). Install with `npx skills add merill/msgraph` if you use Cursor skills.
 
 ## Agent tips
 
@@ -108,7 +133,8 @@ End users can describe intent in **natural language** (e.g. “read mail in the 
 
 - Start with **list/read** commands, then use IDs from output for updates.
 - If auth fails, suggest `verify-token` and re-`login`; wrong **identity** profile means wrong cache file—check `--identity`.
-- **Graph vs EWS “acting as another mailbox”:** use **`--user <upn-or-id>`** only on commands that call **Microsoft Graph** (`outlook-graph`, `graph-calendar`, `todo`, `rules`, `oof`, `schedule`, etc.) — it switches the API path to `/users/{id}/...`. Use **`--mailbox <email>`** on **EWS** commands (`calendar`, `mail`, `send`, `drafts`, `respond`, `findtime`, `delegates`, …) for **shared mailboxes** via Exchange SOAP. They are **not** interchangeable: a Graph subcommand will not accept `--mailbox`, and typical EWS mail/calendar flows do not use `--user`. Confirm the flag exists on that subcommand’s **`--help`** before assuming delegation works.
+- **Graph vs EWS “acting as another mailbox”:** use **`--user`** (or **`--drive-id`** / **`--site-id`**) on Graph commands per **`--help`**. For **OneDrive/SharePoint drive items**, **`--user`** selects **`/users/{id}/drive`**, not the mailbox SOAP model. Use **`--mailbox <email>`** on **EWS** commands (`calendar`, `mail`, `send`, `drafts`, `respond`, `findtime`, `delegates`, …) for **shared mailboxes** via Exchange SOAP. They are **not** interchangeable. Confirm flags on that subcommand’s **`--help`**.
+- **External agents / orchestration:** Cursor or other agents should map natural language to the **`files`** / **`excel`** / **`word`** commands above; for Word/PowerPoint **comments** or undocumented Graph paths, prefer **`graph invoke`** with a JSON body file and scopes from **`docs/GRAPH_SCOPES.md`**. For MCP-based hosts, see **`packages/m365-agent-cli-mcp`** (stdio tools wrapping a subset of CLI calls).
 - If a user still sees EWS change-key or conflict errors after an update, suggest **re-fetching the item ID** (another process may have modified the message/event) and retrying.
 - For **Outlook-colored categories** on mail/calendar items, use **names** that exist in **`outlook-categories list`** (or Outlook) so colors match; **Planner** and **To Do** use different label models.
 - For **attachments**, use **`mail -d`**, **`send`/`drafts`/`create-event`/`update-event`** flags above; **OneDrive/SharePoint files** use **`files`**, not EWS attachments.

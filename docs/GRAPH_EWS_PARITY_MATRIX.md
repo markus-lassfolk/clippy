@@ -37,6 +37,23 @@ These commands **branch** on `getExchangeBackend()` in code (see `src/commands/*
 | `delegates` **add/update/remove** (EWS matrix) | **Error** — set `M365_EXCHANGE_BACKEND=ews` or **`auto`** | **EWS** (`requireEwsForDelegateMutations` blocks **only** when mode is `graph`) | EWS | Classic EWS delegate matrix — not Graph. |
 | `delegates` **calendar-share** **add/update/remove** | **Graph** `calendarPermissions` | **Graph** (same) | **Graph** | **Calendar sharing** model — distinct from EWS delegates; see [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md). |
 
+---
+
+## 2a. Product stance: classic delegates (EWS) vs calendar sharing (Graph)
+
+Microsoft exposes **two different models**. This CLI implements **both**; choose based on what you need to configure.
+
+| Goal | Use this CLI path | API stack | Notes |
+| --- | --- | --- | --- |
+| **Share or delegate access to the default calendar** using Graph roles (`delegate`, `editor`, `limitedRead`, …) | `delegates calendar-share add|update|remove` | Microsoft Graph `calendarPermission` | Works with **`M365_EXCHANGE_BACKEND=graph`** (Graph-only mutations). List with **`delegates list`** when backend is **`graph`**. |
+| **Classic Exchange delegate matrix** — per-folder permissions (calendar, inbox, contacts, tasks, notes), “deliver meeting requests”, view-private-items | `delegates add|update|remove` | EWS `AddDelegates` / `UpdateDelegate` / `RemoveDelegate` | Requires **`M365_EXCHANGE_BACKEND=ews`** or **`auto`** (not **`graph`**). **`graph`** mode **blocks** these subcommands with an error that points to **`calendar-share`**. |
+
+**Decision rule:** Prefer **`delegates calendar-share`** for **Graph-first** tenants and automation aligned with [calendar sharing in Outlook](https://learn.microsoft.com/en-us/graph/outlook-share-or-delegate-calendar). Use **`delegates add|update|remove`** only when you **must** reproduce **legacy delegate semantics** (multiple folders, delivery options) that **calendarPermission** does not express.
+
+**Listing:** **`delegates list`** with **`graph`** shows **Graph calendar permissions** only. With **`auto`**, Graph is tried first; an **empty** Graph result does **not** fall back to EWS delegates (different data model). With **`ews`**, **`delegates list`** shows **EWS delegates** only.
+
+**Permanent limitation:** There is **no** Microsoft Graph API that is **1:1** equivalent to the full EWS delegate matrix. Until Microsoft converges the models, **`calendar-share`** + mailbox policies / admin tooling covers Graph-native sharing; classic delegates remain an **EWS-only** path until [Phase 6](./EWS_TO_GRAPH_MIGRATION_EPIC.md) removes EWS.
+
 Commands that **do not** read `M365_EXCHANGE_BACKEND` for mail/calendar (always Microsoft Graph or other APIs):  
 `contacts`, `meeting`, `onenote`, `todo`, `planner`, `files`, `sharepoint`, `find`, `graph-search`, `rooms`, `rules`, `oof`, `outlook-graph`, `graph-calendar`, `forward-event`, `counter`, `subscribe`, …
 
@@ -91,4 +108,4 @@ Optional: set `M365_AGENT_ENV_FILE` to `.env.beta` for a second app registration
 - **Same backend, wrong CLI behavior** → file an issue with command, flags, and redacted error JSON.
 - **`auto` calls EWS** when Graph returned **200 + empty array** for a list operation → likely **bug** vs documented policy — verify against §1.
 
-*Last updated: 2026-04-03 — OneNote copy APIs + integration test note for `delete-event --scope future`.*
+*Last updated: 2026-05-04 — §2a product stance (EWS delegates vs Graph calendar-share).*

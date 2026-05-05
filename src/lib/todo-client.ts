@@ -8,6 +8,7 @@ import {
   GraphApiError,
   type GraphResponse,
   graphError,
+  graphErrorFromApiError,
   graphResult
 } from './graph-client.js';
 import { graphUserPath } from './graph-user-path.js';
@@ -232,15 +233,27 @@ export async function getTasks(
   if (singlePage) {
     let result: GraphResponse<{ value: TodoTask[] }>;
     try {
-      result = await callGraph<{ value: TodoTask[] }>(token, path);
+      const countHeader =
+        typeof filterOrQuery === 'object' && filterOrQuery.count === true
+          ? { headers: { ConsistencyLevel: 'eventual' } }
+          : {};
+      result = await callGraph<{ value: TodoTask[] }>(token, path, countHeader);
     } catch (err) {
       if (err instanceof GraphApiError) {
-        return graphError(err.message, err.code, err.status);
+        return graphErrorFromApiError(err);
       }
       return graphError(err instanceof Error ? err.message : 'Failed to get tasks');
     }
     if (!result.ok || !result.data) {
-      return graphError(result.error?.message || 'Failed to get tasks', result.error?.code, result.error?.status);
+      return graphError(
+        result.error?.message || 'Failed to get tasks',
+        result.error?.code,
+        result.error?.status,
+        {
+          requestId: result.error?.requestId,
+          innerError: result.error?.innerError
+        }
+      );
     }
     return graphResult(result.data.value);
   }
@@ -1063,6 +1076,29 @@ export async function getTodoTasksDeltaPage(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get todo delta');
+  }
+}
+
+export interface TodoListDeltaPage {
+  value?: TodoList[];
+  '@odata.nextLink'?: string;
+  '@odata.deltaLink'?: string;
+}
+
+/** One page of `GET …/todo/lists/delta()` (task *lists* sync, not tasks). */
+export async function getTodoListsDeltaPage(
+  token: string,
+  fullUrl?: string,
+  user?: string
+): Promise<GraphResponse<TodoListDeltaPage>> {
+  try {
+    if (fullUrl) {
+      return await callGraphAbsolute<TodoListDeltaPage>(token, fullUrl);
+    }
+    return await callGraph<TodoListDeltaPage>(token, `${todoRoot(user)}/lists/delta()`);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get todo lists delta');
   }
 }
 

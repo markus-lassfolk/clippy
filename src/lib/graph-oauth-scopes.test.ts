@@ -29,7 +29,15 @@ describe('graph-oauth-scopes', () => {
       'Presence.Read.All',
       'Presence.ReadWrite',
       'Bookings.ReadWrite.All',
-      'Chat.ReadWrite'
+      'Chat.ReadWrite',
+      'ExternalItem.Read.All',
+      'Reports.Read.All',
+      'CopilotPackages.Read.All',
+      'CopilotPackages.ReadWrite.All',
+      'OnlineMeetingAiInsight.Read.All',
+      'OnlineMeetingTranscript.Read.All',
+      'People.Read.All',
+      'AiEnterpriseInteraction.Read'
     ]) {
       expect(GRAPH_DEVICE_CODE_LOGIN_SCOPES).toContain(s);
     }
@@ -45,6 +53,10 @@ describe('graph-oauth-scopes', () => {
     expect(joined).toContain('https://graph.microsoft.com/Team.ReadBasic.All');
     expect(joined).toContain('https://graph.microsoft.com/ChannelMessage.Read.All');
     expect(joined).toContain('https://graph.microsoft.com/Chat.ReadWrite');
+    expect(joined).toContain('https://graph.microsoft.com/ExternalItem.Read.All');
+    expect(joined).toContain('https://graph.microsoft.com/Reports.Read.All');
+    expect(joined).toContain('https://graph.microsoft.com/CopilotPackages.Read.All');
+    expect(joined).toContain('https://graph.microsoft.com/OnlineMeetingAiInsight.Read.All');
     expect(joined).toContain('https://graph.microsoft.com/ChannelMessage.Send');
     expect(GRAPH_CRITICAL_DELEGATED_SCOPES).toContain('Mail.Send');
     expect(GRAPH_CRITICAL_DELEGATED_SCOPES.length).toBeGreaterThanOrEqual(4);

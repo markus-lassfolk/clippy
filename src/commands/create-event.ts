@@ -62,6 +62,10 @@ export const createEventCommand = new Command('create-event')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Create event in shared mailbox calendar')
+  .option(
+    '-c, --calendar <id>',
+    'Graph calendar id for a non-default calendar (see: graph-calendar list-calendars); Graph path only'
+  )
   .option('--attach <files>', 'Attach file(s), comma-separated paths (relative to cwd)')
   .option(
     '--attach-link <spec>',
@@ -94,6 +98,7 @@ export const createEventCommand = new Command('create-event')
         token?: string;
         identity?: string;
         mailbox?: string;
+        calendar?: string;
         category?: string[];
         attach?: string;
         attachLink?: string[];
@@ -102,6 +107,17 @@ export const createEventCommand = new Command('create-event')
     ) => {
       checkReadOnly(cmd);
       const backend = getExchangeBackend();
+
+      if (options.calendar?.trim() && backend === 'ews') {
+        const msg =
+          'Option --calendar is only supported with Microsoft Graph. Set M365_EXCHANGE_BACKEND=graph or auto, or omit --calendar.';
+        if (options.json) {
+          console.log(JSON.stringify({ error: msg }, null, 2));
+        } else {
+          console.error(`Error: ${msg}`);
+        }
+        process.exit(1);
+      }
 
       // Handle --list-rooms (Graph when graph/auto, else EWS)
       if (options.listRooms) {
@@ -575,6 +591,7 @@ export const createEventCommand = new Command('create-event')
           const gr = await createEventViaGraph({
             token: ga.token,
             mailbox: options.mailbox,
+            calendarId: options.calendar,
             subject: title,
             body: options.description,
             start,
@@ -704,6 +721,15 @@ export const createEventCommand = new Command('create-event')
             }
             process.exit(1);
           }
+          if (options.calendar?.trim()) {
+            const msg = `${gr.error}. Option --calendar requires Microsoft Graph; cannot fall back to EWS.`;
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg }, null, 2));
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(1);
+          }
           if (!options.json) {
             console.warn(`[create-event] Graph failed (${gr.error}); falling back to EWS.`);
           }
@@ -712,6 +738,14 @@ export const createEventCommand = new Command('create-event')
             console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
           } else {
             console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
+          }
+          process.exit(1);
+        } else if (options.calendar?.trim()) {
+          const msg = `Graph authentication failed (${ga.error || 'unknown'}). Option --calendar requires Microsoft Graph.`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(`Error: ${msg}`);
           }
           process.exit(1);
         }

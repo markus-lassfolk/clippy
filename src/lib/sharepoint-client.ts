@@ -1,11 +1,32 @@
 import {
   callGraph,
+  callGraphAbsolute,
   fetchAllPages,
   GraphApiError,
   type GraphResponse,
   graphError,
   graphResult
 } from './graph-client.js';
+
+export interface SharePointSiteSummary {
+  id: string;
+  displayName?: string;
+  webUrl?: string;
+  name?: string;
+}
+
+export async function getSiteByGraphPath(
+  token: string,
+  /** e.g. `contoso.sharepoint.com:/sites/TeamName` (host + `:` + server-relative path) */
+  sitePath: string
+): Promise<GraphResponse<SharePointSiteSummary>> {
+  const encoded = encodeURIComponent(sitePath.trim());
+  return callGraph<SharePointSiteSummary>(token, `/sites/${encoded}`);
+}
+
+export async function getSiteDefaultDriveId(token: string, siteId: string): Promise<GraphResponse<{ id: string }>> {
+  return callGraph<{ id: string }>(token, `/sites/${encodeURIComponent(siteId)}/drive`);
+}
 
 export interface SharePointList {
   id: string;
@@ -97,5 +118,71 @@ export async function updateListItem(
       return graphError(err.message, err.code, err.status);
     }
     return graphError(err instanceof Error ? err.message : 'Failed to update list item');
+  }
+}
+
+export async function getListItem(
+  token: string,
+  siteId: string,
+  listId: string,
+  itemId: string
+): Promise<GraphResponse<SharePointListItem>> {
+  try {
+    return await callGraph<SharePointListItem>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items/${encodeURIComponent(itemId)}?$expand=fields`
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to get list item');
+  }
+}
+
+export async function deleteListItem(
+  token: string,
+  siteId: string,
+  listId: string,
+  itemId: string
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraph<void>(
+      token,
+      `/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items/${encodeURIComponent(itemId)}`,
+      { method: 'DELETE' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to delete list item');
+  }
+}
+
+export interface ListItemsDeltaPage {
+  value?: SharePointListItem[];
+  '@odata.nextLink'?: string;
+  '@odata.deltaLink'?: string;
+}
+
+export async function getListItemsDeltaPage(
+  token: string,
+  siteId: string,
+  listId: string,
+  nextOrDeltaLink?: string
+): Promise<GraphResponse<ListItemsDeltaPage>> {
+  try {
+    if (nextOrDeltaLink?.trim()) {
+      return await callGraphAbsolute<ListItemsDeltaPage>(token, nextOrDeltaLink.trim());
+    }
+    const path = `/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items/delta?$expand=fields`;
+    return await callGraph<ListItemsDeltaPage>(token, path);
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to fetch list items delta');
   }
 }

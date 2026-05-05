@@ -71,7 +71,12 @@ async function refreshGraphAccessToken(
   throw new Error(`Graph token refresh failed: ${lastError}`);
 }
 
-export async function resolveGraphAuth(options?: { token?: string; identity?: string }): Promise<GraphAuthResult> {
+export async function resolveGraphAuth(options?: {
+  token?: string;
+  identity?: string;
+  /** When true, skip the "cached access token still valid" shortcut and refresh from the refresh token. */
+  forceRefresh?: boolean;
+}): Promise<GraphAuthResult> {
   if (options?.token) {
     return { success: true, token: options.token };
   }
@@ -106,7 +111,7 @@ export async function resolveGraphAuth(options?: { token?: string; identity?: st
     const tenant = getMicrosoftTenantPathSegment();
 
     const cached = await loadM365TokenCache(identity);
-    if (cached?.graph && cached.graph.expiresAt > Date.now() + 60_000) {
+    if (!options?.forceRefresh && cached?.graph && cached.graph.expiresAt > Date.now() + 60_000) {
       if (isValidJwtStructure(cached.graph.accessToken)) {
         const tokenAppId = getJwtPayloadAppId(cached.graph.accessToken);
         const expectId = clientId.trim();

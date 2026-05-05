@@ -3,6 +3,8 @@
 Complete command-line reference for **m365-agent-cli**: global flags, read-only mode, calendar, email, OneDrive, Planner, SharePoint, Graph helpers, and examples.
 
 - [README (overview)](../README.md) — install, scenarios, and doc index
+- [Agent workflows](./AGENT_WORKFLOWS.md) — AI/script patterns (deltas, Teams + files, Word/PPT loop)
+- [CLI scripting appendix](./CLI_SCRIPTING_APPENDIX.md) — `--json` / read-only inventory ([generated table](./CLI_SCRIPTING_INVENTORY.md))
 - [Authentication](./AUTHENTICATION.md) — tokens, shared mailboxes, Graph vs EWS
 - [Entra app setup](./ENTRA_SETUP.md) — register an app and permissions
 
@@ -46,9 +48,9 @@ The table below matches **`checkReadOnly` in the source** (search the repo for `
 | `mail` | Mutating flags only: `--flag`, `--unflag`, `--mark-read`, `--mark-unread`, `--complete`, `--sensitivity`, `--move`, `--reply`, `--reply-all`, `--forward`, `--set-categories`, `--clear-categories` (listing, `--read`, `--download` stay allowed) |
 | `drafts` | `--create`, `--edit`, `--send`, `--delete` (plain list/read allowed) |
 | `folders` | `--create`, `--rename` (with `--to`), `--delete` (listing folders allowed) |
-| `files` | `upload`, `upload-large`, `delete`, `share`, `restore`, `checkin` |
-| `planner` | `create-task`, `update-task`, `delete-task`, `create-plan` (`--group` or beta `--roster`), `update-plan`, `delete-plan`, `create-bucket`, `update-bucket`, `delete-bucket`, `list-user-tasks`, `list-user-plans`, `update-task-details`, `update-plan-details`, `add-checklist-item`, `update-checklist-item`, `remove-checklist-item`, `add-reference`, `remove-reference`, `update-task-board`, `add-favorite`, `remove-favorite`, `roster` (beta: `create`, `get`, `list-members`, `add-member`, `remove-member`) |
-| `sharepoint` / `sp` | `create-item`, `update-item` |
+| `files` | `upload`, `upload-large`, `delete`, `share` (including `--collab`), `invite`, `permission-remove`, `permission-update`, `copy`, `move`, `restore`, `checkin` (read/query: **`thumbnails`**, **`delta`**, **`shared-with-me`**, …) |
+| `planner` | `create-task`, `update-task`, `delete-task`, `create-plan` (`--group` or beta `--roster`), `update-plan`, `delete-plan`, `plan-archive`, `plan-unarchive` (beta), `create-bucket`, `update-bucket`, `delete-bucket`, `list-user-tasks`, `list-user-plans`, `update-task-details`, `update-plan-details`, `add-checklist-item`, `update-checklist-item`, `remove-checklist-item`, `add-reference`, `remove-reference`, `update-task-board`, `add-favorite`, `remove-favorite`, `roster` (beta: `create`, `get`, `list-members`, `add-member`, `remove-member`) |
+| `sharepoint` / `sp` | `create-item`, `update-item`, `delete-item`, `follow`, `unfollow` |
 | `pages` | `update`, `publish` |
 | `rules` | `create`, `update`, `delete` |
 | `todo` | `create`, `update`, `complete`, `delete`, `add-checklist`, `update-checklist`, `delete-checklist`, `get-checklist-item`, `create-list`, `update-list`, `delete-list`, `add-attachment`, `get-attachment`, `download-attachment`, `delete-attachment`, `add-reference-attachment`, `add-linked-resource`, `remove-linked-resource`, `upload-attachment-large`, `linked-resource` (`create`, `update`, `delete`), `extension` (`set`, `update`, `delete`), `list-extension` (`set`, `update`, `delete`) |
@@ -58,16 +60,20 @@ The table below matches **`checkReadOnly` in the source** (search the repo for `
 | `auto-reply` | Entire command (EWS auto-reply rules) |
 | `outlook-categories` | `create`, `update`, `delete` (not `list`) |
 | `outlook-graph` | `create-folder`, `update-folder`, `delete-folder`, `send-mail`, `patch-message`, `delete-message`, `move-message`, `copy-message`, `create-reply`, `create-reply-all`, `create-forward`, `send-message`, `create-contact`, `update-contact`, `delete-contact` |
-| `graph-calendar` | `accept`, `decline`, `tentative` |
+| `graph-calendar` | `accept`, `decline`, `tentative`, `create-calendar-group`, `delete-calendar-group`, `create-calendar`, `update-calendar`, `delete-calendar` |
+| `mailbox-settings` | `set` (root command is read-only GET) |
 | `contacts` | Mutating: `folder` (create/update/delete), `create` / `update` / `delete`, `photo` (set/delete), `attachments` (add file, **add-link**, delete) |
 | `onenote` | Mutating: notebook/section-group/section create/update/delete, `create-page`, `delete-page`, `patch-page-content`, `copy-page`, `section copy-to-notebook`, `section copy-to-section-group` (read helpers such as `notebook from-web-url`, list/get/page-preview are not gated) |
-| `meeting` | `create`, `update`, `delete` |
-| `excel` | `worksheet-add`, `worksheet-update`, `worksheet-delete`, `range-patch`, `table-rows-add` |
+| `meeting` | `create`, `update`, `delete` (read-only paths: `recordings`, `recording-download`, `recordings-all`, `transcripts`, `transcript-download`, `transcripts-all`) |
+| `excel` | `worksheet-add`, `worksheet-update`, `worksheet-delete`, `range-patch`, `range-clear`, `table-add`, `table-patch`, `table-delete`, `table-rows-add`, `table-row-patch`, `table-row-delete`, `table-column-patch`, `pivot-table-create`, `pivot-table-patch`, `pivot-table-delete`, `pivot-table-refresh`, `pivot-tables-refresh-all`, `chart-create`, `chart-patch`, `chart-delete`, `application-calculate`, `session-create`, `session-refresh`, `session-close`, `comments-create`, `comments-reply`, `comments-patch` |
 | `bookings` | `business-update`, `appointment-create`, `appointment-update`, `appointment-delete`, `appointment-cancel`, `customer-create`, `customer-update`, `customer-delete`, `service-create`, `service-update`, `service-delete`, `staff-create`, `staff-update`, `staff-delete`, `custom-question-create`, `custom-question-update`, `custom-question-delete` |
-| `teams` | `channel-message-send`, `channel-message-reply`, `chat-message-send`, `chat-message-reply` |
+| `teams` | `activity-notify`, `channel-message-send`, `channel-message-reply`, `channel-message-patch`, `channel-message-delete`, `chat-message-send`, `chat-message-reply`, `chat-message-patch`, `chat-message-reply-patch`, `chat-message-delete`, `chat-create`, `chat-member-add`, `team-member-add`, `channel-member-add`, `tab-create`, `tab-update`, `tab-delete` |
+| `copilot` | `conversation-create`, `chat`, `chat-stream`, `packages update`, `packages block`, `packages unblock`, `packages reassign` |
 | `presence` | `set-me`, `set-user`, `clear-me`, `clear-user` |
+| `groups` | `post-reply` |
+| `approvals` | `respond` |
 
-**Intentionally not gated** (no `checkReadOnly` today): read/query helpers such as `schedule`, `suggest`, `findtime`, `calendar`, `graph-calendar list-calendars` / `get-calendar` / `list-view` / `get-event`, `outlook-graph list-mail` / `list-messages` / `list-message-attachments` / `get-message-attachment` / `download-message-attachment` / `get-message` / `list-folders` / `list-contacts` / `get-contact` / `get-folder`, `subscriptions list`, `rules list` / `rules get`, `todo` list-only usage, **`outlook-categories list`** (mutating `outlook-categories create|update|delete` **are** gated), `files` list/search/meta/download/convert/analytics/versions, etc. Those calls do not use the guard in code; if a new subcommand adds writes, it should call `checkReadOnly` and this table should be updated.
+**Intentionally not gated** (no `checkReadOnly` today): read/query helpers such as `schedule`, `suggest`, `findtime`, `calendar`, `graph-calendar list-calendars` / `get-calendar` / `list-calendar-groups` / `list-view` / `get-event` / `events-delta`, `mailbox-settings` (root GET), `outlook-graph list-mail` / `list-messages` / `list-message-attachments` / `get-message-attachment` / `download-message-attachment` / `get-message` / `list-folders` / `list-contacts` / `get-contact` / `get-folder`, `subscriptions list`, `rules list` / `rules get`, `todo` list-only usage, **`outlook-categories list`** (mutating `outlook-categories create|update|delete` **are** gated), `files` list/search/delta/meta/download/convert/analytics/versions/`shared-with-me`/`permissions`, etc. Those calls do not use the guard in code; if a new subcommand adds writes, it should call `checkReadOnly` and this table should be updated.
 
 You can enable Read-Only mode in two ways:
 
@@ -117,6 +123,10 @@ m365-agent-cli calendar week --verbose
 # Shared mailbox calendar
 m365-agent-cli calendar --mailbox shared@company.com
 m365-agent-cli calendar nextweek --mailbox shared@company.com
+
+# Non-default calendar (Graph calendar id from `graph-calendar list-calendars`; Graph path only)
+m365-agent-cli calendar week --calendar <calendarId>
+m365-agent-cli calendar today --calendar <calendarId> --mailbox shared@company.com
 ```
 
 ### Calendar: rolling ranges and business (weekday) windows
@@ -176,6 +186,9 @@ m365-agent-cli create-event "x" 10:00 11:00 --list-rooms
 
 # Create in shared mailbox calendar
 m365-agent-cli create-event "Team Standup" 09:00 09:30 --mailbox shared@company.com
+
+# Create on a secondary calendar (Graph only; calendar id from `graph-calendar list-calendars`)
+m365-agent-cli create-event "Side project sync" 15:00 15:30 --calendar <calendarId>
 ```
 
 ### Recurring Events
@@ -566,6 +579,91 @@ m365-agent-cli files share <fileId> --type view --scope org
 m365-agent-cli files share <fileId> --type edit --scope anonymous
 ```
 
+### Drive root, named invites, permissions, Excel workbook comments
+
+All **`files`** subcommands (and **`excel`**, **`word`**, **`powerpoint`** where they touch drive items) accept **one** drive root selector: default **`/me/drive`**, or **`--user <upn|id>`**, **`--drive-id <id>`**, **`--site-id <id>`** (tenant default library), or **`--site-id`** + **`--library-drive-id`** for another library. Mixing multiple selectors errors.
+
+```bash
+# Another user's OneDrive (delegated Graph)
+m365-agent-cli files list --user user@contoso.com
+m365-agent-cli files search "Q1" --user user@contoso.com
+
+# Explicit drive or SharePoint site library
+m365-agent-cli files meta <itemId> --drive-id b!xxx
+m365-agent-cli files download <itemId> --site-id contoso.sharepoint.com,abc-123-def
+
+# Invite people (POST body per Microsoft Graph driveItem invite)
+m365-agent-cli files invite <fileId> --body ./invite.json
+
+# List or remove sharing entries on an item
+m365-agent-cli files permissions <fileId>
+m365-agent-cli files permission-remove <fileId> <permissionId>
+
+# Excel threaded comments on the workbook (Microsoft Graph beta)
+m365-agent-cli excel comments-list <fileId>
+m365-agent-cli excel comments-get <fileId> <commentId>
+# create / reply / patch use --json-file per --help
+```
+
+### Delta sync, “shared with me”, copy/move, permission PATCH
+
+```bash
+# Drive item delta (root or folder); optional --state-file + --url for paging (kind: driveDelta)
+m365-agent-cli files delta --state-file ./drive.delta.json
+m365-agent-cli files delta --folder <folderItemId> --url "<nextLink from previous page>"
+
+# Items shared with you (GET /me/drive/sharedWithMe only — no --user/--site-id)
+m365-agent-cli files shared-with-me
+
+# Copy / move (use --wait on copy to poll the async monitor URL)
+m365-agent-cli files copy <itemId> --parent-id <folderId> --wait
+m365-agent-cli files move <itemId> --parent-id <folderId>
+
+# PATCH permission roles (body per Graph driveItem permission)
+m365-agent-cli files permission-update <fileId> <permissionId> --json-file ./perm-patch.json
+```
+
+### SharePoint lists and site resolution
+
+```bash
+m365-agent-cli sharepoint resolve-site 'contoso.sharepoint.com:/sites/YourTeam'
+m365-agent-cli sharepoint get-item --site-id <id> --list-id <id> --item-id <id>
+m365-agent-cli sharepoint delete-item --site-id <id> --list-id <id> --item-id <id>
+m365-agent-cli sharepoint create-item --site-id <id> --list-id <id> --json-file ./fields.json
+m365-agent-cli sharepoint items-delta --site-id <id> --list-id <id> --state-file ./list.delta.json
+```
+
+### Teams channel Files folder
+
+```bash
+m365-agent-cli teams channel-files-folder <teamId> <channelId>
+# Then: m365-agent-cli files list --drive-id "<driveId>" --folder "<folderItemId>"
+```
+
+### Word (.docx) on Graph: `files` vs `word`
+
+**`word`** exposes **preview**, **meta**, **download**, and **thumbnails** (same drive location flags as **`files`**). All **other** Microsoft Graph drive-item operations for a `.docx` use **`files`** so there is a single implementation (share, versions, delta, copy, invite, checkout, convert, …). See **`docs/GRAPH_API_GAPS.md`** (Word matrix).
+
+| Need | Command |
+| --- | --- |
+| Thumbnails (small/medium/large URLs) | **`files thumbnails`** or **`word thumbnails`** |
+| List / search / sync changes | **`files list`**, **`files search`**, **`files delta`** |
+| Upload / delete / copy / move | **`files upload`**, **`files delete`**, **`files copy`**, **`files move`** |
+| Share / invite / permissions | **`files share`**, **`files invite`**, **`files permissions`**, … |
+| PDF or other format | **`files convert`** |
+| Checkout / versions | **`files share --collab --lock`**, **`files checkin`**, **`files versions`**, **`files restore`** |
+
+```bash
+m365-agent-cli files thumbnails <docItemId>
+m365-agent-cli word thumbnails <docItemId> --json   # same Graph call
+```
+
+### Excel long tail and Word/PowerPoint comments (`graph invoke`)
+
+**`excel`** wraps worksheets, ranges (read/patch/clear), used-range, **tables** (CRUD, rows, columns), **pivot tables** (list/get/create/patch/delete/refresh), **names** (workbook + worksheet scope), charts, **workbook-get**, **application-calculate**, sessions (**create** / **refresh** / **close**, optional **`--session-id`** on mutating calls), and **`excel comments-*`** (Graph **beta**). For **Excel** features still not in the CLI (e.g. **workbook images**, **shapes**, deep **`range()`** method chains), use **`graph invoke`** — confirm path and schema in Microsoft Graph docs for your API version.
+
+**Word / PowerPoint:** use the same flags on **`word preview`**, **`powerpoint preview`**, **`word meta`**, **`word download`**, **`word thumbnails`**, etc. For everything else on a **Word file**, use **`files`** (see table above). There is **no** first-class CLI for Word/PowerPoint **in-file comments** on drive items the way **`excel comments-*`** wraps **`…/workbook/comments`**; use **`graph invoke`** against current Graph docs for your scenario if available.
+
 ### Collaborative Editing via Office Online
 
 Microsoft Graph cannot join or control a live Office Online editing session. What m365-agent-cli can do is prepare the handoff properly:
@@ -633,6 +731,10 @@ m365-agent-cli planner create-task --plan <planId> --title "Labeled" --label 1 -
 m365-agent-cli planner update-task -i <taskId> --title "Updated Task" --percent 50 --assign <userId>
 m365-agent-cli planner update-task -i <taskId> --label 2 --unlabel 1
 m365-agent-cli planner update-task -i <taskId> --clear-labels
+
+# Beta: archive / unarchive a plan (Graph requires a justification string)
+m365-agent-cli planner plan-archive -p <planId> -j "Project closed"
+m365-agent-cli planner plan-unarchive -p <planId> -j "Reopened for Q2"
 ```
 
 ---
@@ -652,6 +754,9 @@ m365-agent-cli todo update -l Tasks -t <taskId> --clear-categories
 # One checklist row (Graph GET checklistItems/{id}); download file attachment bytes ($value)
 m365-agent-cli todo get-checklist-item -l Tasks -t <taskId> -c <checklistItemId>
 m365-agent-cli todo download-attachment -l Tasks -t <taskId> -a <attachmentId> -o ./file.bin
+
+# Incremental sync: tasks in a list (`todo delta`) vs task **lists** themselves (`todo lists-delta` + `--state-file`)
+m365-agent-cli todo lists-delta --state-file ./todo-lists-sync.json
 ```
 
 ## Outlook Graph REST (`outlook-graph`)
@@ -679,6 +784,11 @@ Microsoft Graph endpoints for **calendars**, **calendarView** (time-range querie
 
 ```bash
 m365-agent-cli graph-calendar list-calendars
+m365-agent-cli graph-calendar list-calendar-groups
+m365-agent-cli graph-calendar create-calendar --name "Team outings" --color preset9
+m365-agent-cli graph-calendar create-calendar --name "Client A" --group-id <calendarGroupId>
+m365-agent-cli graph-calendar update-calendar <calendarId> --name "Team outings (Q2)"
+m365-agent-cli graph-calendar delete-calendar <calendarId>
 m365-agent-cli graph-calendar list-view --start 2026-04-01T00:00:00Z --end 2026-04-08T00:00:00Z
 m365-agent-cli graph-calendar list-view --start ... --end ... --calendar <calendarId>
 m365-agent-cli graph-calendar get-event <eventId>
@@ -756,23 +866,40 @@ These commands are not expanded step-by-step above; use **`m365-agent-cli <comma
 | **`onenote`** | **Graph-only** OneNote: notebooks (incl. **resolve by web URL** — `notebook from-web-url`), section groups, sections (**copy-to-notebook**, **copy-to-section-group**), pages, HTML export/create, **patch-page-content**, **copy-page**, async **operation** poll; **`--group`** / **`--site`** roots. |
 | **`meeting`** | **Graph** standalone Teams meetings (`/me/onlineMeetings`): create (simple or **`--json-file`**), get, update, delete. Calendar invitations with Teams: use **`create-event … --teams`**. |
 | **`forward-event`** (`forward`) | Forward a calendar invitation to more recipients (Graph). |
-| **`graph-calendar`** | Graph **calendars**, **calendarView**, **get-event**, **accept** / **decline** / **tentative** (vs EWS `calendar` / `respond`). |
-| **`graph-search`** | Microsoft Graph **Search** (`/search/query`) — mail, calendar, files, lists, people (entity-specific scopes). |
-| **`teams`** | **Graph-only** Microsoft Teams: joined teams, team get, **channels** / **all-channels** / **incoming-channels** / **primary-channel** / **channel-get**, **channel-members**, **messages** / **channel-message-get** / **channel-message-send** / **message-replies** / **channel-message-reply**, **tabs**, **members**, **apps**, **chats** / **chat-get** / **chat-messages** / **chat-message-get** / **chat-message-replies** / **chat-message-send** / **chat-message-reply** / **chat-members** / **chat-pinned** ([GRAPH_SCOPES.md](./GRAPH_SCOPES.md)). |
+| **`graph-calendar`** | Graph **calendars** (list/get/create/update/delete), **calendar groups** (list/create/delete), **calendarView**, **events-delta**, **get-event**, **accept** / **decline** / **tentative** (vs EWS `calendar` / `respond`). |
+| **`mailbox-settings`** | Graph **mailboxSettings** read + **`set`** (**`--timezone`**, **`--work-days`** / **`--work-start`** / **`--work-end`**, **`--json-file`** for advanced PATCH). |
+| **`graph-search`** | Microsoft Graph **Search** (`/search/query`) — **`--preset`** `default` \| `extended` \| `connectors` or **`--types`** (entity-specific scopes per Graph docs). |
+| **`teams`** | **Graph-only** Microsoft Teams: **list** joined teams (optional **`list --user`**), team get, **channels** / **all-channels** / **incoming-channels** / **primary-channel** / **channel-get** / **channel-files-folder**, **channel-members**, **messages** / **channel-message-get** / **channel-message-send** / **channel-message-patch** / **channel-message-delete** / **message-replies** / **channel-message-reply**, **tabs** / **tab-get** / **tab-create** / **tab-update** / **tab-delete**, **members**, **team-member-add**, **channel-member-add**, **apps**, **activity-notify**, **chats** / **chat-create** / **chat-member-add** / **chat-get** / **chat-messages** / **chat-message-get** / **chat-message-patch** / **chat-message-reply-patch** / **chat-message-delete** / **chat-message-replies** / **chat-message-send** / **chat-message-reply** / **chat-members** / **chat-pinned** — **chats** list is **`/me/chats`** only ([GRAPH_SCOPES.md](./GRAPH_SCOPES.md)). |
+| **`org`** | **Graph-only** **manager** and **direct-reports** (**GET /me/manager**, **GET /users/{id}/manager**, **GET /me/directReports**, **GET /users/{id}/directReports**); use **`--user`** for someone other than the signed-in user ([GRAPH_SCOPES.md](./GRAPH_SCOPES.md), [PERSONAL_ASSISTANT_DELEGATION.md](./PERSONAL_ASSISTANT_DELEGATION.md)). |
 | **`bookings`** | **Graph-only** Microsoft Bookings (read + write): **businesses**, **business-get** / **business-update**, **currencies**, appointments (**list**, **appointment**, **appointment-create** / **update** / **delete** / **cancel**), customers (**list**, **customer**, CRUD), **custom-questions** (list + CRUD), services + **service-get** + CRUD, staff + **staff-get** + CRUD, **calendar-view**, **staff-availability** (app-only **`--token`**). |
-| **`excel`** | **Graph-only** Excel on a drive item: **worksheets** + **worksheet-get** / **add** / **update** / **delete**, **range**, **range-patch**, **used-range**, **tables** / **table-get** / **table-rows** / **table-rows-add**, **names**, **charts**. |
-| **`graph`** | **Graph-only** escape hatch: **`graph invoke`** (any JSON path/method) and **`graph batch`** (JSON `$batch` file); respects **`--read-only`** for non-GET. |
+| **`excel`** | **Graph-only** Excel on a drive item: **worksheets** + **worksheet-get** / **add** / **update** / **delete**; **range** / **range-patch** / **range-clear**; **used-range**; **tables** / **table-get** / **table-add** / **table-patch** / **table-delete** / **table-rows** / **table-rows-add** / **table-row-patch** / **table-row-delete** / **table-columns** / **table-column-get** / **table-column-patch**; **pivot-tables** / **pivot-table-get** / **pivot-table-create** / **pivot-table-patch** / **pivot-table-delete** / **pivot-table-refresh** / **pivot-tables-refresh-all**; **names** / **name-get** / **worksheet-names** / **worksheet-name-get**; **charts** + **chart-create** / **chart-patch** / **chart-delete**; **workbook-get**; **application-calculate**; **session-create** / **session-refresh** / **session-close**; **comments-*** (beta). Same drive location flags as **`files`**. |
+| **`word`** / **`powerpoint`** | **Graph-only** drive-item helpers: **preview**, **meta**, **download** (same location flags as **`files`**: **`--user`**, **`--drive-id`**, **`--site-id`**). |
+| **`graph`** | **Graph-only** escape hatch: **`graph invoke`** (any JSON path/method; repeatable **`-H` / `--header "Name: value"`** for OData headers such as **`ConsistencyLevel: eventual`**) and **`graph batch`** (JSON **`$batch`** file, **max 20** requests per batch); respects **`--read-only`** for non-GET. |
 | **`presence`** | **Graph-only** presence: **`me`**, **`user`**, **`bulk`**, **`set-me`** / **`set-user`** (output includes `sessionId`), **`clear-me`** / **`clear-user`** ([GRAPH_SCOPES.md](./GRAPH_SCOPES.md)). |
 | **`counter`** (`propose-new-time`) | Propose a new time for an existing event (Graph). |
 | **`schedule`** | Merged free/busy for one or more people over a time window (`getSchedule`). |
 | **`suggest`** | Meeting-time suggestions via Graph (`findMeetingTimes`). |
 | **`rooms`** | Search and filter room resources (capacity, equipment, floor, etc.). |
-| **`oof`** | Mailbox out-of-office **settings** (Graph mailbox settings API). |
+| **`oof`** | Mailbox **automatic replies** slice of **mailboxSettings** (Graph). |
+| **`mailbox-settings`** | Remaining **mailboxSettings** (time zone, working hours, formats) — see command **`--help`**. |
 | **`auto-reply`** | EWS **inbox-rule** based auto-reply templates (distinct from `oof`). |
 | **`rules`** | Inbox message rules (Graph). |
 | **`delegates`** | Calendar/mailbox delegate permissions (EWS). |
 | **`subscribe`** / **`subscriptions`** | Graph **change notifications** (create or list/cancel subscriptions). |
 | **`serve`** | Local **webhook receiver** for subscription callbacks (pair with `subscribe`). |
+
+---
+
+## Microsoft Graph HTTP tuning (environment)
+
+These variables apply to Graph calls routed through **`src/lib/graph-client.ts`** (most Graph-backed commands, including **`graph invoke`**).
+
+| Variable | Purpose |
+| --- | --- |
+| **`GRAPH_TIMEOUT_MS`** | Per-attempt HTTP timeout in milliseconds (default **60000** if unset or invalid). |
+| **`GRAPH_PAGE_DELAY_MS`** | Optional delay between **`@odata.nextLink`** page fetches in **`fetchAllPages`** (default **0**). |
+| **`GRAPH_MAX_RETRIES`** | Max attempts for throttling / transient GET|HEAD network retries (default **4**, clamped to **1–8**). |
+| **`GRAPH_RETRY_MAX_WAIT_MS`** | Cap for **`Retry-After`**-driven waits in milliseconds (default **60000**). |
 
 ---
 

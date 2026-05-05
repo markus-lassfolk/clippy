@@ -1,15 +1,22 @@
 import { Command } from 'commander';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   createSubscription,
   deleteSubscription,
   listSubscriptions,
   renewSubscription
 } from '../lib/graph-subscriptions.js';
+import { getTodoLists } from '../lib/todo-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 export const subscribeCommand = new Command('subscribe')
-  .description('Subscribe to Microsoft Graph push notifications (see also: list, renew, cancel)')
-  .argument('[resource]', 'Resource to subscribe to (e.g. mail, event, contact, todoTask)')
+  .description(
+    'Subscribe to Microsoft Graph push notifications (see also: list, renew, cancel). Resource shortcuts: mail, event, contact, todotask (resolves default To Do list id), copilot-interactions (requires --user). For other resources (e.g. per-meeting Copilot paths), pass the full Graph resource string from Microsoft docs.'
+  )
+  .argument(
+    '[resource]',
+    'Resource shortcut: mail, event, contact, todotask, copilot-interactions, or a raw Graph resource path'
+  )
   .option('--url <url>', 'Webhook notification URL')
   .option('--expiry <datetime>', 'Expiration datetime (ISO 8601, defaults to 3 days from now)')
   .option('--change-type <type>', 'Change type (comma-separated)', 'created,updated')
@@ -27,7 +34,7 @@ export const subscribeCommand = new Command('subscribe')
 
     checkReadOnly(cmd);
 
-    // Map friendly resource names to graph endpoints
+    // Map friendly resource names to graph endpoints (sync shortcuts only).
     const mapResource = (res: string, user?: string) => {
       const prefix = user?.trim() ? `users/${encodeURIComponent(user.trim())}` : 'me';
       switch (res.toLowerCase()) {
@@ -37,20 +44,46 @@ export const subscribeCommand = new Command('subscribe')
           return `${prefix}/events`;
         case 'contact':
           return `${prefix}/contacts`;
-        case 'todotask':
-          // Note: Todo subscriptions require a specific list ID.
-          // Use the format: me/todo/lists/{listId}/tasks
-          // For the default Tasks list, use: me/todo/lists/Tasks/tasks
-          return `${prefix}/todo/lists/Tasks/tasks`;
+        case 'copilot-interactions':
+          if (!user?.trim()) {
+            console.error('Error: --user is required for copilot-interactions (resource includes user id).');
+            process.exit(1);
+          }
+          return `/copilot/users/${encodeURIComponent(user.trim())}/interactionHistory/getAllEnterpriseInteractions`;
         default:
           return res;
       }
     };
 
+    async function resolveSubscriptionResource(res: string, user?: string): Promise<string> {
+      if (res.toLowerCase() === 'todotask') {
+        const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+        if (!auth.success || !auth.token) {
+          console.error(`Error: ${auth.error || 'Graph authentication failed'}`);
+          process.exit(1);
+        }
+        const listsR = await getTodoLists(auth.token, user?.trim() || undefined);
+        if (!listsR.ok || !listsR.data?.length) {
+          console.error(`Failed to list To Do lists: ${listsR.error?.message || 'unknown error'}`);
+          process.exit(1);
+        }
+        const defaultList = listsR.data.find((l) => l.wellknownListName === 'defaultList');
+        if (!defaultList) {
+          console.error(
+            'Error: No default To Do list found (wellknownListName defaultList). Pass a full resource path, e.g. me/todo/lists/{list-id}/tasks (see `m365-agent-cli todo lists`).'
+          );
+          process.exit(1);
+        }
+        const prefix = user?.trim() ? `users/${encodeURIComponent(user.trim())}` : 'me';
+        return `${prefix}/todo/lists/${encodeURIComponent(defaultList.id)}/tasks`;
+      }
+      return mapResource(res, user);
+    }
+
     // Generate clientState for subscription validation (if GRAPH_CLIENT_STATE env is set)
     const clientState = process.env.GRAPH_CLIENT_STATE;
 
-    const graphResource = mapResource(resource, options.user);
+    const graphResource = await resolveSubscriptionResource(resource, options.user);
 
     // Default expiration to 3 days (Graph allows up to 3 days for most resources)
     let expiry = options.expiry;

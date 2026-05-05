@@ -2,7 +2,7 @@
 
 **Purpose:** Single place to see **🟢 migrated**, **🟡 partial**, and **🔴 no Graph path** (or no 1:1 parity) for Exchange-related CLI behavior. Default backend is **`auto`** in [`exchange-backend.ts`](../src/lib/exchange-backend.ts); set **`M365_EXCHANGE_BACKEND=graph`** to evaluate **Graph-only** behavior (no EWS fallback).
 
-**Related:** [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md) (Graph vs EWS differences, `auto` verification, manual checklist), [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md) (Graph API vs CLI coverage), [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md) (branch status log), [`EWS_TO_GRAPH_MIGRATION_EPIC.md`](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (epic).
+**Related:** [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md) (Graph vs EWS differences, `auto` verification, manual checklist), [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md) (Graph API vs CLI coverage), [`GRAPH_PRODUCT_PARITY_MATRIX.md`](./GRAPH_PRODUCT_PARITY_MATRIX.md) (workload ↔ command roadmap), [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md) (branch status log), [`EWS_TO_GRAPH_MIGRATION_EPIC.md`](./EWS_TO_GRAPH_MIGRATION_EPIC.md) (epic).
 
 ## Graph-first policy and `M365_EXCHANGE_BACKEND=auto`
 
@@ -37,22 +37,23 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 | `send` | 🟢 | Graph: `sendMail` + file + **`--attach-link`** (`graph-send-mail.ts`); `auto` tries Graph then EWS on failure. Entra must include delegated **`Mail.Send`** (plus `Mail.ReadWrite`); tokens from before that addition need **`login`** again. |
 | `folders` | 🟢 | Graph mail folders when `graph` / `auto`. |
 | `drafts` | 🟢 | Graph: **list**, **read**, **`--create`** / **`--edit`** / **`--send`** / **`--delete`** (`createDraftMessage`, `patchMailMessage`, attachments, `sendMailMessage`, `deleteMailMessage` in `drafts-graph.ts`). `auto` falls back to EWS if Graph fails. |
-| `calendar` (list range) | 🟢 | Graph `calendarView` when `graph` / `auto`. Rolling ranges (`--days`, `--business-days` / `--next-business-days`, …) and **`--now`** (clip window start to “now”) apply before the view; EWS uses the same resolved window. |
+| `calendar` (list range) | 🟢 | Graph `calendarView` when `graph` / `auto` (optional **`--calendar <id>`** for a non-default calendar; Graph-only flag). Rolling ranges (`--days`, `--business-days` / `--next-business-days`, …) and **`--now`** (clip window start to “now”) apply before the view; EWS uses the same resolved window. |
 | `calendar` `--list-attachments` / `--download-attachments` | 🟢 | Graph: `listEventAttachments`, `downloadEventAttachmentBytes` (`graph-calendar-client`). EWS fallback if Graph auth fails in `auto`. |
 | `findtime` | 🟢 | **Graph is the primary path** when `graph` / `auto`: **`findMeetingTimes`**, then **`getSchedule`** + merged `availabilityView` (`findtime-graph.ts`). **EWS** (`getScheduleViaOutlook`) only when `M365_EXCHANGE_BACKEND=ews`, or in **`auto`** after both Graph strategies fail. |
-| `create-event` | 🟢 | Graph: **Places** for **`--list-rooms`**, **`--find-room`**, **`--room` by name**; attachments + `POST /me/events`. `auto` may fall back to EWS for rooms. |
+| `create-event` | 🟢 | Graph: **Places** for **`--list-rooms`**, **`--find-room`**, **`--room` by name**; attachments + `POST /me/events` or **`POST /calendars/{id}/events`** when **`--calendar`** is set (no EWS fallback if Graph fails with **`--calendar`**). `auto` may fall back to EWS for rooms when **`--calendar`** is not used. |
 | `update-event` | 🟡 | **Graph-first** for typical updates (PATCH + attachments + **attendees** + **`--room` by name** + **`--occurrence` / `--instance`**). **🟡** = mixed Graph/EWS ID story: with **`graph`**, there is **no EWS fallback** after Graph-backed data is used (see command errors). |
 | `delete-event` | 🟢 | **Graph-first** cancel/delete + occurrence/instance matching via **`seriesMasterId`**. **`--scope future`:** truncates the series via **`GET …/instances`** + **PATCH** recurrence on the **series master** (`graph-calendar-recurrence.ts`). **EWS** still implements the same intent via SOAP `deleteEvent`. With **`auto`**, EWS is used only when the listing path is EWS (e.g. Graph list failed). |
 | `respond` | 🟢 | **Graph is the primary path** when `graph` / **`auto`**: list via **`calendarView`** + pending filter; **`accept` / `decline` / `tentative`** via Graph invitation APIs. **EWS** only when **`auto`** and Graph auth or **`getEvent`** fails (then list/respond use EWS). |
 | `forward-event` / `counter` | 🟢 | Graph-only (`graph-event`). |
 | `auto-reply` | 🔴 | EWS **Inbox Rules**–based templates (this command’s SOAP model). **`M365_EXCHANGE_BACKEND=graph`:** command exits with a hint to use **`oof`** or set **`ews`/`auto`**. **Graph** also offers **`rules`** (inbox rules), but **not** this CLI’s template UX — **no 1:1 replacement**. Prefer **`oof`** for OOF-style mail; use **`rules`** for Graph mail rules. |
-| `oof` | 🟢 | Graph mailboxSettings. |
+| `oof` | 🟢 | Graph **automatic replies** on **mailboxSettings**. |
+| `mailbox-settings` | 🟢 | Graph **mailboxSettings** read + **`set`** (time zone, working hours, **`--json-file`** PATCH). |
 | `delegates` **list** | 🟢 | Graph **`calendarPermissions`** when `graph`. **`auto`:** Graph first; an **empty** Graph result is final (same message as `graph`). EWS **`GetDelegates`** only if the Graph **request fails** (auth/call error), not to “supplement” Graph. **`ews`:** EWS only. |
 | `delegates` **calendar-share** **add / update / remove** | 🟢 | **Graph only:** `POST` / `PATCH` / `DELETE` **[calendarPermission](https://learn.microsoft.com/en-us/graph/api/resources/calendarpermission)** on the default calendar (`delegates calendar-share …`). Not the same as EWS per-folder delegates. |
 | `delegates` **add / update / remove** (EWS) | 🔴 | EWS **delegate matrix** (folder permissions + deliver options). **`M365_EXCHANGE_BACKEND=graph`:** blocked — use **`calendar-share`** for Graph calendar sharing or set **`ews`/`auto`**. |
 | `login` / `auth` | 🟡 | Unified `token-cache-{identity}.json`; dual refresh slots (**EWS** + **Graph** scopes) for mixed-backend and migration. |
 | `outlook-graph` | 🟢 | Graph REST mail (parallel surface). |
-| `graph-calendar` | 🟢 | Graph calendar helpers (parallel surface). |
+| `graph-calendar` | 🟢 | Graph calendar helpers (parallel surface): calendar + calendar-group CRUD, view, delta, invitation responses. |
 | `rules` | 🟢 | Graph inbox rules. |
 | `todo` (core) | 🟢 | Graph To Do. `create --link` uses Graph **get message**. |
 | `contacts` | 🟢 | Graph contacts + folders CRUD, **`$search`**, **delta**, **photo**, file attachments + **`attachments add-link`** (referenceAttachment), **`$filter`** on list; shared mailbox: **`Contacts.Read.Shared`** / **`Contacts.ReadWrite.Shared`** + **`--user`**. |
@@ -83,7 +84,17 @@ EWS delegate access does **not** imply the same Microsoft Graph token scopes. Ca
 2. **🔴** — decide product direction (drop feature, new Graph-native UX, or document “use Outlook”).
 3. After each migration, update this file and [`GRAPH_V2_STATUS.md`](./GRAPH_V2_STATUS.md).
 
-*Last updated: 2026-04-03 — **`teams incoming-channels`**; **`bookings` business-get / service-get / staff-get**; skill + README command tables aligned with Graph surface; [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md).*
+---
+
+## Gap closure UX (Graph vs EWS)
+
+When **`M365_EXCHANGE_BACKEND=graph`** or **`auto`** routes to Graph:
+
+- **`update-event`** — use **event ids** from the **same** backend that listed the event (Graph `id` from **`calendar --json`** / **`graph-calendar list-view`**, not an EWS hex id). See [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md).
+- **`auto-reply`** — EWS **Inbox Rules** template model; for Graph-native flows use **`oof`** (mailbox automatic replies) and **`rules`** (inbox rules). There is **no** 1:1 CLI replacement for `auto-reply` on Graph.
+- **`delegates add|update|remove`** — classic EWS delegate matrix; Graph calendar sharing uses **`delegates calendar-share`**.
+
+*Last updated: 2026-05-05 — gap closure doc pass; see [`GRAPH_API_GAPS.md`](./GRAPH_API_GAPS.md) **closure targets**.*
 
 ---
 

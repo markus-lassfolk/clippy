@@ -92,13 +92,19 @@ export type { GraphAuthResult } from './lib/graph-auth.js';
 export { resolveGraphAuth } from './lib/graph-auth.js';
 export type {
   CheckinResult,
+  DriveDeltaPage,
   DriveItem,
   DriveItemListResponse,
   DriveItemReference,
+  DriveItemPermission,
+  DriveItemThumbnailSet,
+  DriveLocation,
   GraphError,
   GraphResponse,
   OfficeCollabLinkResult,
+  SharedWithMeDriveItem,
   SharingLinkResult,
+  ThumbnailSizeInfo,
   UploadLargeResult
 } from './lib/graph-client.js';
 export {
@@ -107,12 +113,27 @@ export {
   cleanupDownloadedFile,
   createOfficeCollaborationLink,
   defaultDownloadPath,
+  DEFAULT_DRIVE_LOCATION,
+  deleteDriveItemPermission,
   deleteFile,
   downloadFile,
+  driveDeltaStartPath,
+  driveLocationFromCliFlags,
+  driveItemPath,
+  driveRootPrefix,
+  getDriveItemDeltaPage,
   getFileMetadata,
+  inviteDriveItem,
+  listDriveItemPermissions,
+  listDriveItemThumbnails,
+  listDriveSharedWithMe,
   listFiles,
+  moveDriveItem,
+  patchDriveItemPermission,
+  pollGraphAsyncJob,
   searchFiles,
   shareFile,
+  startCopyDriveItem,
   uploadFile,
   uploadLargeFile
 } from './lib/graph-client.js';

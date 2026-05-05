@@ -239,7 +239,7 @@ export function describeMailGraphUnhandledCombination(opts: MailGraphCommandOpti
   if (opts.read?.trim() && (opts.unread || opts.flagged || opts.search?.trim())) {
     return 'On Graph, combine --read with list filters only via separate commands, or set M365_EXCHANGE_BACKEND=ews or auto.';
   }
-  return 'This mail subcommand or options are not implemented on the Graph mail path in one invocation. Set M365_EXCHANGE_BACKEND=ews or auto, or use outlook-graph.';
+  return 'This mail command or flag combination is not supported on the Graph mail path in a single run. Set M365_EXCHANGE_BACKEND=ews or auto, split actions into separate invocations, or use the EWS-backed mail path.';
 }
 
 function graphUnsupportedForList(opts: MailGraphCommandOptions): boolean {

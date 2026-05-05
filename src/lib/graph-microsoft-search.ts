@@ -28,6 +28,44 @@ export interface MicrosoftSearchQueryResponse {
   }>;
 }
 
+/** Flattened hit for agents (`graph-search --json-hits`). */
+export interface NormalizedSearchHit {
+  rank?: number;
+  hitId?: string;
+  summary?: string;
+  entityType?: string;
+  id?: string;
+  webUrl?: string;
+  name?: string;
+  title?: string;
+  subject?: string;
+}
+
+/** Stable projection of Microsoft Search hits (no OData noise). */
+export function flattenMicrosoftSearchHits(response: MicrosoftSearchQueryResponse): NormalizedSearchHit[] {
+  const hits: NormalizedSearchHit[] = [];
+  for (const block of response.value ?? []) {
+    for (const c of block.hitsContainers ?? []) {
+      for (const h of c.hits ?? []) {
+        const r = h.resource ?? {};
+        const odataType = r['@odata.type'];
+        hits.push({
+          rank: h.rank,
+          hitId: h.hitId,
+          summary: h.summary,
+          entityType: typeof odataType === 'string' ? odataType.replace(/^#microsoft\.graph\./, '') : undefined,
+          id: typeof r.id === 'string' ? r.id : undefined,
+          webUrl: typeof r.webUrl === 'string' ? r.webUrl : undefined,
+          name: typeof r.name === 'string' ? r.name : undefined,
+          title: typeof r.title === 'string' ? r.title : undefined,
+          subject: typeof r.subject === 'string' ? r.subject : undefined
+        });
+      }
+    }
+  }
+  return hits;
+}
+
 export async function microsoftSearchQuery(
   token: string,
   body: MicrosoftSearchQueryBody

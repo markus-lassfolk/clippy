@@ -460,6 +460,10 @@ export const calendarCommand = new Command('calendar')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'Delegated or shared mailbox calendar')
   .option(
+    '-c, --calendar <id>',
+    'Graph calendar id for a non-default calendar (see: graph-calendar list-calendars); Graph listing only'
+  )
+  .option(
     '--days <n>',
     'Show N consecutive calendar days forward from start (includes start day; not for use with week keywords)'
   )
@@ -485,6 +489,7 @@ export const calendarCommand = new Command('calendar')
         identity?: string;
         verbose?: boolean;
         mailbox?: string;
+        calendar?: string;
         listAttachments?: string;
         downloadAttachments?: string;
         output: string;
@@ -500,6 +505,18 @@ export const calendarCommand = new Command('calendar')
     ) => {
       const backend = getExchangeBackend();
       const mailbox = options.mailbox;
+      const graphCalendarId = options.calendar?.trim();
+
+      if (graphCalendarId && backend === 'ews') {
+        const msg =
+          'Option --calendar is only supported with Microsoft Graph. Set M365_EXCHANGE_BACKEND=graph or auto, or omit --calendar.';
+        if (options.json) {
+          console.log(JSON.stringify({ error: msg }, null, 2));
+        } else {
+          console.error(`Error: ${msg}`);
+        }
+        process.exit(1);
+      }
 
       function graphAttachmentKind(a: GraphEventAttachment): 'file' | 'reference' | 'other' {
         const t = a['@odata.type'] || '';
@@ -853,16 +870,32 @@ export const calendarCommand = new Command('calendar')
           identity: options.identity
         });
         if (ga.success && ga.token) {
-          const graphResult = await listCalendarView(ga.token, start, end, { user: mailbox });
+          const graphResult = await listCalendarView(ga.token, start, end, {
+            user: mailbox,
+            calendarId: graphCalendarId || undefined
+          });
           if (graphResult.ok && graphResult.data) {
             const graphEvents = graphResult.data.filter((e) => !e.isCancelled);
 
             if (options.json) {
-              console.log(JSON.stringify({ backend: 'graph', label, events: graphEvents }, null, 2));
+              console.log(
+                JSON.stringify(
+                  {
+                    backend: 'graph',
+                    label,
+                    ...(graphCalendarId ? { calendarId: graphCalendarId } : {}),
+                    events: graphEvents
+                  },
+                  null,
+                  2
+                )
+              );
               return;
             }
 
-            console.log(`\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''} (Graph)`);
+            console.log(
+              `\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''}${graphCalendarId ? ` — calendar ${graphCalendarId}` : ''} (Graph)`
+            );
             console.log('─'.repeat(40));
 
             if (graphEvents.length === 0) {
@@ -907,6 +940,15 @@ export const calendarCommand = new Command('calendar')
             }
             process.exit(1);
           }
+          if (graphCalendarId) {
+            const msg = `${graphResult.error?.message || 'Failed to fetch calendar (Graph)'}. Option --calendar requires Microsoft Graph; cannot fall back to EWS.`;
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg }, null, 2));
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(1);
+          }
           warnAutoGraphToEwsFallback('calendar', {
             json: options.json,
             graphError: graphResult.error?.message,
@@ -918,6 +960,14 @@ export const calendarCommand = new Command('calendar')
             console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
           } else {
             console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
+          }
+          process.exit(1);
+        } else if (graphCalendarId) {
+          const msg = `Graph authentication failed (${ga.error || 'unknown'}). Option --calendar requires Microsoft Graph.`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(`Error: ${msg}`);
           }
           process.exit(1);
         } else if (backend === 'auto') {

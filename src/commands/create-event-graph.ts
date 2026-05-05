@@ -238,13 +238,20 @@ export async function createEventViaGraph(opts: {
   recurrence?: Recurrence;
   fileAttachments?: Array<{ name: string; contentType: string; contentBytes: string }>;
   referenceAttachments?: Array<{ name: string; sourceUrl: string }>;
+  /** Graph calendar id; omit for default calendar */
+  calendarId?: string;
 }): Promise<
   | { ok: true; event: GraphCalendarEvent }
   | { ok: false; error: string }
   | { ok: true; event: GraphCalendarEvent; partialSuccess: true; attachmentError: string }
 > {
   const payload = buildGraphCreateEventRequest(opts);
-  const result = await createCalendarEvent(opts.token, payload, opts.mailbox?.trim() || undefined);
+  const result = await createCalendarEvent(
+    opts.token,
+    payload,
+    opts.mailbox?.trim() || undefined,
+    opts.calendarId?.trim() || undefined
+  );
   if (!result.ok || !result.data) {
     return { ok: false, error: result.error?.message || 'Failed to create event' };
   }

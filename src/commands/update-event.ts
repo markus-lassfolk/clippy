@@ -9,6 +9,11 @@ import {
   graphFilterOrganizerEvents,
   graphGetMailboxOrMeEmail
 } from '../lib/calendar-graph-helpers.js';
+import {
+  buildInvalidGraphEventIdPayload,
+  CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT,
+  GRAPH_EVENT_ID_HINT
+} from '../lib/calendar-id-hints.js';
 import { parseDay, parseTimeToDate, toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
 import {
   addCalendarEventAttachments,
@@ -35,10 +40,6 @@ import { resolveRoomDisplayNameToPlace } from '../lib/graph-places-helpers.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 import { buildGraphUpdatePatch } from './update-event-graph.js';
-
-/** Shown when Graph cannot resolve an event id (often mixed EWS vs Microsoft Graph ids). */
-const GRAPH_EVENT_ID_HINT =
-  'With M365_EXCHANGE_BACKEND=graph, use event ids from Graph-backed listing (`calendar`, `respond list`). EWS-format ids will not load.';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -368,20 +369,29 @@ export const updateEventCommand = new Command('update-event')
         if (!targetGraph && options.id) {
           targetGraph = (events as GraphCalendarEvent[]).find((e) => graphEventMatchesOccurrenceFilter(e, options.id!));
         }
+        let graphListResolveErr: string | undefined;
         if (!targetGraph && graphToken && options.id) {
           const fetched = await getEvent(graphToken, options.id, options.mailbox);
           if (fetched.ok && fetched.data) {
             targetGraph = fetched.data;
+          } else {
+            graphListResolveErr = fetched.error?.message;
           }
         }
         if (!targetGraph) {
+          const payload = buildInvalidGraphEventIdPayload({
+            id: options.id ?? '',
+            graphGetErrorMessage: graphListResolveErr
+          });
           if (options.json) {
-            console.log(
-              JSON.stringify({ error: `Invalid event id: ${options.id}`, hint: GRAPH_EVENT_ID_HINT }, null, 2)
-            );
+            console.log(JSON.stringify(payload, null, 2));
           } else {
-            console.error(`Invalid event id: ${options.id}`);
+            console.error(payload.error);
+            if (payload.graphError) {
+              console.error(`Graph: ${payload.graphError}`);
+            }
             console.error(GRAPH_EVENT_ID_HINT);
+            console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
           }
           process.exit(1);
         }
@@ -965,33 +975,38 @@ export const updateEventCommand = new Command('update-event')
               }
             } else {
               if (backend === 'graph') {
+                const payload = buildInvalidGraphEventIdPayload({
+                  id: options.id ?? '',
+                  graphGetErrorMessage: graphGetErr
+                });
                 if (options.json) {
-                  console.log(
-                    JSON.stringify(
-                      {
-                        error: graphGetErr || 'Invalid event id',
-                        id: options.id,
-                        hint: GRAPH_EVENT_ID_HINT
-                      },
-                      null,
-                      2
-                    )
-                  );
+                  console.log(JSON.stringify(payload, null, 2));
                 } else {
-                  const detail = graphGetErr ? `: ${graphGetErr}` : '';
-                  console.error(`Invalid event id: ${options.id}${detail}`);
+                  console.error(payload.error);
+                  if (payload.graphError) {
+                    console.error(`Graph: ${payload.graphError}`);
+                  }
                   console.error(GRAPH_EVENT_ID_HINT);
+                  console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
                 }
                 process.exit(1);
               }
               if (useGraph && backend === 'auto') {
+                const payload = buildInvalidGraphEventIdPayload({
+                  id: options.id ?? '',
+                  graphGetErrorMessage:
+                    graphGetErr ||
+                    'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.'
+                });
                 if (options.json) {
                   console.log(
                     JSON.stringify(
                       {
+                        ...payload,
                         error:
                           graphGetErr ||
-                          'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.'
+                          'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.',
+                        cannotFallbackToEws: true
                       },
                       null,
                       2
@@ -1001,6 +1016,7 @@ export const updateEventCommand = new Command('update-event')
                   console.error(
                     `Error: ${graphGetErr || 'Failed to load event'}. Cannot fall back to EWS when using Graph calendar data; set M365_EXCHANGE_BACKEND=ews or use an EWS event id.`
                   );
+                  console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
                 }
                 process.exit(1);
               }

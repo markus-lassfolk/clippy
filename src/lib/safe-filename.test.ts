@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { safeAttachmentFileName } from './safe-filename.js';
 
 /**
- * Do not assert on real disk I/O here: `src/test/auth.test.ts` globally mocks
+ * Do not assert on real disk I/O here: `src/test/graph-auth.test.ts` uses `mock.module` for Graph auth.
  * `node:fs/promises`, so readFile/writeFile behavior differs by test order (CI vs local).
  * `writeInternetShortcutUtf8File` is exercised via mail-graph / calendar download tests.
  */

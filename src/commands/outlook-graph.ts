@@ -2,6 +2,13 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
+  applyDeltaPageToState,
+  assertDeltaScopeMatchesState,
+  readDeltaStateFile,
+  resolveDeltaContinuationUrl,
+  writeDeltaStateFile
+} from '../lib/graph-delta-state-file.js';
+import {
   copyMailMessage,
   createContact,
   createMailFolder,
@@ -267,10 +274,11 @@ outlookGraphCommand
 outlookGraphCommand
   .command('messages-delta')
   .description(
-    'One page of messages delta sync (use @odata.nextLink as --next for more pages; @odata.deltaLink for baseline)'
+    'One page of messages delta sync (use @odata.nextLink as --next for more pages; @odata.deltaLink for baseline). Optional --state-file persists next/delta URLs for unattended loops.'
   )
   .option('-f, --folder <folderId>', 'Delta for messages in this mail folder only (omit for all messages)')
-  .option('--next <url>', 'Full @odata.nextLink URL from a previous response')
+  .option('--next <url>', 'Full @odata.nextLink URL from a previous response (overrides --state-file continuation)')
+  .option('--state-file <path>', 'Read/write JSON delta cursor (pending nextLink + stable deltaLink)')
   .option('--json', 'Output raw page JSON (value, nextLink, deltaLink)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -279,6 +287,7 @@ outlookGraphCommand
     async (opts: {
       folder?: string;
       next?: string;
+      stateFile?: string;
       json?: boolean;
       token?: string;
       identity?: string;
@@ -289,20 +298,42 @@ outlookGraphCommand
         console.error(`Auth error: ${auth.error}`);
         process.exit(1);
       }
+      const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
+      if (existingState && existingState.kind !== 'mailMessages') {
+        console.error('Error: state file is not for mail messages-delta (kind must be mailMessages).');
+        process.exit(1);
+      }
+      try {
+        if (existingState) {
+          assertDeltaScopeMatchesState(existingState, { folderId: opts.folder, user: opts.user });
+        }
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+      const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.next, state: existingState });
       const r = await mailMessagesDeltaPage(auth.token!, {
         user: opts.user,
         folderId: opts.folder,
-        nextLink: opts.next
+        nextLink: continueUrl
       });
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
+      }
+      if (opts.stateFile && r.data) {
+        const merged = applyDeltaPageToState(existingState, 'mailMessages', r.data, {
+          folderId: opts.folder,
+          user: opts.user
+        });
+        await writeDeltaStateFile(opts.stateFile, merged);
       }
       if (opts.json) console.log(JSON.stringify(r.data, null, 2));
       else {
         console.log(`Changes: ${r.data.value?.length ?? 0} item(s)`);
         if (r.data['@odata.nextLink']) console.log(`nextLink: ${r.data['@odata.nextLink']}`);
         if (r.data['@odata.deltaLink']) console.log(`deltaLink: ${r.data['@odata.deltaLink']}`);
+        if (opts.stateFile) console.log(`state-file: ${opts.stateFile} (updated)`);
       }
     }
   );

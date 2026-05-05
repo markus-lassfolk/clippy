@@ -1,5 +1,32 @@
-import { callGraphAt, GraphApiError, type GraphResponse, graphError } from './graph-client.js';
+import {
+  callGraphAt,
+  callGraphAtText,
+  GraphApiError,
+  type GraphRequestInit,
+  type GraphResponse,
+  graphError,
+  graphErrorFromApiError
+} from './graph-client.js';
 import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
+import { resolveGraphAuth } from './graph-auth.js';
+
+/** Parse repeatable CLI `--header "Name: value"` lines (first colon separates name from value). */
+export function parseGraphInvokeHeaders(headerLines: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of headerLines) {
+    const idx = line.indexOf(':');
+    if (idx === -1) {
+      throw new Error(`Invalid --header format (expected "Name: value"): ${line}`);
+    }
+    const name = line.slice(0, idx).trim();
+    const value = line.slice(idx + 1).trim();
+    if (!name) {
+      throw new Error(`Invalid --header (empty name): ${line}`);
+    }
+    out[name] = value;
+  }
+  return out;
+}
 
 /** Reject path traversal and non-relative Graph paths (must be under v1.0/beta root). */
 export function assertSafeGraphRelativePath(path: string): string {
@@ -27,6 +54,21 @@ export interface GraphInvokeOptions {
   beta?: boolean;
   expectJson?: boolean;
   extraHeaders?: Record<string, string>;
+  /** Used with cached OAuth: on 401, refresh once via `resolveGraphAuth({ identity, forceRefresh: true })`. */
+  identity?: string;
+  /** When true (e.g. user passed a literal access token), do not attempt refresh on 401. */
+  pinAccessToken?: boolean;
+}
+
+function graphOnUnauthorizedForCli(
+  identity: string | undefined,
+  pinAccessToken: boolean | undefined
+): (() => Promise<string | null>) | undefined {
+  if (pinAccessToken) return undefined;
+  return async () => {
+    const auth = await resolveGraphAuth({ identity, forceRefresh: true });
+    return auth.success && auth.token ? auth.token : null;
+  };
 }
 
 /**
@@ -38,7 +80,7 @@ export async function graphInvoke<T = unknown>(token: string, opts: GraphInvokeO
     const method = (opts.method || 'GET').toUpperCase();
     const base = opts.beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
     const expectJson = opts.expectJson !== false;
-    const init: RequestInit = { method };
+    const init: GraphRequestInit = { method };
     const hasBody = opts.body !== undefined && method !== 'GET' && method !== 'HEAD';
     if (hasBody) {
       init.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
@@ -46,11 +88,44 @@ export async function graphInvoke<T = unknown>(token: string, opts: GraphInvokeO
     if (opts.extraHeaders && Object.keys(opts.extraHeaders).length > 0) {
       init.headers = opts.extraHeaders;
     }
+    const onUnauthorized = graphOnUnauthorizedForCli(opts.identity, opts.pinAccessToken === true);
+    if (onUnauthorized) {
+      init.graphOnUnauthorized = onUnauthorized;
+    }
     const r = await callGraphAt<T>(base, token, path, init, expectJson);
     return r;
   } catch (err) {
     if (err instanceof GraphApiError) {
-      return graphError(err.message, err.code, err.status);
+      return graphErrorFromApiError(err);
+    }
+    return graphError(err instanceof Error ? err.message : 'Graph invoke failed');
+  }
+}
+
+/**
+ * Graph invoke where the success body is plain text or SSE (`text/event-stream`), not JSON.
+ */
+export async function graphInvokeText(token: string, opts: GraphInvokeOptions): Promise<GraphResponse<string>> {
+  try {
+    const path = assertSafeGraphRelativePath(opts.path);
+    const method = (opts.method || 'GET').toUpperCase();
+    const base = opts.beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
+    const init: GraphRequestInit = { method };
+    const hasBody = opts.body !== undefined && method !== 'GET' && method !== 'HEAD';
+    if (hasBody) {
+      init.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
+    }
+    if (opts.extraHeaders && Object.keys(opts.extraHeaders).length > 0) {
+      init.headers = opts.extraHeaders;
+    }
+    const onUnauthorized = graphOnUnauthorizedForCli(opts.identity, opts.pinAccessToken === true);
+    if (onUnauthorized) {
+      init.graphOnUnauthorized = onUnauthorized;
+    }
+    return await callGraphAtText(base, token, path, init);
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphErrorFromApiError(err);
     }
     return graphError(err instanceof Error ? err.message : 'Graph invoke failed');
   }
@@ -64,20 +139,33 @@ export interface GraphBatchRequestBody {
 export async function graphPostBatch<T = unknown>(
   token: string,
   body: GraphBatchRequestBody,
-  beta?: boolean
+  beta?: boolean,
+  auth?: { identity?: string; pinAccessToken?: boolean }
 ): Promise<GraphResponse<T>> {
   try {
     if (!body?.requests || !Array.isArray(body.requests)) {
       return graphError('Body must be a JSON object with a "requests" array', 'InvalidBatch', 400);
     }
+    if (body.requests.length > 20) {
+      return graphError(
+        'JSON batch supports at most 20 sub-requests per POST. Split into multiple $batch calls.',
+        'InvalidBatch',
+        400
+      );
+    }
     const base = beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
-    return await callGraphAt<T>(base, token, '/$batch', {
+    const init: GraphRequestInit = {
       method: 'POST',
       body: JSON.stringify(body)
-    });
+    };
+    const onUnauthorized = graphOnUnauthorizedForCli(auth?.identity, auth?.pinAccessToken === true);
+    if (onUnauthorized) {
+      init.graphOnUnauthorized = onUnauthorized;
+    }
+    return await callGraphAt<T>(base, token, '/$batch', init);
   } catch (err) {
     if (err instanceof GraphApiError) {
-      return graphError(err.message, err.code, err.status);
+      return graphErrorFromApiError(err);
     }
     return graphError(err instanceof Error ? err.message : 'Graph batch failed');
   }

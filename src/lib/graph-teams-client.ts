@@ -1,4 +1,6 @@
-import { callGraph, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
+import { callGraph, callGraphAt, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
+import { GRAPH_BETA_URL } from './graph-constants.js';
+import { graphUserPath } from './graph-user-path.js';
 
 export interface GraphTeam {
   id: string;
@@ -66,9 +68,14 @@ export interface TeamsAppInstallation {
   };
 }
 
-export async function listJoinedTeams(token: string): Promise<GraphResponse<GraphTeam[]>> {
+/**
+ * List joined teams for `/me` or another user (`GET /users/{id}/joinedTeams` when `forUser` is set).
+ * Requires permission to read that user’s team memberships (e.g. Team.ReadBasic.All delegated).
+ */
+export async function listJoinedTeams(token: string, forUser?: string): Promise<GraphResponse<GraphTeam[]>> {
   try {
-    const r = await callGraph<{ value: GraphTeam[] }>(token, '/me/joinedTeams');
+    const path = graphUserPath(forUser, 'joinedTeams');
+    const r = await callGraph<{ value: GraphTeam[] }>(token, path);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to list joined teams', r.error?.code, r.error?.status);
     }
@@ -103,6 +110,34 @@ export async function getTeamPrimaryChannel(token: string, teamId: string): Prom
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get primary channel');
+  }
+}
+
+/** Root drive item for the channel “Files” tab (`GET …/channels/{id}/filesFolder`). Use with `files --drive-id` + folder id. */
+export interface ChannelFilesFolderItem {
+  id?: string;
+  name?: string;
+  webUrl?: string;
+  parentReference?: { driveId?: string; id?: string; path?: string };
+  [key: string]: unknown;
+}
+
+export async function getTeamChannelFilesFolder(
+  token: string,
+  teamId: string,
+  channelId: string
+): Promise<GraphResponse<ChannelFilesFolderItem>> {
+  try {
+    const tid = encodeURIComponent(teamId.trim());
+    const cid = encodeURIComponent(channelId.trim());
+    const r = await callGraph<ChannelFilesFolderItem>(token, `/teams/${tid}/channels/${cid}/filesFolder`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get channel files folder', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get channel files folder');
   }
 }
 
@@ -556,5 +591,783 @@ export async function listChannelTabs(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to list channel tabs');
+  }
+}
+
+/** Unicode emoji or Teams-supported reaction string. Returns 204 No Content. */
+export async function setChannelMessageReaction(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  reactionType: string,
+  replyId?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = replyId?.trim()
+      ? `/teams/${t}/channels/${c}/messages/${m}/replies/${encodeURIComponent(replyId.trim())}/setReaction`
+      : `/teams/${t}/channels/${c}/messages/${m}/setReaction`;
+    const r = await callGraph<void>(
+      token,
+      path,
+      { method: 'POST', body: JSON.stringify({ reactionType: reactionType.trim() }) },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to set reaction', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to set reaction');
+  }
+}
+
+export async function unsetChannelMessageReaction(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  reactionType: string,
+  replyId?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = replyId?.trim()
+      ? `/teams/${t}/channels/${c}/messages/${m}/replies/${encodeURIComponent(replyId.trim())}/unsetReaction`
+      : `/teams/${t}/channels/${c}/messages/${m}/unsetReaction`;
+    const r = await callGraph<void>(
+      token,
+      path,
+      { method: 'POST', body: JSON.stringify({ reactionType: reactionType.trim() }) },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to unset reaction', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to unset reaction');
+  }
+}
+
+export async function setChatMessageReaction(
+  token: string,
+  chatId: string,
+  messageId: string,
+  reactionType: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/chats/${c}/messages/${m}/setReaction`,
+      { method: 'POST', body: JSON.stringify({ reactionType: reactionType.trim() }) },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to set reaction', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to set reaction');
+  }
+}
+
+export async function unsetChatMessageReaction(
+  token: string,
+  chatId: string,
+  messageId: string,
+  reactionType: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/chats/${c}/messages/${m}/unsetReaction`,
+      { method: 'POST', body: JSON.stringify({ reactionType: reactionType.trim() }) },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to unset reaction', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to unset reaction');
+  }
+}
+
+/** `POST /me/teamwork/sendActivityNotification` — requires `TeamsActivity.Send`; returns 204. */
+export async function sendMeTeamworkActivityNotification(
+  token: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  try {
+    const r = await callGraph<void>(token, '/me/teamwork/sendActivityNotification', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to send activity notification', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send activity notification');
+  }
+}
+
+/** `POST /chats/{id}/sendActivityNotification` — requires `TeamsActivity.Send`; returns 204. */
+export async function sendChatActivityNotification(
+  token: string,
+  chatId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const r = await callGraph<void>(token, `/chats/${c}/sendActivityNotification`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to send chat activity notification', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send chat activity notification');
+  }
+}
+
+/** PATCH root channel message (`ChannelMessage.Send`). */
+export async function updateChannelMessage(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  body: Record<string, unknown>,
+  useBeta: boolean
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/teams/${t}/channels/${c}/messages/${m}`;
+    const r = useBeta
+      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        })
+      : await callGraph<GraphChatMessage>(token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update channel message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update channel message');
+  }
+}
+
+/** PATCH channel message reply. */
+export async function updateChannelMessageReply(
+  token: string,
+  teamId: string,
+  channelId: string,
+  parentMessageId: string,
+  replyId: string,
+  body: Record<string, unknown>,
+  useBeta: boolean
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const ch = encodeURIComponent(channelId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/teams/${t}/channels/${ch}/messages/${p}/replies/${r}`;
+    const res = useBeta
+      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        })
+      : await callGraph<GraphChatMessage>(token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        });
+    if (!res.ok || !res.data) {
+      return graphError(res.error?.message || 'Failed to update reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(res.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update reply');
+  }
+}
+
+/** Hard-delete channel message (`DELETE`). Optional `If-Match` from message `@odata.etag`. */
+export async function deleteChannelMessageHard(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const r = await callGraph<void>(
+      token,
+      `/teams/${t}/channels/${c}/messages/${m}`,
+      { method: 'DELETE', headers },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete channel message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete channel message');
+  }
+}
+
+/** Hard-delete a reply (`DELETE …/messages/{parent}/replies/{reply}`). */
+export async function deleteChannelMessageReplyHard(
+  token: string,
+  teamId: string,
+  channelId: string,
+  parentMessageId: string,
+  replyId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const res = await callGraph<void>(
+      token,
+      `/teams/${t}/channels/${c}/messages/${p}/replies/${r}`,
+      { method: 'DELETE', headers },
+      false
+    );
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to delete reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete reply');
+  }
+}
+
+/** POST `…/softDelete` (typically **beta**). */
+export async function softDeleteChannelMessage(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/teams/${t}/channels/${c}/messages/${m}/softDelete`;
+    const r = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to soft-delete channel message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to soft-delete channel message');
+  }
+}
+
+export async function undoSoftDeleteChannelMessage(
+  token: string,
+  teamId: string,
+  channelId: string,
+  messageId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/teams/${t}/channels/${c}/messages/${m}/undoSoftDelete`;
+    const r = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to undo soft-delete', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to undo soft-delete');
+  }
+}
+
+export async function softDeleteChannelMessageReply(
+  token: string,
+  teamId: string,
+  channelId: string,
+  parentMessageId: string,
+  replyId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/teams/${t}/channels/${c}/messages/${p}/replies/${r}/softDelete`;
+    const res = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to soft-delete reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to soft-delete reply');
+  }
+}
+
+export async function undoSoftDeleteChannelMessageReply(
+  token: string,
+  teamId: string,
+  channelId: string,
+  parentMessageId: string,
+  replyId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/teams/${t}/channels/${c}/messages/${p}/replies/${r}/undoSoftDelete`;
+    const res = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to undo soft-delete reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to undo soft-delete reply');
+  }
+}
+
+export async function updateChatMessage(
+  token: string,
+  chatId: string,
+  messageId: string,
+  body: Record<string, unknown>,
+  useBeta: boolean
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/chats/${c}/messages/${m}`;
+    const r = useBeta
+      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        })
+      : await callGraph<GraphChatMessage>(token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update chat message');
+  }
+}
+
+export async function updateChatMessageReply(
+  token: string,
+  chatId: string,
+  parentMessageId: string,
+  replyId: string,
+  body: Record<string, unknown>,
+  useBeta: boolean
+): Promise<GraphResponse<GraphChatMessage>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/chats/${c}/messages/${p}/replies/${r}`;
+    const res = useBeta
+      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        })
+      : await callGraph<GraphChatMessage>(token, path, {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        });
+    if (!res.ok || !res.data) {
+      return graphError(res.error?.message || 'Failed to update chat reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(res.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update chat reply');
+  }
+}
+
+export async function deleteChatMessageHard(
+  token: string,
+  chatId: string,
+  messageId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const r = await callGraph<void>(token, `/chats/${c}/messages/${m}`, { method: 'DELETE', headers }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete chat message');
+  }
+}
+
+export async function deleteChatMessageReplyHard(
+  token: string,
+  chatId: string,
+  parentMessageId: string,
+  replyId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const res = await callGraph<void>(
+      token,
+      `/chats/${c}/messages/${p}/replies/${r}`,
+      { method: 'DELETE', headers },
+      false
+    );
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to delete chat reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete chat reply');
+  }
+}
+
+export async function softDeleteChatMessage(
+  token: string,
+  chatId: string,
+  messageId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/chats/${c}/messages/${m}/softDelete`;
+    const r = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to soft-delete chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to soft-delete chat message');
+  }
+}
+
+export async function undoSoftDeleteChatMessage(
+  token: string,
+  chatId: string,
+  messageId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const m = encodeURIComponent(messageId.trim());
+    const path = `/chats/${c}/messages/${m}/undoSoftDelete`;
+    const r = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to undo soft-delete chat message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to undo soft-delete chat message');
+  }
+}
+
+export async function softDeleteChatMessageReply(
+  token: string,
+  chatId: string,
+  parentMessageId: string,
+  replyId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/chats/${c}/messages/${p}/replies/${r}/softDelete`;
+    const res = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to soft-delete chat reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to soft-delete chat reply');
+  }
+}
+
+export async function undoSoftDeleteChatMessageReply(
+  token: string,
+  chatId: string,
+  parentMessageId: string,
+  replyId: string,
+  useBeta: boolean
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const p = encodeURIComponent(parentMessageId.trim());
+    const r = encodeURIComponent(replyId.trim());
+    const path = `/chats/${c}/messages/${p}/replies/${r}/undoSoftDelete`;
+    const res = useBeta
+      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      : await callGraph<void>(token, path, { method: 'POST' }, false);
+    if (!res.ok) {
+      return graphError(res.error?.message || 'Failed to undo soft-delete chat reply', res.error?.code, res.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to undo soft-delete chat reply');
+  }
+}
+
+/** `POST /chats` — create 1:1 or group chat (`Chat.ReadWrite`). */
+export async function createChat(
+  token: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphChatDetail>> {
+  try {
+    const r = await callGraph<GraphChatDetail>(token, '/chats', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create chat', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create chat');
+  }
+}
+
+/** `POST /chats/{id}/members` — add member to existing chat. */
+export async function addChatMember(
+  token: string,
+  chatId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphTeamMember>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const r = await callGraph<GraphTeamMember>(token, `/chats/${c}/members`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to add chat member', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to add chat member');
+  }
+}
+
+/** `POST /teams/{id}/members` — e.g. `conversationMember` payload (`TeamMember.ReadWriteNonGuestRole.All` / `Group.ReadWrite.All`). */
+export async function addTeamMember(
+  token: string,
+  teamId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphTeamMember>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const r = await callGraph<GraphTeamMember>(token, `/teams/${t}/members`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to add team member', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to add team member');
+  }
+}
+
+/** `POST /teams/{id}/channels/{channelId}/members` */
+export async function addChannelMember(
+  token: string,
+  teamId: string,
+  channelId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<GraphTeamMember>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const r = await callGraph<GraphTeamMember>(token, `/teams/${t}/channels/${c}/members`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to add channel member', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to add channel member');
+  }
+}
+
+/** `GET …/tabs/{tabId}` */
+export async function getChannelTab(
+  token: string,
+  teamId: string,
+  channelId: string,
+  tabId: string
+): Promise<GraphResponse<TeamsChannelTab>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const id = encodeURIComponent(tabId.trim());
+    const r = await callGraph<TeamsChannelTab>(token, `/teams/${t}/channels/${c}/tabs/${id}?$expand=teamsApp`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get tab', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get tab');
+  }
+}
+
+export async function createChannelTab(
+  token: string,
+  teamId: string,
+  channelId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<TeamsChannelTab>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const r = await callGraph<TeamsChannelTab>(token, `/teams/${t}/channels/${c}/tabs`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create tab', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create tab');
+  }
+}
+
+export async function updateChannelTab(
+  token: string,
+  teamId: string,
+  channelId: string,
+  tabId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<TeamsChannelTab>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const id = encodeURIComponent(tabId.trim());
+    const r = await callGraph<TeamsChannelTab>(token, `/teams/${t}/channels/${c}/tabs/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to update tab', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update tab');
+  }
+}
+
+export async function deleteChannelTab(
+  token: string,
+  teamId: string,
+  channelId: string,
+  tabId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const c = encodeURIComponent(channelId.trim());
+    const id = encodeURIComponent(tabId.trim());
+    const r = await callGraph<void>(token, `/teams/${t}/channels/${c}/tabs/${id}`, { method: 'DELETE' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete tab', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete tab');
   }
 }

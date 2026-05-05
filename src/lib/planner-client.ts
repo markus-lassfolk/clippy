@@ -443,6 +443,64 @@ export async function deletePlannerPlan(token: string, planId: string, etag: str
   }
 }
 
+/** Beta: `POST /planner/plans/{id}/archive` — requires `If-Match` and `justification` in body. */
+export async function archivePlannerPlan(
+  token: string,
+  planId: string,
+  etag: string,
+  justification: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraphAt<void>(
+      GRAPH_BETA_URL,
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/archive`,
+      {
+        method: 'POST',
+        headers: { 'If-Match': etag },
+        body: JSON.stringify({ justification: justification.trim() })
+      },
+      false
+    );
+    if (!result.ok) {
+      return graphError(result.error?.message || 'Failed to archive plan', result.error?.code, result.error?.status);
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to archive plan');
+  }
+}
+
+/** Beta: `POST /planner/plans/{id}/unarchive`. */
+export async function unarchivePlannerPlan(
+  token: string,
+  planId: string,
+  etag: string,
+  justification: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraphAt<void>(
+      GRAPH_BETA_URL,
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/unarchive`,
+      {
+        method: 'POST',
+        headers: { 'If-Match': etag },
+        body: JSON.stringify({ justification: justification.trim() })
+      },
+      false
+    );
+    if (!result.ok) {
+      return graphError(result.error?.message || 'Failed to unarchive plan', result.error?.code, result.error?.status);
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to unarchive plan');
+  }
+}
+
 export async function getPlannerBucket(token: string, bucketId: string): Promise<GraphResponse<PlannerBucket>> {
   try {
     const result = await callGraph<PlannerBucket>(token, `/planner/buckets/${encodeURIComponent(bucketId)}`);

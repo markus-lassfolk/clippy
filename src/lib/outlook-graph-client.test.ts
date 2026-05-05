@@ -86,13 +86,15 @@ describe('listMailboxMessages', () => {
     }
   });
 
-  it('adds ConsistencyLevel when using search', async () => {
+  it('adds ConsistencyLevel and quoted $search when using search', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     let consistency: string | undefined;
+    let requestUrl = '';
     const originalFetch = globalThis.fetch;
 
     try {
-      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        requestUrl = typeof input === 'string' ? input : input.toString();
         const h = init?.headers;
         if (h instanceof Headers) {
           consistency = h.get('ConsistencyLevel') ?? undefined;
@@ -110,6 +112,7 @@ describe('listMailboxMessages', () => {
 
       expect(r.ok).toBe(true);
       expect(consistency).toBe('eventual');
+      expect(decodeURIComponent(requestUrl)).toContain('$search="budget"');
     } finally {
       globalThis.fetch = originalFetch;
     }

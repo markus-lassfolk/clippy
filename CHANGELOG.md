@@ -6,6 +6,30 @@ For install and tagging, see [docs/RELEASE.md](docs/RELEASE.md).
 
 ---
 
+## [Unreleased]
+
+### Packaging / OpenClaw
+
+- The npm tarball now includes **`skills/m365-agent-cli/SKILL.md`**, **`skills/README.md`**, **`packaging/tools-md-snippet.md`**, and **`scripts/install-tools-md.mjs`** / **`scripts/install-openclaw-skill.mjs`** so installs from the registry carry the OpenClaw skill and installers.
+- **`npm run install-tools-md -- <path-to-TOOLS.md>`** (or **`node …/scripts/install-tools-md.mjs`**) updates a single HTML-comment–delimited block in **`TOOLS.md`** idempotently (no repeated appends).
+- **Opt-in postinstall:** when **`OPENCLAW_SKILLS_DIR`** is set, **`npm install`** copies the bundled skill into that directory; otherwise postinstall is a no-op.
+
+### Tests / TypeScript
+
+- **`graph-auth`:** Bun’s `mock.module` can leave **`loadM365TokenCache`** as the test mock even after `import()`; restore now re-registers the **original function references**, **`resolveGraphAuth` is imported per test**, and the former **`src/test/auth.test.ts`** disk cases live in the same file after the graph suite. Removed duplicate **`src/test/zzz-graph-auth.test.ts`**.
+- **`fetch` mocks:** use `as unknown as typeof fetch` where the DOM `fetch` type includes `preconnect` (e.g. **`src/lib/graph-client.test.ts`**, **`src/lib/graph-advanced-client.test.ts`**).
+
+### Agent ergonomics
+
+- **`docs/AGENT_WORKFLOWS.md`** — auth, read-only, drive roots, delta **`--state-file`**, Teams + files, Word/PPT round-trip, search → drive item.
+- **`docs/CLI_SCRIPTING_APPENDIX.md`** + generated **`docs/CLI_SCRIPTING_INVENTORY.md`** — `npm run inventory:scripting` refreshes the command × **`--json`** × **`checkReadOnly`** table.
+- **`graph-search --json-hits`** — flattened Microsoft Search hits for scripts.
+- **`teams … channel-message-send` / `channel-message-reply` / `chat-message-send` / `chat-message-reply`** — **`--at userId:displayName`** (repeatable) with **`--text`** containing matching **`@displayName`** tokens (HTML + `mentions` body).
+- **`counter --json`** — machine-readable success payload.
+- **`packages/m365-agent-cli-mcp`** — optional MCP stdio server (`m365_whoami`, `m365_graph_search`, read-only **`m365_graph_invoke_get`**).
+
+---
+
 ## [2026.4.50] — 2026-04-04
 
 ### Highlights

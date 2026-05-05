@@ -1,4 +1,9 @@
 import {
+  createMailMessageFileAttachmentUploadSession,
+  GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES,
+  uploadBufferViaGraphUploadUrl
+} from './graph-attachment-upload-session.js';
+import {
   callGraph,
   callGraphAbsolute,
   fetchAllPages,
@@ -395,6 +400,7 @@ export interface GraphCreateDraftMessageInput {
   bodyContentType: 'Text' | 'HTML';
   toAddresses?: string[];
   ccAddresses?: string[];
+  bccAddresses?: string[];
   categories?: string[];
 }
 
@@ -419,6 +425,9 @@ export async function createDraftMessage(
   }
   if (input.ccAddresses?.length) {
     message.ccRecipients = input.ccAddresses.map((address) => ({ emailAddress: { address } }));
+  }
+  if (input.bccAddresses?.length) {
+    message.bccRecipients = input.bccAddresses.map((address) => ({ emailAddress: { address } }));
   }
   if (input.categories?.length) {
     message.categories = input.categories;
@@ -469,6 +478,36 @@ export async function addFileAttachmentToMailMessage(
   attachment: { name: string; contentType: string; contentBytes: string },
   user?: string
 ): Promise<GraphResponse<GraphMailMessageAttachment>> {
+  let raw: Buffer;
+  try {
+    raw = Buffer.from(attachment.contentBytes, 'base64');
+  } catch {
+    return graphError('Invalid base64 in attachment contentBytes', undefined, 400);
+  }
+  if (raw.byteLength > GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES) {
+    const sess = await createMailMessageFileAttachmentUploadSession(
+      token,
+      messageId,
+      attachment.name,
+      raw.byteLength,
+      attachment.contentType,
+      user
+    );
+    if (!sess.ok || !sess.data?.uploadUrl) {
+      return graphError(sess.error?.message || 'Upload session failed', sess.error?.code, sess.error?.status);
+    }
+    const up = await uploadBufferViaGraphUploadUrl(sess.data.uploadUrl, raw);
+    if (!up.ok) {
+      return graphError(up.error?.message || 'Upload failed', up.error?.code, up.error?.status);
+    }
+    const id = typeof up.data?.id === 'string' ? up.data.id : 'uploaded';
+    return graphResult({
+      id,
+      name: attachment.name,
+      contentType: attachment.contentType
+    });
+  }
+
   const body = {
     '@odata.type': '#microsoft.graph.fileAttachment',
     name: attachment.name,

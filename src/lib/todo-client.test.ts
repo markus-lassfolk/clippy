@@ -51,11 +51,13 @@ describe('getTasks query options', () => {
   it('requests single page with $top, $skip, $expand, $count', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const urls: string[] = [];
+    const inits: RequestInit[] = [];
     const originalFetch = globalThis.fetch;
 
     try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         urls.push(typeof input === 'string' ? input : input.toString());
+        inits.push(init ?? {});
         return new Response(JSON.stringify({ value: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
@@ -78,6 +80,8 @@ describe('getTasks query options', () => {
       expect(u).toContain('$skip=5');
       expect(u).toContain('$expand=attachments');
       expect(u).toContain('$count=true');
+      const h = new Headers(inits[0]?.headers);
+      expect(h.get('ConsistencyLevel')).toBe('eventual');
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -291,6 +295,31 @@ describe('getTaskAttachmentContent', () => {
       expect(r.ok).toBe(true);
       expect(r.data?.length).toBe(3);
       expect(r.data?.[0]).toBe(7);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('getTodoListsDeltaPage', () => {
+  it('GETs /me/todo/lists/delta() when no continuation URL', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        return new Response(JSON.stringify({ value: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+
+      const { getTodoListsDeltaPage } = await import('./todo-client.js');
+      const r = await getTodoListsDeltaPage(token, undefined, undefined);
+      expect(r.ok).toBe(true);
+      expect(urls[0]).toContain('/me/todo/lists/delta()');
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -298,6 +298,103 @@ describe('cancelCalendarEvent', () => {
   });
 });
 
+describe('createCalendarEvent', () => {
+  it('POSTs to /me/events by default', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        expect(init?.method).toBe('POST');
+        return new Response(JSON.stringify({ id: 'ev-1', subject: 'Hi' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+
+      const { createCalendarEvent } = await import('./graph-calendar-client.js');
+      const r = await createCalendarEvent(
+        token,
+        {
+          subject: 'Hi',
+          start: { dateTime: '2026-05-05T10:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-05-05T11:00:00', timeZone: 'UTC' }
+        },
+        undefined,
+        undefined
+      );
+
+      expect(r.ok).toBe(true);
+      expect(urls[0]).toContain('/me/events');
+      expect(urls[0]).not.toContain('/calendars/');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('POSTs to /me/calendars/{id}/events when calendarId set', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        return new Response(JSON.stringify({ id: 'ev-2', subject: 'On secondary' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+
+      const { createCalendarEvent } = await import('./graph-calendar-client.js');
+      const r = await createCalendarEvent(
+        token,
+        {
+          subject: 'On secondary',
+          start: { dateTime: '2026-05-05T10:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-05-05T11:00:00', timeZone: 'UTC' }
+        },
+        undefined,
+        'cal-secondary'
+      );
+
+      expect(r.ok).toBe(true);
+      expect(urls[0]).toContain('/me/calendars/cal-secondary/events');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('createCalendarResource', () => {
+  it('POSTs to /me/calendars', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        expect(init?.method).toBe('POST');
+        return new Response(JSON.stringify({ id: 'new-cal', name: 'Team' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+
+      const { createCalendarResource } = await import('./graph-calendar-client.js');
+      const r = await createCalendarResource(token, { name: 'Team', color: 'preset7' });
+      expect(r.ok).toBe(true);
+      expect(r.data?.id).toBe('new-cal');
+      expect(urls[0]).toContain('/me/calendars');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe('addFileAttachmentToCalendarEvent', () => {
   it('POSTs to /events/{id}/attachments', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;

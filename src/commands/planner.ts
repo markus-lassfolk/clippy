@@ -2,10 +2,17 @@ import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
+  applyDeltaPageToState,
+  readDeltaStateFile,
+  resolveDeltaContinuationUrl,
+  writeDeltaStateFile
+} from '../lib/graph-delta-state-file.js';
+import {
   addPlannerChecklistItem,
   addPlannerFavoritePlan,
   addPlannerReference,
   addPlannerRosterMember,
+  archivePlannerPlan,
   buildPlannerAssignments,
   type CreatePlannerTaskExtras,
   createPlannerBucket,
@@ -51,6 +58,7 @@ import {
   type UpdatePlannerTaskDetailsParams,
   updateAssignedToTaskBoardFormat,
   updateBucketTaskBoardFormat,
+  unarchivePlannerPlan,
   updatePlannerBucket,
   updatePlannerChecklistItem,
   updatePlannerPlan,
@@ -849,6 +857,76 @@ plannerCommand
   );
 
 plannerCommand
+  .command('plan-archive')
+  .description(
+    'Archive a plan (Graph **beta**: POST /planner/plans/{id}/archive). Requires plan ETag (`If-Match`) and a justification string.'
+  )
+  .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .requiredOption('-j, --justification <text>', 'Reason (required by Graph)')
+  .option('--json', 'Output JSON confirmation')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(async (opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const pr = await getPlannerPlan(auth.token!, opts.plan);
+    if (!pr.ok || !pr.data) {
+      console.error(`Error: ${pr.error?.message}`);
+      process.exit(1);
+    }
+    const etag = pr.data['@odata.etag'];
+    if (!etag) {
+      console.error('Plan missing ETag');
+      process.exit(1);
+    }
+    const r = await archivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) console.log(JSON.stringify({ archived: opts.plan }, null, 2));
+    else console.log(`Archived plan: ${opts.plan}`);
+  });
+
+plannerCommand
+  .command('plan-unarchive')
+  .description('Unarchive a plan (Graph **beta**: POST /planner/plans/{id}/unarchive). Requires ETag and justification.')
+  .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .requiredOption('-j, --justification <text>', 'Reason (required by Graph)')
+  .option('--json', 'Output JSON confirmation')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(async (opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const pr = await getPlannerPlan(auth.token!, opts.plan);
+    if (!pr.ok || !pr.data) {
+      console.error(`Error: ${pr.error?.message}`);
+      process.exit(1);
+    }
+    const etag = pr.data['@odata.etag'];
+    if (!etag) {
+      console.error('Plan missing ETag');
+      process.exit(1);
+    }
+    const r = await unarchivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) console.log(JSON.stringify({ unarchived: opts.plan }, null, 2));
+    else console.log(`Unarchived plan: ${opts.plan}`);
+  });
+
+plannerCommand
   .command('create-bucket')
   .description('Create a bucket in a plan')
   .requiredOption('-p, --plan <planId>', 'Plan ID')
@@ -1195,27 +1273,39 @@ plannerCommand
 
 plannerCommand
   .command('delta')
-  .description('Fetch one page of Planner delta (beta /me/planner/all/delta or --url)')
-  .option('--url <url>', 'Next or delta link from a previous response')
+  .description('Fetch one page of Planner delta (beta /me/planner/all/delta or --url / --state-file cursor)')
+  .option('--url <url>', 'Next or delta link (overrides --state-file continuation)')
+  .option('--state-file <path>', 'Read/write JSON delta cursor (kind: plannerAll)')
   .option('--json', 'Output JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { url?: string; json?: boolean; token?: string; identity?: string }) => {
+  .action(async (opts: { url?: string; stateFile?: string; json?: boolean; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await getPlannerDeltaPage(auth.token!, opts.url);
+    const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
+    if (existingState && existingState.kind !== 'plannerAll') {
+      console.error('Error: state file is not for planner delta (kind must be plannerAll).');
+      process.exit(1);
+    }
+    const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.url, state: existingState });
+    const r = await getPlannerDeltaPage(auth.token!, continueUrl);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
+    }
+    if (opts.stateFile && r.data) {
+      const merged = applyDeltaPageToState(existingState, 'plannerAll', r.data, {});
+      await writeDeltaStateFile(opts.stateFile, merged);
     }
     if (opts.json) console.log(JSON.stringify(r.data, null, 2));
     else {
       console.log(`Changes: ${(r.data.value ?? []).length} item(s)`);
       if (r.data['@odata.nextLink']) console.log(`nextLink: ${r.data['@odata.nextLink']}`);
       if (r.data['@odata.deltaLink']) console.log(`deltaLink: ${r.data['@odata.deltaLink']}`);
+      if (opts.stateFile) console.log(`state-file: ${opts.stateFile} (updated)`);
     }
   });
 

@@ -95,6 +95,13 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     writeScopes: ['Directory.ReadWrite.All']
   },
   {
+    id: 'org.relations',
+    area: 'Manager & direct reports',
+    detail: '`org manager`, `org direct-reports` — self with `User.Read`; other users need `User.Read.All` (typical)',
+    readScopes: ['User.Read', 'User.Read.All', 'Directory.Read.All', 'Directory.ReadWrite.All'],
+    writeScopes: []
+  },
+  {
     id: 'calendar.own',
     area: 'Calendar (your mailbox)',
     detail: '`calendar`, `create-event`, `respond`, …',
@@ -148,22 +155,44 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     id: 'people',
     area: 'People / relevance',
     detail: '`find` people, `/me/people`',
-    readScopes: ['People.Read'],
+    readScopes: ['People.Read', 'People.Read.All'],
     writeScopes: []
   },
   {
     id: 'files.onedrive',
     area: 'OneDrive / files',
-    detail: '`files`, `excel` workbooks',
+    detail:
+      '`files` (delta, shared-with-me, thumbnails, copy/move, drive flags, invite, permissions), `excel` workbooks (tables/pivots/ranges/sessions/application) + beta comments, `word`/`powerpoint` preview/meta/download/thumbnails',
     readScopes: ['Files.Read', 'Files.Read.All', 'Files.ReadWrite', 'Files.ReadWrite.All'],
     writeScopes: ['Files.ReadWrite', 'Files.ReadWrite.All']
   },
   {
     id: 'sharepoint.sites',
     area: 'SharePoint sites',
-    detail: '`sharepoint`, `site-pages`',
+    detail: '`sharepoint` lists/items/create/update/get/delete, `items-delta`, `resolve-site`; `site-pages`',
     readScopes: ['Sites.Read.All', 'Sites.ReadWrite.All', 'Sites.Manage.All'],
     writeScopes: ['Sites.ReadWrite.All', 'Sites.Manage.All']
+  },
+  {
+    id: 'sharepoint.followed',
+    area: 'SharePoint followed sites',
+    detail: '`sharepoint followed-sites`, `follow`, `unfollow`',
+    readScopes: ['Sites.Read.All', 'Sites.ReadWrite.All'],
+    writeScopes: ['Sites.ReadWrite.All']
+  },
+  {
+    id: 'insights',
+    area: 'Discovery / Insights',
+    detail: '`insights trending|used|shared`, `files recent`, `files activities`, `files preview`',
+    readScopes: ['Sites.Read.All', 'Sites.ReadWrite.All', 'Files.Read', 'Files.Read.All', 'Files.ReadWrite', 'Files.ReadWrite.All'],
+    writeScopes: []
+  },
+  {
+    id: 'approvals',
+    area: 'Approvals',
+    detail: '`approvals list|get|steps|respond` — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite`',
+    readScopes: ['ApprovalSolution.Read.All', 'ApprovalSolution.ReadWrite', 'ApprovalSolution.ReadWrite.All', 'ApprovalSolutionResponse.ReadWrite'],
+    writeScopes: ['ApprovalSolution.ReadWrite', 'ApprovalSolutionResponse.ReadWrite']
   },
   {
     id: 'todo',
@@ -176,6 +205,13 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     id: 'planner.groups',
     area: 'Planner & group-backed Teams',
     detail: '`planner`, `teams` members/channels/apps/tabs — broad group scope',
+    readScopes: ['Group.Read.All', 'Group.ReadWrite.All'],
+    writeScopes: ['Group.ReadWrite.All']
+  },
+  {
+    id: 'groups.outlook',
+    area: 'Outlook Groups (Microsoft 365 groups)',
+    detail: '`groups list`, `conversations`, `thread`, `posts`, `post-reply`',
     readScopes: ['Group.Read.All', 'Group.ReadWrite.All'],
     writeScopes: ['Group.ReadWrite.All']
   },
@@ -201,6 +237,20 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     writeScopes: ['OnlineMeetings.ReadWrite']
   },
   {
+    id: 'meetings.recordings',
+    area: 'Meeting recordings',
+    detail: '`meeting recordings`, `recording-download`, `recordings-all` (+ `--delta`) — tenant Stream/Teams policy applies',
+    readScopes: ['OnlineMeetingRecording.Read.All'],
+    writeScopes: []
+  },
+  {
+    id: 'meetings.transcripts',
+    area: 'Meeting transcripts',
+    detail: '`meeting transcripts`, `transcript-download`, `transcripts-all` (+ `--delta`)',
+    readScopes: ['OnlineMeetingTranscript.Read.All'],
+    writeScopes: []
+  },
+  {
     id: 'onenote',
     area: 'OneNote',
     detail: '`onenote`',
@@ -210,7 +260,7 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'teams.core',
     area: 'Teams (teams & channels)',
-    detail: '`teams` list teams, channels, metadata',
+    detail: '`teams` list (incl. `list --user`), channels, `channel-files-folder`, metadata',
     readScopes: ['Team.ReadBasic.All', 'Channel.ReadBasic.All'],
     writeScopes: []
   },
@@ -224,7 +274,8 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'teams.channel.send',
     area: 'Teams channel send',
-    detail: '`teams channel-message-send`, replies',
+    detail:
+      '`teams channel-message-send`, replies, `channel-message-patch`, `channel-message-delete` (soft/hard), `tab-create` / `tab-update` / `tab-delete`',
     readScopes: [],
     writeScopes: ['ChannelMessage.Send'],
     readColumnDash: true
@@ -232,9 +283,30 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'teams.chats',
     area: 'Teams chats (1:1 / group)',
-    detail: '`teams chats`, chat messages',
+    detail: '`teams chats`, messages, `chat-create`, `chat-member-add`, `chat-message-patch`, `chat-message-delete`',
     readScopes: ['Chat.Read', 'Chat.ReadWrite'],
     writeScopes: ['Chat.ReadWrite']
+  },
+  {
+    id: 'teams.activity',
+    area: 'Teams activity feed',
+    detail: '`teams activity-notify` — POST /me/teamwork/sendActivityNotification or /chats/{id}/sendActivityNotification',
+    readScopes: [],
+    writeScopes: ['TeamsActivity.Send'],
+    readColumnDash: true
+  },
+  {
+    id: 'teams.members.write',
+    area: 'Teams membership (provision)',
+    detail: '`teams team-member-add`, `teams channel-member-add`',
+    readScopes: [],
+    writeScopes: [
+      'TeamMember.ReadWrite.All',
+      'TeamMember.ReadWriteNonGuestRole.All',
+      'ChannelMember.ReadWrite.All',
+      'Group.ReadWrite.All'
+    ],
+    readColumnDash: true
   },
   {
     id: 'presence.read',
@@ -271,6 +343,83 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
       'Sites.ReadWrite.All'
     ],
     writeScopes: []
+  },
+  {
+    id: 'copilot.retrieval',
+    area: 'Copilot Retrieval API',
+    detail: '`copilot retrieval` — SharePoint/OneDrive need Files+Sites read; connectors need `ExternalItem.Read.All`',
+    readScopes: [
+      'Files.Read.All',
+      'Files.ReadWrite.All',
+      'Sites.Read.All',
+      'Sites.ReadWrite.All',
+      'ExternalItem.Read.All'
+    ],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.search',
+    area: 'Copilot Search API (preview)',
+    detail: '`copilot search` — OneDrive; `Files.Read.All`+`Sites.Read.All` (or ReadWrite equivalents)',
+    readScopes: ['Files.Read.All', 'Files.ReadWrite.All', 'Sites.Read.All', 'Sites.ReadWrite.All'],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.chat',
+    area: 'Copilot Chat API (preview)',
+    detail:
+      '`copilot conversation-create`, `chat`, `chat-stream` — Microsoft requires the full permission bundle documented for Chat API',
+    readScopes: [
+      'Sites.Read.All',
+      'Sites.ReadWrite.All',
+      'Mail.Read',
+      'Mail.ReadWrite',
+      'Mail.ReadWrite.Shared',
+      'People.Read.All',
+      'OnlineMeetingTranscript.Read.All',
+      'Chat.Read',
+      'Chat.ReadWrite',
+      'ChannelMessage.Read.All',
+      'ExternalItem.Read.All'
+    ],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.interactions',
+    area: 'Copilot interaction export',
+    detail: '`copilot interactions-export` — application `AiEnterpriseInteraction.Read.All` (delegated not supported)',
+    readScopes: ['AiEnterpriseInteraction.Read.All'],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.interactions.notify',
+    area: 'Copilot interaction change notifications',
+    detail:
+      '`subscribe copilot-interactions` — delegated `AiEnterpriseInteraction.Read` (per-user); tenant subscription is app-only',
+    readScopes: ['AiEnterpriseInteraction.Read', 'AiEnterpriseInteraction.Read.All'],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.meetingInsights',
+    area: 'Copilot meeting insights',
+    detail: '`copilot meeting-insights-list`, `meeting-insight-get`',
+    readScopes: ['OnlineMeetingAiInsight.Read.All'],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.reports',
+    area: 'Copilot usage reports',
+    detail: '`copilot reports …` — `Reports.Read.All` + admin reader role per Microsoft',
+    readScopes: ['Reports.Read.All'],
+    writeScopes: []
+  },
+  {
+    id: 'copilot.packages',
+    area: 'Copilot package catalog (admin)',
+    detail:
+      '`copilot packages list|get` — `CopilotPackages.Read.All`; `update|block|unblock|reassign` — `CopilotPackages.ReadWrite.All`',
+    readScopes: ['CopilotPackages.Read.All', 'CopilotPackages.ReadWrite.All'],
+    writeScopes: ['CopilotPackages.ReadWrite.All']
   },
   {
     id: 'graph.invoke',

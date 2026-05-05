@@ -198,6 +198,12 @@ The application requires specific Delegated permissions for both Microsoft Graph
    - `Presence.Read.All`, `Presence.ReadWrite` (`presence` — **bulk**, **set-me** / **set-user**)
    - `Bookings.ReadWrite.All` (`bookings` — read + create/update/delete appointments, customers, services, staff, custom questions, **business-update**)
    - `Chat.ReadWrite` (`teams` chats, **chat-message-send**, members, pinned, …)
+   - `ExternalItem.Read.All` (**`copilot retrieval`** with Copilot connectors / `externalItem` data source — see [Retrieval API permissions](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/api/ai-services/retrieval/copilotroot-retrieval#permissions))
+   - `Reports.Read.All` (**`copilot reports`** — Copilot usage reports; admin reader role required per Microsoft)
+   - `CopilotPackages.Read.All`, `CopilotPackages.ReadWrite.All` (**`copilot packages`** — catalog read vs block/unblock/reassign/update)
+   - `OnlineMeetingAiInsight.Read.All`, `OnlineMeetingTranscript.Read.All` (**`copilot meeting-insights-*`**, **Copilot Chat**)
+   - `People.Read.All` (Copilot Chat API delegated bundle; broader than `People.Read`)
+   - `AiEnterpriseInteraction.Read` (delegated **Copilot interaction** change notifications — **`subscribe copilot-interactions`**)
    - `offline_access`
 4. Click **Add permissions**.
 

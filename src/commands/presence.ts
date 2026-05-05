@@ -12,7 +12,7 @@ import {
 import { checkReadOnly } from '../lib/utils.js';
 
 export const presenceCommand = new Command('presence').description(
-  'User presence (Graph): read/bulk (`Presence.Read.All`), set/clear session (`Presence.ReadWrite`); see GRAPH_SCOPES.md'
+  'User presence (Graph): read/bulk (`Presence.Read.All`), set/clear session (`Presence.ReadWrite`). For **change notifications** on presence, create a **`subscribe`** subscription on the appropriate `/communications/presence` resource and receive callbacks via **`serve`** — see Microsoft Graph subscription docs and GRAPH_SCOPES.md'
 );
 
 presenceCommand

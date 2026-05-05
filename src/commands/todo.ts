@@ -2,6 +2,13 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import {
+  applyDeltaPageToState,
+  assertDeltaScopeMatchesState,
+  readDeltaStateFile,
+  resolveDeltaContinuationUrl,
+  writeDeltaStateFile
+} from '../lib/graph-delta-state-file.js';
 import { getMessage } from '../lib/outlook-graph-client.js';
 import {
   addChecklistItem,
@@ -28,6 +35,7 @@ import {
   getTodoList,
   getTodoListOpenExtension,
   getTodoLists,
+  getTodoListsDeltaPage,
   getTodoTasksDeltaPage,
   listAttachments,
   listTaskChecklistItems,
@@ -199,7 +207,10 @@ todoCommand
   .option('--top <n>', 'Page size; when set, returns a single page (no auto follow nextLink)')
   .option('--skip <n>', 'OData $skip (single-page request; combine with --top for paging)')
   .option('--expand <expr>', 'OData $expand (e.g. attachments)')
-  .option('--count', 'Add $count=true (single-page response)')
+  .option(
+    '--count',
+    'Add $count=true (single-page response). Uses ConsistencyLevel: eventual on the Graph request when supported.'
+  )
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -1374,34 +1385,131 @@ todoCommand
 
 todoCommand
   .command('delta')
-  .description('One page of todo task delta (use -l for first page, or --url for nextLink/deltaLink)')
-  .option('-l, --list <name|id>', 'List name or ID (first page only)')
-  .option('--url <fullUrl>', 'Full nextLink or deltaLink URL from a previous response')
+  .description('One page of todo task delta (use -l for first page, or --url / --state-file for nextLink/deltaLink)')
+  .option('-l, --list <name|id>', 'List name or ID (first page only; optional if --state-file has listId)')
+  .option('--url <fullUrl>', 'Full nextLink or deltaLink URL (overrides --state-file continuation)')
+  .option('--state-file <path>', 'Read/write JSON delta cursor')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user (first page only; --url encodes scope)')
-  .action(async (opts: { list?: string; url?: string; token?: string; identity?: string; user?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (opts: {
+      list?: string;
+      url?: string;
+      stateFile?: string;
+      token?: string;
+      identity?: string;
+      user?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
+      if (existingState && existingState.kind !== 'todoTasks') {
+        console.error('Error: state file is not for todo delta (kind must be todoTasks).');
+        process.exit(1);
+      }
+
+      const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.url, state: existingState });
+
+      let listId = existingState?.listId;
+
+      if (!continueUrl) {
+        if (!opts.list?.trim()) {
+          console.error('Error: specify --list for the first delta page, or --url / --state-file with a saved cursor');
+          process.exit(1);
+        }
+        const resolved = await resolveListId(auth.token!, opts.list, opts.user);
+        listId = resolved.listId;
+      }
+
+      if (existingState && listId) {
+        try {
+          assertDeltaScopeMatchesState(existingState, { listId, user: opts.user });
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : err);
+          process.exit(1);
+        }
+      }
+
+      const effectiveListId = listId ?? '';
+
+      const r = continueUrl
+        ? await getTodoTasksDeltaPage(auth.token!, effectiveListId, continueUrl, opts.user)
+        : await getTodoTasksDeltaPage(auth.token!, effectiveListId, undefined, opts.user);
+
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+
+      if (opts.stateFile && r.data && listId) {
+        const merged = applyDeltaPageToState(existingState, 'todoTasks', r.data, {
+          listId,
+          user: opts.user
+        });
+        await writeDeltaStateFile(opts.stateFile, merged);
+      }
+
+      console.log(JSON.stringify(r.data, null, 2));
     }
-    const r = opts.url
-      ? await getTodoTasksDeltaPage(auth.token!, '', opts.url)
-      : await (async () => {
-          if (!opts.list) {
-            console.error('Error: specify --list for the first delta page, or --url to follow nextLink/deltaLink');
-            process.exit(1);
-          }
-          const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
-          return getTodoTasksDeltaPage(auth.token!, listId, undefined, opts.user);
-        })();
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
+  );
+
+todoCommand
+  .command('lists-delta')
+  .description(
+    'One page of todo **task list** delta (`GET …/todo/lists/delta()`). Use `--url` / `--state-file` like `todo delta`; no `--list` on first page.'
+  )
+  .option('--url <fullUrl>', 'Full nextLink or deltaLink (overrides --state-file continuation)')
+  .option('--state-file <path>', 'Read/write JSON delta cursor (kind: todoLists)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user (first page only; --url encodes scope)')
+  .action(
+    async (opts: { url?: string; stateFile?: string; token?: string; identity?: string; user?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
+      if (existingState && existingState.kind !== 'todoLists') {
+        console.error('Error: state file is not for todo lists delta (kind must be todoLists).');
+        process.exit(1);
+      }
+
+      const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.url, state: existingState });
+
+      if (existingState && continueUrl) {
+        try {
+          assertDeltaScopeMatchesState(existingState, { user: opts.user });
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : err);
+          process.exit(1);
+        }
+      }
+
+      const r = continueUrl
+        ? await getTodoListsDeltaPage(auth.token!, continueUrl, opts.user)
+        : await getTodoListsDeltaPage(auth.token!, undefined, opts.user);
+
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+
+      if (opts.stateFile && r.data) {
+        const merged = applyDeltaPageToState(existingState, 'todoLists', r.data, {
+          user: opts.user
+        });
+        await writeDeltaStateFile(opts.stateFile, merged);
+      }
+
+      console.log(JSON.stringify(r.data, null, 2));
     }
-    console.log(JSON.stringify(r.data, null, 2));
-  });
+  );
 
 todoCommand
   .command('list-checklist-items')
