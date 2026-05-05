@@ -44,10 +44,11 @@ export function buildTeamsHtmlBodyWithMentions(
 
   for (let i = 0; i < mentions.length; i++) {
     const m = mentions[i];
-    const needle = `@${m.displayName}`;
+    const plainNeedle = `@${m.displayName}`;
+    const needle = `@${escapeHtml(m.displayName)}`;
     if (!escaped.includes(needle)) {
       throw new Error(
-        `Text must contain "${needle}" for mention ${i} (user ${m.userId}). Use @-prefix matching the display name after each --at.`
+        `Text must contain "${plainNeedle}" for mention ${i} (user ${m.userId}). Use @-prefix matching the display name after each --at.`
       );
     }
     escaped = escaped.replace(needle, `<at id="${i}">${escapeHtml(m.displayName)}</at>`);

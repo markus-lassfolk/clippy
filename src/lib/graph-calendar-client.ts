@@ -59,6 +59,7 @@ export interface GraphCalendarEvent {
     status?: { response?: string };
   }>;
   location?: { displayName?: string; locationEmailAddress?: string; locationType?: string };
+  /** Additional locations (room mailboxes, etc.); aligns with Graph [event](https://learn.microsoft.com/en-us/graph/api/resources/event) `locations`. */
   locations?: Array<{ displayName?: string; locationEmailAddress?: string; locationType?: string }>;
   showAs?: string;
   webLink?: string;
@@ -110,6 +111,7 @@ export interface GraphCreateEventRequest {
   sensitivity?: 'normal' | 'personal' | 'private' | 'confidential';
   categories?: string[];
   recurrence?: GraphPatternedRecurrence;
+  /** Outlook free/busy line: free, tentative, busy, oof, workingElsewhere, unknown */
   showAs?: 'free' | 'tentative' | 'busy' | 'oof' | 'workingElsewhere' | 'unknown';
 }
 

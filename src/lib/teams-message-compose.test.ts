@@ -20,6 +20,16 @@ describe('teams-message-compose', () => {
     expect((r.mentions[0] as { mentioned: { user: { id: string } } }).mentioned.user.id).toBe('u1');
   });
 
+  test('buildTeamsHtmlBodyWithMentions finds @displayName when display name has HTML-special chars', () => {
+    const r = buildTeamsHtmlBodyWithMentions('Hi @A & B <team> "x"', [
+      { userId: 'u1', displayName: 'A & B <team> "x"' }
+    ]);
+    expect(r.body.content).toContain('<at id="0">A &amp; B &lt;team&gt; &quot;x&quot;</at>');
+    expect((r.mentions[0] as { mentioned: { user: { displayName: string } } }).mentioned.user.displayName).toBe(
+      'A & B <team> "x"'
+    );
+  });
+
   test('throws when @displayName missing from text', () => {
     expect(() => buildTeamsHtmlBodyWithMentions('Hello there', [{ userId: 'u1', displayName: 'Jane' }])).toThrow(
       /@Jane/
