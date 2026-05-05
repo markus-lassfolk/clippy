@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import { graphApiRoot } from '../lib/graph-client.js';
 import {
   getSitePage,
   listSitePages,
@@ -9,22 +10,29 @@ import {
 } from '../lib/site-pages-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
-export const sitePagesCommand = new Command('pages').description('Manage SharePoint Site Pages');
+function pagesApi(o: { beta?: boolean }): string {
+  return graphApiRoot(!!o.beta);
+}
+
+export const sitePagesCommand = new Command('pages').description(
+  'Manage SharePoint Site Pages (use --beta for Graph beta host where needed)'
+);
 
 sitePagesCommand
   .command('list <siteId>')
   .description('List site pages for a given site ID')
   .option('--json', 'Output as JSON')
+  .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (siteId: string, options: { json?: boolean; token?: string; identity?: string }) => {
+  .action(async (siteId: string, options: { json?: boolean; beta?: boolean; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
     if (!auth.success) {
       console.error(`Error: ${auth.error}`);
       process.exit(1);
     }
 
-    const result = await listSitePages(auth.token!, siteId);
+    const result = await listSitePages(auth.token!, siteId, pagesApi(options));
     if (!result.ok || !result.data) {
       console.error(`Error: ${result.error?.message || 'Request failed'}`);
       process.exit(1);
@@ -52,34 +60,41 @@ sitePagesCommand
   .command('get <siteId> <pageId>')
   .description('Get a site page by ID')
   .option('--json', 'Output as JSON')
+  .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (siteId: string, pageId: string, options: { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      siteId: string,
+      pageId: string,
+      options: { json?: boolean; beta?: boolean; token?: string; identity?: string }
+    ) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await getSitePage(auth.token!, siteId, pageId);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Request failed'}`);
-      process.exit(1);
-    }
+      const result = await getSitePage(auth.token!, siteId, pageId, pagesApi(options));
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Request failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log(`ID: ${result.data.id}`);
-    console.log(`Name: ${result.data.name || '-'}`);
-    console.log(`Title: ${result.data.title || '-'}`);
-    console.log(`Web URL: ${result.data.webUrl || '-'}`);
-    if (result.data.publishingState) {
-      console.log(`State: ${result.data.publishingState.level} (v${result.data.publishingState.versionId})`);
+      console.log(`ID: ${result.data.id}`);
+      console.log(`Name: ${result.data.name || '-'}`);
+      console.log(`Title: ${result.data.title || '-'}`);
+      console.log(`Web URL: ${result.data.webUrl || '-'}`);
+      if (result.data.publishingState) {
+        console.log(`State: ${result.data.publishingState.level} (v${result.data.publishingState.versionId})`);
+      }
     }
-  });
+  );
 
 sitePagesCommand
   .command('update <siteId> <pageId>')
@@ -87,13 +102,14 @@ sitePagesCommand
   .option('--title <title>', 'New title')
   .option('--name <name>', 'New name')
   .option('--json', 'Output as JSON')
+  .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
     async (
       siteId: string,
       pageId: string,
-      options: { title?: string; name?: string; json?: boolean; token?: string; identity?: string },
+      options: { title?: string; name?: string; json?: boolean; beta?: boolean; token?: string; identity?: string },
       cmd: any
     ) => {
       checkReadOnly(cmd);
@@ -112,7 +128,7 @@ sitePagesCommand
         process.exit(1);
       }
 
-      const result = await updateSitePage(auth.token!, siteId, pageId, payload);
+      const result = await updateSitePage(auth.token!, siteId, pageId, payload, pagesApi(options));
       if (!result.ok || !result.data) {
         console.error(`Error: ${result.error?.message || 'Request failed'}`);
         process.exit(1);
@@ -131,13 +147,14 @@ sitePagesCommand
   .command('publish <siteId> <pageId>')
   .description('Publish a site page')
   .option('--json', 'Output as JSON')
+  .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
     async (
       siteId: string,
       pageId: string,
-      options: { json?: boolean; token?: string; identity?: string },
+      options: { json?: boolean; beta?: boolean; token?: string; identity?: string },
       cmd: any
     ) => {
       checkReadOnly(cmd);
@@ -147,7 +164,7 @@ sitePagesCommand
         process.exit(1);
       }
 
-      const result = await publishSitePage(auth.token!, siteId, pageId);
+      const result = await publishSitePage(auth.token!, siteId, pageId, pagesApi(options));
       if (!result.ok) {
         console.error(`Error: ${result.error?.message || 'Request failed'}`);
         process.exit(1);

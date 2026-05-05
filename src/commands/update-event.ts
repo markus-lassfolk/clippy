@@ -9,6 +9,11 @@ import {
   graphFilterOrganizerEvents,
   graphGetMailboxOrMeEmail
 } from '../lib/calendar-graph-helpers.js';
+import {
+  buildInvalidGraphEventIdPayload,
+  CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT,
+  GRAPH_EVENT_ID_HINT
+} from '../lib/calendar-id-hints.js';
 import { parseDay, parseTimeToDate, toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
 import {
   addCalendarEventAttachments,
@@ -27,6 +32,7 @@ import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   addCalendarEventAttachmentsGraph,
   type GraphCalendarEvent,
+  type GraphCreateEventRequest,
   getEvent,
   listCalendarView,
   updateCalendarEvent
@@ -35,10 +41,6 @@ import { resolveRoomDisplayNameToPlace } from '../lib/graph-places-helpers.js';
 import { lookupMimeType } from '../lib/mime-type.js';
 import { checkReadOnly } from '../lib/utils.js';
 import { buildGraphUpdatePatch } from './update-event-graph.js';
-
-/** Shown when Graph cannot resolve an event id (often mixed EWS vs Microsoft Graph ids). */
-const GRAPH_EVENT_ID_HINT =
-  'With M365_EXCHANGE_BACKEND=graph, use event ids from Graph-backed listing (`calendar`, `respond list`). EWS-format ids will not load.';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -82,6 +84,8 @@ export const updateEventCommand = new Command('update-event')
   )
   .option('--room <room>', 'Set/change meeting room (name or email)')
   .option('--location <text>', 'Set location text')
+  .option('--show-as <status>', 'Microsoft Graph: free, tentative, busy, oof, workingElsewhere, unknown')
+  .option('--locations-json <path>', 'Microsoft Graph: JSON array of event Location objects')
   .option('--timezone <timezone>', 'Timezone for the event (e.g., "Pacific Standard Time")')
   .option('--occurrence <index>', 'Update only the Nth occurrence of a recurring event')
   .option('--instance <date>', 'Update only the occurrence on a specific date (YYYY-MM-DD)')
@@ -119,6 +123,8 @@ export const updateEventCommand = new Command('update-event')
         removeAttendee: string[];
         room?: string;
         location?: string;
+        showAs?: string;
+        locationsJson?: string;
         occurrence?: string;
         instance?: string;
         teams?: boolean;
@@ -368,20 +374,29 @@ export const updateEventCommand = new Command('update-event')
         if (!targetGraph && options.id) {
           targetGraph = (events as GraphCalendarEvent[]).find((e) => graphEventMatchesOccurrenceFilter(e, options.id!));
         }
+        let graphListResolveErr: string | undefined;
         if (!targetGraph && graphToken && options.id) {
           const fetched = await getEvent(graphToken, options.id, options.mailbox);
           if (fetched.ok && fetched.data) {
             targetGraph = fetched.data;
+          } else {
+            graphListResolveErr = fetched.error?.message;
           }
         }
         if (!targetGraph) {
+          const payload = buildInvalidGraphEventIdPayload({
+            id: options.id ?? '',
+            graphGetErrorMessage: graphListResolveErr
+          });
           if (options.json) {
-            console.log(
-              JSON.stringify({ error: `Invalid event id: ${options.id}`, hint: GRAPH_EVENT_ID_HINT }, null, 2)
-            );
+            console.log(JSON.stringify(payload, null, 2));
           } else {
-            console.error(`Invalid event id: ${options.id}`);
+            console.error(payload.error);
+            if (payload.graphError) {
+              console.error(`Graph: ${payload.graphError}`);
+            }
             console.error(GRAPH_EVENT_ID_HINT);
+            console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
           }
           process.exit(1);
         }
@@ -803,6 +818,49 @@ export const updateEventCommand = new Command('update-event')
                 }
               }
 
+              let graphLocationsPatch: GraphCreateEventRequest['locations'] | undefined;
+              if (options.locationsJson?.trim()) {
+                try {
+                  const raw = JSON.parse(await readFile(options.locationsJson.trim(), 'utf8')) as unknown;
+                  if (!Array.isArray(raw)) {
+                    throw new Error('--locations-json must be a JSON array of location objects');
+                  }
+                  graphLocationsPatch = raw as GraphCreateEventRequest['locations'];
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Invalid --locations-json file';
+                  if (options.json) {
+                    console.log(JSON.stringify({ error: message }, null, 2));
+                  } else {
+                    console.error(`Error: ${message}`);
+                  }
+                  process.exit(1);
+                }
+              }
+
+              const showAsAllowed = new Set(['free', 'tentative', 'busy', 'oof', 'workingelsewhere', 'unknown']);
+              let showAsPatch: GraphCreateEventRequest['showAs'] | undefined;
+              if (options.showAs?.trim()) {
+                const key = options.showAs.trim().toLowerCase();
+                if (!showAsAllowed.has(key)) {
+                  const msg = `Invalid --show-as "${options.showAs}". Use: free, tentative, busy, oof, workingElsewhere, unknown.`;
+                  if (options.json) {
+                    console.log(JSON.stringify({ error: msg }, null, 2));
+                  } else {
+                    console.error(`Error: ${msg}`);
+                  }
+                  process.exit(1);
+                }
+                const map: Record<string, GraphCreateEventRequest['showAs']> = {
+                  free: 'free',
+                  tentative: 'tentative',
+                  busy: 'busy',
+                  oof: 'oof',
+                  workingelsewhere: 'workingElsewhere',
+                  unknown: 'unknown'
+                };
+                showAsPatch = map[key];
+              }
+
               const patch = buildGraphUpdatePatch({
                 display: gd,
                 title: options.title,
@@ -810,7 +868,9 @@ export const updateEventCommand = new Command('update-event')
                 newStart: newStart && newEnd ? newStart : undefined,
                 newEnd: newStart && newEnd ? newEnd : undefined,
                 timezone: options.timezone,
-                location: locationText,
+                location: graphLocationsPatch?.length ? undefined : locationText,
+                graphLocations: graphLocationsPatch,
+                showAs: showAsPatch,
                 allDay: options.allDay,
                 sensitivity: sensitivityEws,
                 categories: options.category && options.category.length > 0 ? options.category : undefined,
@@ -965,33 +1025,38 @@ export const updateEventCommand = new Command('update-event')
               }
             } else {
               if (backend === 'graph') {
+                const payload = buildInvalidGraphEventIdPayload({
+                  id: options.id ?? '',
+                  graphGetErrorMessage: graphGetErr
+                });
                 if (options.json) {
-                  console.log(
-                    JSON.stringify(
-                      {
-                        error: graphGetErr || 'Invalid event id',
-                        id: options.id,
-                        hint: GRAPH_EVENT_ID_HINT
-                      },
-                      null,
-                      2
-                    )
-                  );
+                  console.log(JSON.stringify(payload, null, 2));
                 } else {
-                  const detail = graphGetErr ? `: ${graphGetErr}` : '';
-                  console.error(`Invalid event id: ${options.id}${detail}`);
+                  console.error(payload.error);
+                  if (payload.graphError) {
+                    console.error(`Graph: ${payload.graphError}`);
+                  }
                   console.error(GRAPH_EVENT_ID_HINT);
+                  console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
                 }
                 process.exit(1);
               }
               if (useGraph && backend === 'auto') {
+                const payload = buildInvalidGraphEventIdPayload({
+                  id: options.id ?? '',
+                  graphGetErrorMessage:
+                    graphGetErr ||
+                    'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.'
+                });
                 if (options.json) {
                   console.log(
                     JSON.stringify(
                       {
+                        ...payload,
                         error:
                           graphGetErr ||
-                          'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.'
+                          'Failed to load event from Graph; cannot fall back to EWS when using Graph calendar data.',
+                        cannotFallbackToEws: true
                       },
                       null,
                       2
@@ -1001,6 +1066,7 @@ export const updateEventCommand = new Command('update-event')
                   console.error(
                     `Error: ${graphGetErr || 'Failed to load event'}. Cannot fall back to EWS when using Graph calendar data; set M365_EXCHANGE_BACKEND=ews or use an EWS event id.`
                   );
+                  console.error(CALENDAR_EVENT_ID_BACKEND_MISMATCH_HINT);
                 }
                 process.exit(1);
               }

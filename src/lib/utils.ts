@@ -92,6 +92,11 @@ export function applyEnvFileOverrides(envPath: string): void {
 }
 
 export function loadGlobalEnv() {
+  // Avoid polluting unit/integration tests with the developer's CLI `.env` (e.g. GRAPH_BASE_URL),
+  // which breaks mocks and default Graph URL assumptions across the test worker.
+  if (process.env.NODE_ENV === 'test' || process.env.M365_AGENT_SKIP_GLOBAL_ENV === '1') {
+    return;
+  }
   const globalEnvPath = getGlobalEnvFilePath();
   parseEnvFile(globalEnvPath, false);
 }

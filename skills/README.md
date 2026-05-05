@@ -16,9 +16,22 @@ Please visit the **[openclaw-personal-assistant](https://github.com/markus-lassf
 
 ## Installation
 
-To grant these superpowers to your local OpenClaw agent, simply copy the directories into your agent's workspace:
+### From a git clone
+
+Copy the skill directories into your agent workspace:
 
 ```bash
 mkdir -p ~/.openclaw/workspace/skills
 cp -r skills/* ~/.openclaw/workspace/skills/
 ```
+
+### From npm
+
+After **`npm install m365-agent-cli`** (local or global), the **`m365-agent-cli`** skill is on disk under the package root:
+
+- **`node_modules/m365-agent-cli/skills/m365-agent-cli/SKILL.md`** (local install)
+- **`$(npm root -g)/m365-agent-cli/skills/m365-agent-cli/SKILL.md`** (global install)
+
+Copy that `m365-agent-cli` folder into your OpenClaw **`skills`** directory, or set **`OPENCLAW_SKILLS_DIR`** to your skills root (for example `~/.openclaw/workspace/skills`) and run **`npm install m365-agent-cli`** again: **postinstall** copies the bundled skill when that variable is set, and does nothing otherwise.
+
+**`TOOLS.md`:** use **`npm run install-tools-md -- path/to/TOOLS.md`** from this repository, or **`node node_modules/m365-agent-cli/scripts/install-tools-md.mjs path/to/TOOLS.md`** after an npm install, to inject or refresh the single marked **`m365-agent-cli`** section without appending duplicates on each upgrade.

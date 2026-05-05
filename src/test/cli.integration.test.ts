@@ -6,7 +6,7 @@
  * argument parsing (Commander.js), auth resolution, API calls, and output formatting.
  */
 import '../lib/global-env.js';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { clearMockFetch, createMockFetch, setMockFetch } from '../test/mocks/index.js';
 
 // Track console output to assert on it
@@ -94,15 +94,8 @@ async function runCommand(action: () => Promise<void>): Promise<{ stdout: string
 
 // ─── Setup / Teardown ───────────────────────────────────────────────────────
 
-beforeAll(() => {
-  // Global fetch mock set once - individual commands may override with clearMockFetch + new mock
-  globalThis.fetch = createMockFetch();
-});
-
-afterAll(() => {
-  // @ts-expect-error
-  globalThis.fetch = undefined;
-});
+/** Bun may run multiple test files in the same isolate; never leak our mock `fetch` past this file's tests. */
+const originalGlobalFetch = globalThis.fetch;
 
 let savedExchangeBackend: string | undefined;
 let savedEwsUsername: string | undefined;
@@ -118,6 +111,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  clearMockFetch();
+  globalThis.fetch = originalGlobalFetch;
   if (savedExchangeBackend === undefined) {
     delete process.env.M365_EXCHANGE_BACKEND;
   } else {
@@ -147,12 +142,14 @@ import { forwardEventCommand } from '../commands/forward-event.js';
 import { loginCommand } from '../commands/login.js';
 import { mailCommand } from '../commands/mail.js';
 import { oofCommand } from '../commands/oof.js';
+import { peopleCommand } from '../commands/people.js';
 import { respondCommand } from '../commands/respond.js';
 import { roomsCommand } from '../commands/rooms.js';
 import { rulesCommand } from '../commands/rules.js';
 import { scheduleCommand } from '../commands/schedule.js';
 import { sendCommand } from '../commands/send.js';
 import { serveCommand } from '../commands/serve.js';
+import { sharepointCommand } from '../commands/sharepoint.js';
 import { subscribeCommand } from '../commands/subscribe.js';
 import { subscriptionsCommand } from '../commands/subscriptions.js';
 import { suggestCommand } from '../commands/suggest.js';
@@ -197,6 +194,7 @@ function makeProgram(): Command {
   p.addCommand(createEventCommand);
   p.addCommand(deleteEventCommand);
   p.addCommand(findCommand);
+  p.addCommand(peopleCommand);
   p.addCommand(updateEventCommand);
   p.addCommand(loginCommand);
   p.addCommand(mailCommand);
@@ -204,6 +202,7 @@ function makeProgram(): Command {
   p.addCommand(sendCommand);
   p.addCommand(draftsCommand);
   p.addCommand(filesCommand);
+  p.addCommand(sharepointCommand);
   p.addCommand(forwardEventCommand);
   p.addCommand(counterCommand);
   p.addCommand(scheduleCommand);
@@ -417,8 +416,33 @@ describe('calendar', () => {
     const result = await runM365AgentCli('calendar --help');
     expect(result.exitCode).toBe(0);
     const help = result.stdout + result.stderr;
-    expect(help).toContain('--now');
-    expect(help).toContain('--next-business-days');
+    expect(help).toContain('list');
+    expect(help).toContain('create');
+    const listHelp = await runM365AgentCli('calendar list --help');
+    expect(listHelp.exitCode).toBe(0);
+    const listOut = listHelp.stdout + listHelp.stderr;
+    expect(listOut).toContain('--now');
+    expect(listOut).toContain('--next-business-days');
+  });
+
+  test('list subcommand matches default calendar behavior', async () => {
+    const a = await runM365AgentCli('calendar today --token test-token-12345');
+    const b = await runM365AgentCli('calendar list today --token test-token-12345');
+    expect(a.exitCode).toBe(0);
+    expect(b.exitCode).toBe(0);
+    expect(a.stdout).toBe(b.stdout);
+  });
+
+  test('create subcommand matches create-event', async () => {
+    const a = await runM365AgentCli(
+      'create-event "Alias Test" 10:00 11:00 --day today --json --token test-token-12345'
+    );
+    const b = await runM365AgentCli(
+      'calendar create "Alias Test" 10:00 11:00 --day today --json --token test-token-12345'
+    );
+    expect(a.exitCode).toBe(0);
+    expect(b.exitCode).toBe(0);
+    expect(JSON.parse(a.stdout.trim())).toEqual(JSON.parse(b.stdout.trim()));
   });
 
   test('invalid date shows an error (not a crash)', async () => {
@@ -958,6 +982,19 @@ describe('files', () => {
     });
   });
 
+  describe('files checkout', () => {
+    test('checks out a file', async () => {
+      const result = await runM365AgentCli('files checkout drive-item-1 --token test-token-12345');
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('Checked out');
+    });
+    test('outputs JSON', async () => {
+      const result = await runM365AgentCli('files checkout drive-item-1 --json --token test-token-12345');
+      expect(result.exitCode).toBe(0);
+      expect(isValidJson(result.stdout.trim())).toBe(true);
+    });
+  });
+
   describe('files checkin', () => {
     test('checks in file', async () => {
       const result = await runM365AgentCli('files checkin drive-item-1 --token test-token-12345');
@@ -1002,6 +1039,48 @@ describe('files', () => {
     //     expect(result.stdout).toContain('search');
     //     expect(result.stdout).toContain('share');
     //     expect(result.stdout).toContain('delete');
+  });
+});
+
+// ─── 13b. sharepoint ─────────────────────────────────────────────────────────
+
+describe('sharepoint command', () => {
+  test('get-site prints site', async () => {
+    const result = await runM365AgentCli('sharepoint get-site mock-site-id --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Mock Team Site');
+  });
+
+  test('drives lists libraries', async () => {
+    const result = await runM365AgentCli('sharepoint drives --site-id mock-site-id --token test-token-12345');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('mock-site-drive-1');
+    expect(result.stdout).toContain('Documents');
+  });
+
+  test('get-list prints list', async () => {
+    const result = await runM365AgentCli(
+      'sharepoint get-list --site-id mock-site-id --list-id mock-list-1 --token test-token-12345'
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('MockList');
+  });
+
+  test('columns lists columns', async () => {
+    const result = await runM365AgentCli(
+      'sharepoint columns --site-id mock-site-id --list-id mock-list-1 --token test-token-12345'
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Title');
+  });
+
+  test('items with --top returns rows', async () => {
+    const result = await runM365AgentCli(
+      'sharepoint items --site-id mock-site-id --list-id mock-list-1 --top 5 --token test-token-12345'
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('mock-list-item-1');
+    expect(result.stdout).toContain('Mock row');
   });
 });
 
@@ -1086,8 +1165,20 @@ describe('read-only mode', () => {
     expect(result.stderr).toContain('read-only mode');
   });
 
+  test('--read-only blocks mutating command (calendar create)', async () => {
+    const result = await runM365AgentCli('--read-only calendar create "Test" 10:00 11:00 --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
   test('--read-only blocks mutating command (files upload)', async () => {
     const result = await runM365AgentCli('--read-only files upload /tmp/test.txt --token test-token-12345');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read-only mode');
+  });
+
+  test('--read-only blocks mutating command (files checkout)', async () => {
+    const result = await runM365AgentCli('--read-only files checkout drive-item-1 --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });

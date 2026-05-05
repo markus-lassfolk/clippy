@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveAuth } from '../lib/auth.js';
 import { parseDay } from '../lib/dates.js';
@@ -5,6 +6,8 @@ import { getOwaUserInfo, getScheduleViaOutlook } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { callGraph } from '../lib/graph-client.js';
+import type { FindMeetingTimesRequest } from '../lib/graph-schedule.js';
+import { buildFindMeetingTimesLocationConstraint } from '../lib/meeting-location-constraint.js';
 import { runFindTimeGraph, runFindTimeGraphSchedule } from './findtime-graph.js';
 
 function formatTime(dateStr: string): string {
@@ -84,6 +87,16 @@ export const findtimeCommand = new Command('findtime')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Use a specific authentication identity (default: default)')
   .option('--mailbox <email>', 'EWS anchor mailbox (delegated / shared mailbox context)')
+  .option('--suggest-locations', 'Graph findMeetingTimes: suggest locations')
+  .option('--require-meeting-location', 'Graph findMeetingTimes: require a resolved location')
+  .option(
+    '--meeting-location <spec>',
+    'Graph: location constraint (displayName, room@domain, or Name|room@domain) (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option('--resolve-location-availability', 'Graph: resolveAvailability on location constraint entries')
+  .option('--find-meeting-json <path>', 'Graph: merge JSON into findMeetingTimes request body')
   .action(
     async (
       startDay: string,
@@ -97,6 +110,11 @@ export const findtimeCommand = new Command('findtime')
         token?: string;
         identity?: string;
         mailbox?: string;
+        suggestLocations?: boolean;
+        requireMeetingLocation?: boolean;
+        meetingLocation?: string[];
+        resolveLocationAvailability?: boolean;
+        findMeetingJson?: string;
       },
       _cmd: any
     ) => {
@@ -276,6 +294,28 @@ export const findtimeCommand = new Command('findtime')
       const workStart = parseInt(options.start, 10);
       const workEnd = parseInt(options.end, 10);
 
+      const locationConstraint = buildFindMeetingTimesLocationConstraint({
+        suggestLocations: options.suggestLocations,
+        locationRequired: options.requireMeetingLocation,
+        resolveLocationAvailability: options.resolveLocationAvailability,
+        meetingLocation: options.meetingLocation ?? []
+      });
+      let findMeetingMerge: Partial<FindMeetingTimesRequest> | undefined;
+      if (options.findMeetingJson?.trim()) {
+        try {
+          const raw = JSON.parse(await readFile(options.findMeetingJson.trim(), 'utf8')) as Record<string, unknown>;
+          findMeetingMerge = raw as Partial<FindMeetingTimesRequest>;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Invalid --find-meeting-json file';
+          if (options.json) {
+            console.log(JSON.stringify({ error: message }, null, 2));
+          } else {
+            console.error(`Error: ${message}`);
+          }
+          process.exit(1);
+        }
+      }
+
       async function runEwsFindTime(): Promise<void> {
         if (!ewsToken) {
           const ar = await resolveAuth({
@@ -394,7 +434,9 @@ export const findtimeCommand = new Command('findtime')
           workEndHour: workEnd,
           label,
           mailbox: options.mailbox,
-          json: options.json
+          json: options.json,
+          locationConstraint,
+          findMeetingMerge
         });
         if (g.ok) {
           return;
@@ -443,7 +485,9 @@ export const findtimeCommand = new Command('findtime')
             workEndHour: workEnd,
             label,
             mailbox: options.mailbox,
-            json: options.json
+            json: options.json,
+            locationConstraint,
+            findMeetingMerge
           });
           if (g.ok) {
             return;

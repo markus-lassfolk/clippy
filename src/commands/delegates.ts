@@ -589,7 +589,7 @@ calendarShareRoot.addCommand(calendarShareAdd).addCommand(calendarShareUpdate).a
 export const delegatesCommand = new Command('delegates');
 delegatesCommand
   .description(
-    'Delegates: list (Graph calendar permissions or EWS); calendar-share add|update|remove (Graph); add|update|remove (EWS — set M365_EXCHANGE_BACKEND=ews or auto)'
+    'Delegates: list (Graph calendar permissions or EWS); calendar-share add|update|remove (Graph calendar sharing); add|update|remove (classic EWS per-folder delegates — not Graph). See docs/GRAPH_EWS_PARITY_MATRIX.md §2a.'
   )
   .addCommand(listCommand)
   .addCommand(calendarShareRoot)

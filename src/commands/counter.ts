@@ -11,6 +11,7 @@ export const counterCommand = new Command('counter')
   .argument('<start>', 'Proposed start time (e.g., 13:00, 1pm)')
   .argument('<end>', 'Proposed end time (e.g., 14:00, 2pm)')
   .option('--day <day>', 'Day for the proposed time (today, tomorrow, YYYY-MM-DD)', 'today')
+  .option('--json', 'Output result as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Mailbox whose calendar contains the event (delegation)')
@@ -63,10 +64,12 @@ export const counterCommand = new Command('counter')
       const endDateTime = end.toISOString();
       const timeZone = 'UTC';
 
-      console.log(`Proposing new time for event...`);
-      console.log(`  Event ID: ${eventId}`);
-      console.log(`  Proposed Start: ${start.toLocaleString()}`);
-      console.log(`  Proposed End:   ${end.toLocaleString()}`);
+      if (!options.json) {
+        console.log(`Proposing new time for event...`);
+        console.log(`  Event ID: ${eventId}`);
+        console.log(`  Proposed Start: ${start.toLocaleString()}`);
+        console.log(`  Proposed End:   ${end.toLocaleString()}`);
+      }
 
       const response = await proposeNewTime({
         token: authResult.token!,
@@ -78,10 +81,32 @@ export const counterCommand = new Command('counter')
       });
 
       if (!response.ok) {
-        console.error(`\nError: ${response.error?.message || 'Failed to propose new time'}`);
+        if (options.json) {
+          console.log(
+            JSON.stringify({ success: false, error: response.error?.message || 'Failed to propose new time' }, null, 2)
+          );
+        } else {
+          console.error(`\nError: ${response.error?.message || 'Failed to propose new time'}`);
+        }
         process.exit(1);
       }
 
-      console.log('\n\u2713 Successfully proposed a new time for the event.');
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            {
+              success: true,
+              eventId,
+              proposedStart: start.toISOString(),
+              proposedEnd: end.toISOString(),
+              timeZone
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        console.log('\n\u2713 Successfully proposed a new time for the event.');
+      }
     }
   );

@@ -52,12 +52,16 @@ The token cache file is the most sensitive file on disk.
 - Cache path uses `homedir()` — never a configurable path that could redirect to arbitrary locations
 - Refresh token failures are silently tolerated — m365-agent-cli fails gracefully with an auth error rather than crashing
 
-### 4. Error Handling
+### 4. Graph HTTP client (`graph-client.ts`)
 
-- Network errors: retry once, then fail gracefully
-- API errors: surface the actual error message from the API (not a generic "failed")
-- Auth errors: clear, actionable messages pointing to re-authentication
-- Rate limits: respect `Retry-After` headers; back off and report
+All Microsoft Graph traffic that uses `callGraphAt` / `callGraphAtText` / `callGraphAbsolute` shares one policy:
+
+- **Timeouts:** default **60s** per attempt unless **`GRAPH_TIMEOUT_MS`** (milliseconds) is set to a positive value. Each retry attempt uses a fresh `AbortController` with that same per-attempt budget.
+- **Throttling (429 / 503 / Graph `tooManyRequests` / `serviceNotAvailable`):** honors **`Retry-After`** when present (capped by **`GRAPH_RETRY_MAX_WAIT_MS`**, default 60s). Without that header, uses exponential backoff with jitter. Up to **`GRAPH_MAX_RETRIES`** attempts (default **4**, max 8). **GET** and **HEAD** are always eligible; for **mutating** methods, a retry is allowed only when **`Retry-After`** is present (so POST without that header is not blindly retried on 429).
+- **Transient network errors** on **GET/HEAD:** same retry budget as throttling (backoff + jitter).
+- **Paging:** `fetchAllPages` optionally waits **`GRAPH_PAGE_DELAY_MS`** (default **0**) between `@odata.nextLink` requests to reduce burst traffic.
+- **401:** optional `graphOnUnauthorized` on the request (wired from higher layers such as `graphInvoke`) may refresh the access token **once** and retry the same request.
+- **Errors:** non-OK responses map to `GraphApiError` / `GraphError` with optional **`request-id`** header and **`innerError`** from JSON when present.
 
 ## Auth Flow
 

@@ -69,6 +69,43 @@ export async function getBookingBusiness(token: string, businessId: string): Pro
   }
 }
 
+export async function createBookingBusiness(
+  token: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<BookingBusiness>> {
+  try {
+    const r = await callGraph<BookingBusiness>(token, '/solutions/bookingBusinesses', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create booking business', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create booking business');
+  }
+}
+
+export async function deleteBookingBusiness(token: string, businessId: string): Promise<GraphResponse<void>> {
+  try {
+    const r = await callGraph<void>(
+      token,
+      `/solutions/bookingBusinesses/${encodeURIComponent(businessId)}`,
+      { method: 'DELETE' },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to delete booking business', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete booking business');
+  }
+}
+
 export async function listBookingAppointments(
   token: string,
   businessId: string
@@ -262,6 +299,25 @@ export async function listBookingCustomQuestions(
   }
 }
 
+export async function getBookingCustomQuestion(
+  token: string,
+  businessId: string,
+  questionId: string
+): Promise<GraphResponse<BookingCustomQuestion>> {
+  try {
+    const b = encodeURIComponent(businessId);
+    const q = encodeURIComponent(questionId);
+    const r = await callGraph<BookingCustomQuestion>(token, `/solutions/bookingBusinesses/${b}/customQuestions/${q}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get custom question', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get custom question');
+  }
+}
+
 export interface BookingCurrency {
   id?: string;
   symbol?: string;
@@ -278,6 +334,19 @@ export async function listBookingCurrencies(token: string): Promise<GraphRespons
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to list booking currencies');
+  }
+}
+
+export async function getBookingCurrency(token: string, currencyId: string): Promise<GraphResponse<BookingCurrency>> {
+  try {
+    const r = await callGraph<BookingCurrency>(token, `/solutions/bookingCurrencies/${encodeURIComponent(currencyId)}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get booking currency', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get booking currency');
   }
 }
 
@@ -642,5 +711,57 @@ export async function getBookingStaffAvailability(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get staff availability');
+  }
+}
+
+/** POST …/publish — expose scheduling page (optional JSON body per Graph). */
+export async function publishBookingBusiness(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown> = {}
+): Promise<GraphResponse<void>> {
+  try {
+    const r = await callGraph<void>(
+      token,
+      `${businessPath(businessId)}/publish`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to publish booking business', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to publish booking business');
+  }
+}
+
+/** POST …/unpublish — hide scheduling page (optional JSON body per Graph). */
+export async function unpublishBookingBusiness(
+  token: string,
+  businessId: string,
+  body: Record<string, unknown> = {}
+): Promise<GraphResponse<void>> {
+  try {
+    const r = await callGraph<void>(
+      token,
+      `${businessPath(businessId)}/unpublish`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to unpublish booking business', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to unpublish booking business');
   }
 }

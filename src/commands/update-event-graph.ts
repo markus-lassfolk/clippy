@@ -3,7 +3,7 @@
  */
 
 import { toLocalUnzonedISOString, toUTCISOString } from '../lib/dates.js';
-import type { GraphCalendarEvent } from '../lib/graph-calendar-client.js';
+import type { GraphCalendarEvent, GraphCreateEventRequest } from '../lib/graph-calendar-client.js';
 
 function mapSensitivity(
   s: 'Normal' | 'Personal' | 'Private' | 'Confidential'
@@ -94,6 +94,8 @@ export function buildGraphUpdatePatch(input: {
   newEnd?: Date;
   timezone?: string;
   location?: string;
+  graphLocations?: GraphCreateEventRequest['locations'];
+  showAs?: GraphCreateEventRequest['showAs'];
   allDay?: boolean;
   sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   categories?: string[];
@@ -114,7 +116,31 @@ export function buildGraphUpdatePatch(input: {
   if (input.description !== undefined) {
     patch.body = { contentType: 'text' as const, content: input.description };
   }
-  if (input.location !== undefined) {
+  if (input.showAs !== undefined) {
+    patch.showAs = input.showAs;
+  }
+  if (input.graphLocations !== undefined && input.graphLocations.length > 0) {
+    const locs = input.graphLocations;
+    patch.locations = locs;
+    const first = locs[0];
+    const label = first?.displayName?.trim() || first?.locationEmailAddress?.trim() || 'Location';
+    patch.location = {
+      displayName: label,
+      ...(first?.locationEmailAddress?.trim() ? { locationEmailAddress: first.locationEmailAddress.trim() } : {}),
+      ...(first?.locationType?.trim() ? { locationType: first.locationType.trim() } : {})
+    };
+  } else if (input.roomResource) {
+    const rr = input.roomResource;
+    const label = rr.name?.trim() || rr.email.trim();
+    patch.locations = [
+      {
+        displayName: label,
+        locationEmailAddress: rr.email.trim(),
+        locationType: 'conferenceRoom'
+      }
+    ];
+    patch.location = { displayName: label, locationEmailAddress: rr.email.trim(), locationType: 'conferenceRoom' };
+  } else if (input.location !== undefined) {
     patch.location = { displayName: input.location };
   }
 

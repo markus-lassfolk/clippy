@@ -4,16 +4,47 @@
  */
 import { mkdir, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { atomicWriteUtf8File } from './atomic-write.js';
 
-const CONFIG_DIR = join(homedir(), '.config', 'm365-agent-cli');
-const TOKEN_CACHE_TEMPLATE = join(CONFIG_DIR, 'token-cache-{identity}.json');
-const GRAPH_TOKEN_CACHE_TEMPLATE = join(CONFIG_DIR, 'graph-token-cache-{identity}.json');
-const LEGACY_GRAPH_TOKEN_CACHE_FILE = join(CONFIG_DIR, 'graph-token-cache.json');
-const OLD_GRAPH_TOKEN_CACHE_FILE = join(homedir(), '.config', 'clippy', 'graph-token-cache.json');
+/**
+ * Resolve at call time so tests and shells can redirect the cache without relying on `os.homedir()`
+ * (some runtimes cache homedir early).
+ * Optional absolute path to the `m365-agent-cli` config directory (same folder as `token-cache-*.json`).
+ * Tests use this to avoid mutating global HOME/XDG across parallel cases.
+ */
+function configDir(): string {
+  const dirOverride = process.env.M365_AGENT_CLI_CONFIG_DIR?.trim();
+  if (dirOverride) {
+    return resolve(dirOverride);
+  }
+  const xdg = process.env.XDG_CONFIG_HOME?.trim();
+  if (xdg) {
+    return join(xdg, 'm365-agent-cli');
+  }
+  return join(homedir(), '.config', 'm365-agent-cli');
+}
+
+function tokenCachePath(identity: string): string {
+  return join(configDir(), `token-cache-${identity}.json`);
+}
+
+function graphTokenCachePath(identity: string): string {
+  return join(configDir(), `graph-token-cache-${identity}.json`);
+}
+
+function legacyGraphRootCacheFile(): string {
+  return join(configDir(), 'graph-token-cache.json');
+}
+
+function legacyClippyGraphCacheFile(): string {
+  return join(homedir(), '.config', 'clippy', 'graph-token-cache.json');
+}
+
 /** Legacy EWS-only cache from the `clippy` package name (`auth.ts` previously wrote here). */
-const LEGACY_EWS_TOKEN_CACHE_TEMPLATE = join(homedir(), '.config', 'clippy', 'token-cache-{identity}.json');
+function legacyClippyEwsTokenCachePath(identity: string): string {
+  return join(homedir(), '.config', 'clippy', `token-cache-${identity}.json`);
+}
 
 export interface TokenSlot {
   accessToken: string;
@@ -69,18 +100,6 @@ function isLegacyFlat(data: Record<string, unknown>): boolean {
     typeof data.expiresAt === 'number' &&
     typeof data.refreshToken === 'string'
   );
-}
-
-function tokenCachePath(identity: string): string {
-  return TOKEN_CACHE_TEMPLATE.replace('{identity}', identity);
-}
-
-function graphTokenCachePath(identity: string): string {
-  return GRAPH_TOKEN_CACHE_TEMPLATE.replace('{identity}', identity);
-}
-
-function legacyEwsTokenCachePath(identity: string): string {
-  return LEGACY_EWS_TOKEN_CACHE_TEMPLATE.replace('{identity}', identity);
 }
 
 /** Single refresh token: prefer M365_*, then legacy env names (same value after `login`). */
@@ -167,7 +186,7 @@ export async function saveM365TokenCache(identity: string, cache: M365TokenCache
     graph: cache.graph,
     graphNarrowScopeAccepted: cache.graphNarrowScopeAccepted
   };
-  await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  await mkdir(configDir(), { recursive: true, mode: 0o700 });
   await atomicWriteUtf8File(tokenCachePath(id), JSON.stringify(safe, null, 2), 0o600);
 
   try {
@@ -182,16 +201,18 @@ async function migrateLegacyGraphRootFiles(): Promise<void> {
     const defaultPath = graphTokenCachePath('default');
     const defaultStats = await stat(defaultPath).catch(() => null);
     if (!defaultStats) {
-      const legacyStats = await stat(LEGACY_GRAPH_TOKEN_CACHE_FILE).catch(() => null);
+      const rootLegacy = legacyGraphRootCacheFile();
+      const legacyStats = await stat(rootLegacy).catch(() => null);
       if (legacyStats) {
-        await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-        await rename(LEGACY_GRAPH_TOKEN_CACHE_FILE, defaultPath);
+        await mkdir(configDir(), { recursive: true, mode: 0o700 });
+        await rename(rootLegacy, defaultPath);
         return;
       }
-      const oldClippyStats = await stat(OLD_GRAPH_TOKEN_CACHE_FILE).catch(() => null);
+      const clippyGraph = legacyClippyGraphCacheFile();
+      const oldClippyStats = await stat(clippyGraph).catch(() => null);
       if (oldClippyStats) {
-        await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-        await rename(OLD_GRAPH_TOKEN_CACHE_FILE, defaultPath);
+        await mkdir(configDir(), { recursive: true, mode: 0o700 });
+        await rename(clippyGraph, defaultPath);
       }
     }
   } catch {
@@ -206,11 +227,11 @@ async function migrateLegacyEwsClippyCache(identity: string): Promise<void> {
     const destStats = await stat(dest).catch(() => null);
     if (destStats) return;
 
-    const legacy = legacyEwsTokenCachePath(identity);
+    const legacy = legacyClippyEwsTokenCachePath(identity);
     const legacyStats = await stat(legacy).catch(() => null);
     if (!legacyStats) return;
 
-    await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
+    await mkdir(configDir(), { recursive: true, mode: 0o700 });
     await rename(legacy, dest);
   } catch {
     // ignore

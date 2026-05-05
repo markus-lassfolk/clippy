@@ -1,16 +1,41 @@
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import type { GraphResponse } from '../lib/graph-client.js';
 import {
+  addChannelMember,
+  addChatInstalledApp,
+  addChatMember,
+  addTeamInstalledApp,
+  addTeamMember,
+  addUserTeamworkInstalledApp,
+  buildAddTeamsAppInstallationBody,
+  createChannelTab,
+  createChat,
+  deleteChannelMessageHard,
+  deleteChannelMessageReplyHard,
+  deleteChannelTab,
+  deleteChatInstalledApp,
+  deleteChatMessageHard,
+  deleteChatMessageReplyHard,
+  deleteTeamInstalledApp,
+  deleteUserTeamworkInstalledApp,
   getChannelMessage,
+  getChannelTab,
   getChat,
+  getChatInstalledApp,
   getChatMessage,
   getTeam,
   getTeamChannel,
+  getTeamChannelFilesFolder,
+  getTeamInstalledApp,
   getTeamPrimaryChannel,
+  getTeamsAppCatalogEntry,
+  getUserTeamworkInstalledApp,
   listChannelMessageReplies,
   listChannelMessages,
   listChannelTabs,
+  listChatInstalledApps,
   listChatMembers,
   listChatMessageReplies,
   listChatMessages,
@@ -23,30 +48,65 @@ import {
   listTeamIncomingChannels,
   listTeamInstalledApps,
   listTeamMembers,
+  listTeamsAppCatalog,
+  listUserTeamworkInstalledApps,
+  patchChatInstalledApp,
+  patchTeamInstalledApp,
   sendChannelMessage,
   sendChannelMessageReply,
+  sendChatActivityNotification,
   sendChatMessage,
-  sendChatMessageReply
+  sendChatMessageReply,
+  sendMeTeamworkActivityNotification,
+  sendUserTeamworkActivityNotification,
+  setChannelMessageReaction,
+  setChatMessageReaction,
+  softDeleteChannelMessage,
+  softDeleteChannelMessageReply,
+  softDeleteChatMessage,
+  softDeleteChatMessageReply,
+  undoSoftDeleteChannelMessage,
+  undoSoftDeleteChannelMessageReply,
+  undoSoftDeleteChatMessage,
+  undoSoftDeleteChatMessageReply,
+  unsetChannelMessageReaction,
+  unsetChatMessageReaction,
+  updateChannelMessage,
+  updateChannelMessageReply,
+  updateChannelTab,
+  updateChatMessage,
+  updateChatMessageReply,
+  upgradeChatInstalledApp,
+  upgradeTeamInstalledApp
 } from '../lib/graph-teams-client.js';
+import { buildTeamsHtmlBodyWithMentions, parseAtSpecs } from '../lib/teams-message-compose.js';
 import { checkReadOnly } from '../lib/utils.js';
 
+function collectAtSpec(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 export const teamsCommand = new Command('teams').description(
-  'Microsoft Teams (Graph): teams, channels, tabs, messages (read + send), members, chats, apps (delegated; see GRAPH_SCOPES.md)'
+  'Microsoft Teams (Graph): teams, channels, channel-files-folder, tabs, messages, reactions, activity feed, chats, members, **app catalog** + **team/chat/personal** app install lifecycle (see GRAPH_SCOPES.md). `teams list --user` for joined teams; `teams chats` is `/me/chats` only. Channel/chat **send**/**reply**: `--at userId:displayName` with `--text` containing @displayName per mention.'
 );
 
 teamsCommand
   .command('list')
-  .description('List teams the signed-in user has joined (GET /me/joinedTeams)')
+  .description('List joined teams for /me or another user (GET /me/joinedTeams or GET /users/{id}/joinedTeams)')
+  .option(
+    '--user <upn-or-id>',
+    'User object id or UPN — lists that user’s joined teams (requires Team.ReadBasic.All or equivalent)'
+  )
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string }) => {
+  .action(async (opts: { user?: string; json?: boolean; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success || !auth.token) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await listJoinedTeams(auth.token);
+    const r = await listJoinedTeams(auth.token, opts.user);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -104,6 +164,41 @@ teamsCommand
         ? JSON.stringify(r.data, null, 2)
         : `${r.data.displayName ?? '(channel)'}\t${r.data.id}\t${r.data.membershipType ?? ''}`
     );
+  });
+
+teamsCommand
+  .command('channel-files-folder')
+  .description(
+    'Get the channel Files root drive item (GET …/channels/{id}/filesFolder). Use printed driveId with `files list --drive-id … --folder <id>`.'
+  )
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (teamId: string, channelId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await getTeamChannelFilesFolder(auth.token, teamId, channelId);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    const driveId = r.data.parentReference?.driveId ?? '';
+    const folderId = r.data.id ?? '';
+    console.log(`driveId:\t${driveId}`);
+    console.log(`folderItemId:\t${folderId}`);
+    if (r.data.webUrl) console.log(`webUrl:\t${r.data.webUrl}`);
+    if (driveId && folderId) {
+      console.log(`Example: m365-agent-cli files list --drive-id "${driveId}" --folder "${folderId}"`);
+    }
   });
 
 teamsCommand
@@ -367,6 +462,12 @@ teamsCommand
   .option('--json-file <path>', 'Full JSON body for POST (overrides --text/--html)')
   .option('--text <s>', 'Plain text body (contentType text)')
   .option('--html <s>', 'HTML body (contentType html)')
+  .option(
+    '--at <userId:displayName>',
+    'User mention (repeatable). Requires --text containing @displayName for each (builds HTML + mentions).',
+    collectAtSpec,
+    [] as string[]
+  )
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
@@ -374,7 +475,15 @@ teamsCommand
     async (
       teamId: string,
       channelId: string,
-      opts: { jsonFile?: string; text?: string; html?: string; json?: boolean; token?: string; identity?: string },
+      opts: {
+        jsonFile?: string;
+        text?: string;
+        html?: string;
+        at?: string[];
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
       cmd: Command
     ) => {
       checkReadOnly(cmd);
@@ -384,8 +493,25 @@ teamsCommand
         process.exit(1);
       }
       let body: Record<string, unknown>;
+      const atList = opts.at ?? [];
       if (opts.jsonFile?.trim()) {
         body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (atList.length > 0) {
+        if (!opts.text?.trim()) {
+          console.error('Error: --at requires --text (with @displayName tokens matching each mention)');
+          process.exit(1);
+        }
+        if (opts.html?.trim()) {
+          console.error('Error: do not combine --html with --at; use --json-file for full control');
+          process.exit(1);
+        }
+        try {
+          const built = buildTeamsHtmlBodyWithMentions(opts.text.trim(), parseAtSpecs(atList));
+          body = { body: built.body, mentions: built.mentions };
+        } catch (e) {
+          console.error(e instanceof Error ? e.message : e);
+          process.exit(1);
+        }
       } else if (opts.html?.trim()) {
         body = { body: { contentType: 'html', content: opts.html } };
       } else if (opts.text?.trim()) {
@@ -456,6 +582,12 @@ teamsCommand
   .option('--json-file <path>', 'Full JSON body for POST')
   .option('--text <s>', 'Plain text body')
   .option('--html <s>', 'HTML body')
+  .option(
+    '--at <userId:displayName>',
+    'User mention (repeatable). Requires --text with @displayName per mention.',
+    collectAtSpec,
+    [] as string[]
+  )
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
@@ -468,6 +600,7 @@ teamsCommand
         jsonFile?: string;
         text?: string;
         html?: string;
+        at?: string[];
         json?: boolean;
         token?: string;
         identity?: string;
@@ -481,8 +614,25 @@ teamsCommand
         process.exit(1);
       }
       let body: Record<string, unknown>;
+      const atList = opts.at ?? [];
       if (opts.jsonFile?.trim()) {
         body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (atList.length > 0) {
+        if (!opts.text?.trim()) {
+          console.error('Error: --at requires --text (with @displayName tokens matching each mention)');
+          process.exit(1);
+        }
+        if (opts.html?.trim()) {
+          console.error('Error: do not combine --html with --at; use --json-file for full control');
+          process.exit(1);
+        }
+        try {
+          const built = buildTeamsHtmlBodyWithMentions(opts.text.trim(), parseAtSpecs(atList));
+          body = { body: built.body, mentions: built.mentions };
+        } catch (e) {
+          console.error(e instanceof Error ? e.message : e);
+          process.exit(1);
+        }
       } else if (opts.html?.trim()) {
         body = { body: { contentType: 'html', content: opts.html } };
       } else if (opts.text?.trim()) {
@@ -531,7 +681,9 @@ teamsCommand
 
 teamsCommand
   .command('chats')
-  .description('List chats for the signed-in user (GET /me/chats; requires Chat.Read)')
+  .description(
+    'List chats for the signed-in user only (GET /me/chats; requires Chat.Read). There is no Graph equivalent to list another user’s chats by id.'
+  )
   .option('-n, --top <n>', 'Page size (max 50)', '20')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Graph access token')
@@ -692,13 +844,27 @@ teamsCommand
   .option('--json-file <path>', 'Full JSON body for POST')
   .option('--text <s>', 'Plain text body')
   .option('--html <s>', 'HTML body')
+  .option(
+    '--at <userId:displayName>',
+    'User mention (repeatable). Requires --text with @displayName per mention.',
+    collectAtSpec,
+    [] as string[]
+  )
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
   .action(
     async (
       chatId: string,
-      opts: { jsonFile?: string; text?: string; html?: string; json?: boolean; token?: string; identity?: string },
+      opts: {
+        jsonFile?: string;
+        text?: string;
+        html?: string;
+        at?: string[];
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
       cmd: Command
     ) => {
       checkReadOnly(cmd);
@@ -708,8 +874,25 @@ teamsCommand
         process.exit(1);
       }
       let body: Record<string, unknown>;
+      const atList = opts.at ?? [];
       if (opts.jsonFile?.trim()) {
         body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (atList.length > 0) {
+        if (!opts.text?.trim()) {
+          console.error('Error: --at requires --text (with @displayName tokens matching each mention)');
+          process.exit(1);
+        }
+        if (opts.html?.trim()) {
+          console.error('Error: do not combine --html with --at; use --json-file for full control');
+          process.exit(1);
+        }
+        try {
+          const built = buildTeamsHtmlBodyWithMentions(opts.text.trim(), parseAtSpecs(atList));
+          body = { body: built.body, mentions: built.mentions };
+        } catch (e) {
+          console.error(e instanceof Error ? e.message : e);
+          process.exit(1);
+        }
       } else if (opts.html?.trim()) {
         body = { body: { contentType: 'html', content: opts.html } };
       } else if (opts.text?.trim()) {
@@ -737,6 +920,12 @@ teamsCommand
   .option('--json-file <path>', 'Full JSON body for POST')
   .option('--text <s>', 'Plain text body')
   .option('--html <s>', 'HTML body')
+  .option(
+    '--at <userId:displayName>',
+    'User mention (repeatable). Requires --text with @displayName per mention.',
+    collectAtSpec,
+    [] as string[]
+  )
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
@@ -748,6 +937,7 @@ teamsCommand
         jsonFile?: string;
         text?: string;
         html?: string;
+        at?: string[];
         json?: boolean;
         token?: string;
         identity?: string;
@@ -761,8 +951,25 @@ teamsCommand
         process.exit(1);
       }
       let body: Record<string, unknown>;
+      const atList = opts.at ?? [];
       if (opts.jsonFile?.trim()) {
         body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (atList.length > 0) {
+        if (!opts.text?.trim()) {
+          console.error('Error: --at requires --text (with @displayName tokens matching each mention)');
+          process.exit(1);
+        }
+        if (opts.html?.trim()) {
+          console.error('Error: do not combine --html with --at; use --json-file for full control');
+          process.exit(1);
+        }
+        try {
+          const built = buildTeamsHtmlBodyWithMentions(opts.text.trim(), parseAtSpecs(atList));
+          body = { body: built.body, mentions: built.mentions };
+        } catch (e) {
+          console.error(e instanceof Error ? e.message : e);
+          process.exit(1);
+        }
       } else if (opts.html?.trim()) {
         body = { body: { contentType: 'html', content: opts.html } };
       } else if (opts.text?.trim()) {
@@ -876,3 +1083,1108 @@ teamsCommand
       console.log(`${name}\t${ver}\t${appId}\t${a.id ?? ''}`);
     }
   });
+
+teamsCommand
+  .command('app-catalog')
+  .description(
+    "List Teams apps in the tenant/store catalog (`GET /appCatalogs/teamsApps`; `AppCatalog.Read.All` or related). Use --filter e.g. distributionMethod eq 'organization'"
+  )
+  .option('--filter <odata>', 'OData $filter')
+  .option('--expand <segments>', 'e.g. appDefinitions')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (opts: { filter?: string; expand?: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listTeamsAppCatalog(auth.token, opts.filter, opts.expand);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      console.log(`${a.displayName ?? '(app)'}\t${a.distributionMethod ?? ''}\t${a.externalId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('app-catalog-get')
+  .description('Get one catalog app by id (`GET /appCatalogs/teamsApps/{id}`)')
+  .argument('<catalogTeamsAppId>', 'teamsApp id from app-catalog')
+  .option('--expand <segments>', 'e.g. appDefinitions')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (catalogTeamsAppId: string, opts: { expand?: string; json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getTeamsAppCatalogEntry(auth.token, catalogTeamsAppId, opts.expand);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('app-get')
+  .description('Get one app installation on a team (`GET …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'teamsAppInstallation id (from **teams apps**)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (teamId: string, installationId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getTeamInstalledApp(auth.token, teamId, installationId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(r.data, null, 2));
+        return;
+      }
+      const name = r.data.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('app-add')
+  .description(
+    'Install an app on a team (`POST …/installedApps`). Use `--teams-app-id` (catalog id) or full `--json-file` (e.g. teamsApp@odata.bind + consentedPermissionSet).'
+  )
+  .argument('<teamId>', 'Team id')
+  .option('--teams-app-id <id>', 'teamsApp id from **teams app-catalog**')
+  .option('--json-file <path>', 'Full JSON body (overrides --teams-app-id)')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      opts: { teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addTeamInstalledApp(auth.token, teamId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('app-patch')
+  .description('PATCH a team app installation (`PATCH …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      installationId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await patchTeamInstalledApp(auth.token, teamId, installationId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? 'ok'}`);
+    }
+  );
+
+teamsCommand
+  .command('app-upgrade')
+  .description('Upgrade a team app installation to the latest catalog version (`POST …/upgrade`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (teamId: string, installationId: string, opts: { token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await upgradeTeamInstalledApp(auth.token, teamId, installationId);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Upgrade started (204).');
+  });
+
+teamsCommand
+  .command('app-delete')
+  .description('Remove an app from a team (`DELETE …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      installationId: string,
+      opts: { ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteTeamInstalledApp(auth.token, teamId, installationId, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
+
+teamsCommand
+  .command('chat-apps')
+  .description('List apps installed in a chat (`GET /chats/{id}/installedApps`)')
+  .argument('<chatId>', 'Chat id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (chatId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listChatInstalledApps(auth.token, chatId);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      const name = a.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${a.teamsAppDefinition?.teamsAppId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('chat-app-get')
+  .description('Get one chat app installation')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (chatId: string, installationId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getChatInstalledApp(auth.token, chatId, installationId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(
+        opts.json
+          ? JSON.stringify(r.data, null, 2)
+          : `${r.data.teamsAppDefinition?.displayName ?? ''}\t${r.data.id ?? ''}`
+      );
+    }
+  );
+
+teamsCommand
+  .command('chat-app-add')
+  .description('Install an app in a chat (`POST /chats/{id}/installedApps`)')
+  .argument('<chatId>', 'Chat id')
+  .option('--teams-app-id <id>', 'Catalog teamsApp id')
+  .option('--json-file <path>', 'Full JSON body')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      opts: { teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addChatInstalledApp(auth.token, chatId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('chat-app-patch')
+  .description('PATCH a chat app installation')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      installationId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await patchChatInstalledApp(auth.token, chatId, installationId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? 'ok'}`);
+    }
+  );
+
+teamsCommand
+  .command('chat-app-upgrade')
+  .description('Upgrade a chat app installation (`POST …/upgrade`)')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (chatId: string, installationId: string, opts: { token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await upgradeChatInstalledApp(auth.token, chatId, installationId);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Upgrade started (204).');
+  });
+
+teamsCommand
+  .command('chat-app-delete')
+  .description('Remove an app from a chat')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      installationId: string,
+      opts: { ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteChatInstalledApp(auth.token, chatId, installationId, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
+
+teamsCommand
+  .command('user-apps')
+  .description(
+    'Apps in the user’s personal Teams scope (`GET …/teamwork/installedApps`). Default: signed-in user; `--user` for `/users/{id}/…` (needs appropriate Teams app permissions).'
+  )
+  .option('--user <upn-or-id>', 'Another user (admin / delegated scenario)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (opts: { user?: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listUserTeamworkInstalledApps(auth.token, opts.user);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      const name = a.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${a.teamsAppDefinition?.teamsAppId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('user-app-get')
+  .description('Get one personal-scope app installation')
+  .argument('<installationId>', 'Installation id')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (installationId: string, opts: { user?: string; json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getUserTeamworkInstalledApp(auth.token, installationId, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(
+        opts.json
+          ? JSON.stringify(r.data, null, 2)
+          : `${r.data.teamsAppDefinition?.displayName ?? ''}\t${r.data.id ?? ''}`
+      );
+    }
+  );
+
+teamsCommand
+  .command('user-app-add')
+  .description('Install an app in the user’s personal scope (`POST …/teamwork/installedApps`)')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--teams-app-id <id>', 'Catalog teamsApp id')
+  .option('--json-file <path>', 'Full JSON body (RSC consent, etc.)')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      opts: { user?: string; teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addUserTeamworkInstalledApp(auth.token, body, opts.user);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('user-app-delete')
+  .description('Remove an app from the user’s personal scope')
+  .argument('<installationId>', 'Installation id')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      installationId: string,
+      opts: { user?: string; ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteUserTeamworkInstalledApp(auth.token, installationId, opts.user, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
+
+teamsCommand
+  .command('activity-notify')
+  .description(
+    'Teams activity feed: POST /me/teamwork/sendActivityNotification (default), POST /chats/{id}/sendActivityNotification with --chat-id, or POST /users/{id}/teamwork/sendActivityNotification with --user-id (usually app-only token + `TeamsActivity.Send`). Body from --json-file (see Microsoft Graph docs).'
+  )
+  .requiredOption('--json-file <path>', 'JSON body: topic, activityType, previewText, recipient, …')
+  .option('--chat-id <id>', 'If set, notify in chat scope (mutually exclusive with --user-id)')
+  .option(
+    '--user-id <id>',
+    'Target user id or UPN for POST /users/{id}/teamwork/sendActivityNotification (typically use --token with an application access token; mutually exclusive with --chat-id)'
+  )
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      opts: { jsonFile: string; chatId?: string; userId?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const chat = opts.chatId?.trim();
+      const uid = opts.userId?.trim();
+      if (chat && uid) {
+        console.error('Error: use either --chat-id or --user-id, not both.');
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = chat
+        ? await sendChatActivityNotification(auth.token, chat, body)
+        : uid
+          ? await sendUserTeamworkActivityNotification(auth.token, uid, body)
+          : await sendMeTeamworkActivityNotification(auth.token, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Activity notification sent (204).');
+    }
+  );
+
+teamsCommand
+  .command('channel-message-patch')
+  .description('PATCH a channel message or reply (`ChannelMessage.Send`). Use --json-file for the PATCH body.')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<messageId>', 'Message id (root) or reply id when --parent is set')
+  .requiredOption('--json-file <path>', 'JSON body (e.g. { "body": { "contentType": "html", "content": "..." } })')
+  .option('--parent <parentMessageId>', 'When set, PATCH …/messages/{parent}/replies/{messageId}')
+  .option('--beta', 'Call Microsoft Graph beta host for this PATCH', false)
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      messageId: string,
+      opts: {
+        jsonFile: string;
+        parent?: string;
+        beta?: boolean;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const useBeta = !!opts.beta;
+      const r = opts.parent?.trim()
+        ? await updateChannelMessageReply(auth.token, teamId, channelId, opts.parent.trim(), messageId, body, useBeta)
+        : await updateChannelMessage(auth.token, teamId, channelId, messageId, body, useBeta);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : (r.data.id ?? 'ok'));
+    }
+  );
+
+teamsCommand
+  .command('channel-message-delete')
+  .description(
+    'Delete a channel message or reply: hard DELETE (`--hard`), soft-delete POST …/softDelete (default), or `--undo-soft` (often requires `--beta`). Use `--parent` when targeting a reply.'
+  )
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<messageId>', 'Root message id, or reply id when --parent is set')
+  .option('--parent <parentMessageId>', 'Parent message id when deleting a reply')
+  .option('--hard', 'Permanent DELETE (optional If-Match via --if-match)', false)
+  .option('--undo-soft', 'POST undoSoftDelete instead of softDelete', false)
+  .option('--beta', 'Use Graph beta host for soft/undo-soft paths', false)
+  .option('--if-match <etag>', 'If-Match header for hard delete')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      messageId: string,
+      opts: {
+        parent?: string;
+        hard?: boolean;
+        undoSoft?: boolean;
+        beta?: boolean;
+        ifMatch?: string;
+        token?: string;
+        identity?: string;
+      },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const useBeta = !!opts.beta;
+      const parent = opts.parent?.trim();
+      let r: GraphResponse<void>;
+      if (parent) {
+        if (opts.hard) {
+          r = await deleteChannelMessageReplyHard(auth.token, teamId, channelId, parent, messageId, opts.ifMatch);
+        } else if (opts.undoSoft) {
+          r = await undoSoftDeleteChannelMessageReply(auth.token, teamId, channelId, parent, messageId, useBeta);
+        } else {
+          r = await softDeleteChannelMessageReply(auth.token, teamId, channelId, parent, messageId, useBeta);
+        }
+      } else if (opts.hard) {
+        r = await deleteChannelMessageHard(auth.token, teamId, channelId, messageId, opts.ifMatch);
+      } else if (opts.undoSoft) {
+        r = await undoSoftDeleteChannelMessage(auth.token, teamId, channelId, messageId, useBeta);
+      } else {
+        r = await softDeleteChannelMessage(auth.token, teamId, channelId, messageId, useBeta);
+      }
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Done.');
+    }
+  );
+
+teamsCommand
+  .command('chat-message-patch')
+  .description('PATCH a chat message (`Chat.ReadWrite`). Use --json-file for the PATCH body.')
+  .argument('<chatId>', 'Chat id')
+  .argument('<messageId>', 'Message id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--beta', 'Use Graph beta host', false)
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      messageId: string,
+      opts: { jsonFile: string; beta?: boolean; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await updateChatMessage(auth.token, chatId, messageId, body, !!opts.beta);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : (r.data.id ?? 'ok'));
+    }
+  );
+
+teamsCommand
+  .command('chat-message-reply-patch')
+  .description('PATCH a reply in a chat thread (`Chat.ReadWrite`).')
+  .argument('<chatId>', 'Chat id')
+  .argument('<parentMessageId>', 'Root message id')
+  .argument('<replyId>', 'Reply message id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--beta', 'Use Graph beta host', false)
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      parentMessageId: string,
+      replyId: string,
+      opts: { jsonFile: string; beta?: boolean; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await updateChatMessageReply(auth.token, chatId, parentMessageId, replyId, body, !!opts.beta);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : (r.data.id ?? 'ok'));
+    }
+  );
+
+teamsCommand
+  .command('chat-message-delete')
+  .description(
+    'Delete a chat message or reply: `--hard` (DELETE), default soft-delete POST, or `--undo-soft`. Use `--parent` for replies.'
+  )
+  .argument('<chatId>', 'Chat id')
+  .argument('<messageId>', 'Message id or reply id when --parent is set')
+  .option('--parent <parentMessageId>', 'Parent message id when deleting a reply')
+  .option('--hard', 'Permanent DELETE', false)
+  .option('--undo-soft', 'POST undoSoftDelete', false)
+  .option('--beta', 'Use Graph beta host for soft/undo-soft', false)
+  .option('--if-match <etag>', 'If-Match for hard delete')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      messageId: string,
+      opts: {
+        parent?: string;
+        hard?: boolean;
+        undoSoft?: boolean;
+        beta?: boolean;
+        ifMatch?: string;
+        token?: string;
+        identity?: string;
+      },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const useBeta = !!opts.beta;
+      const parent = opts.parent?.trim();
+      let r: GraphResponse<void>;
+      if (parent) {
+        if (opts.hard) {
+          r = await deleteChatMessageReplyHard(auth.token, chatId, parent, messageId, opts.ifMatch);
+        } else if (opts.undoSoft) {
+          r = await undoSoftDeleteChatMessageReply(auth.token, chatId, parent, messageId, useBeta);
+        } else {
+          r = await softDeleteChatMessageReply(auth.token, chatId, parent, messageId, useBeta);
+        }
+      } else if (opts.hard) {
+        r = await deleteChatMessageHard(auth.token, chatId, messageId, opts.ifMatch);
+      } else if (opts.undoSoft) {
+        r = await undoSoftDeleteChatMessage(auth.token, chatId, messageId, useBeta);
+      } else {
+        r = await softDeleteChatMessage(auth.token, chatId, messageId, useBeta);
+      }
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Done.');
+    }
+  );
+
+teamsCommand
+  .command('chat-create')
+  .description('Create a chat (`POST /chats`; `Chat.ReadWrite`). Body from --json-file (members, chatType, …).')
+  .requiredOption('--json-file <path>', 'Full JSON body for POST /chats')
+  .option('--json', 'Print created chat JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (opts: { jsonFile: string; json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+    const r = await createChat(auth.token, body);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+    else console.log(`${r.data.id ?? ''}\t${r.data.topic ?? ''}`);
+  });
+
+teamsCommand
+  .command('chat-member-add')
+  .description('Add a member to a chat (`POST /chats/{id}/members`). Body from --json-file (conversationMember).')
+  .argument('<chatId>', 'Chat id')
+  .requiredOption('--json-file <path>', 'JSON body for new member')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await addChatMember(auth.token, chatId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('team-member-add')
+  .description(
+    'Add a member to a team (`POST /teams/{id}/members`). Body from --json-file. Requires elevated team membership permissions.'
+  )
+  .argument('<teamId>', 'Team id')
+  .requiredOption('--json-file <path>', 'JSON body (conversationMember)')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await addTeamMember(auth.token, teamId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('channel-member-add')
+  .description('Add a member to a channel (`POST …/channels/{id}/members`). Body from --json-file.')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .requiredOption('--json-file <path>', 'JSON body (conversationMember)')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await addChannelMember(auth.token, teamId, channelId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('tab-get')
+  .description('Get one channel tab (`GET …/tabs/{id}` with $expand=teamsApp)')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<tabId>', 'Tab id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      tabId: string,
+      opts: { json?: boolean; token?: string; identity?: string }
+    ) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getChannelTab(auth.token, teamId, channelId, tabId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('tab-create')
+  .description('Create a channel tab (`POST …/tabs`). Body from --json-file.')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .requiredOption('--json-file <path>', 'JSON body for teamsTab')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await createChannelTab(auth.token, teamId, channelId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('tab-update')
+  .description('PATCH a channel tab (`PATCH …/tabs/{id}`). Body from --json-file.')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<tabId>', 'Tab id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      tabId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await updateChannelTab(auth.token, teamId, channelId, tabId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('tab-delete')
+  .description('Delete a channel tab (`DELETE …/tabs/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<tabId>', 'Tab id')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      tabId: string,
+      opts: { token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteChannelTab(auth.token, teamId, channelId, tabId);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Tab deleted.');
+    }
+  );
+
+teamsCommand
+  .command('channel-message-react')
+  .description('Set or remove a reaction on a channel message (POST setReaction / unsetReaction; ChannelMessage.Send)')
+  .argument('<teamId>', 'Team id')
+  .argument('<channelId>', 'Channel id')
+  .argument('<messageId>', 'Message id')
+  .requiredOption('-r, --reaction <unicode>', 'Reaction unicode string (e.g. 👍 or 💙)')
+  .option('--reply <replyId>', 'Target a reply in the thread instead of the root message')
+  .option('--unset', 'Call unsetReaction instead of setReaction', false)
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      messageId: string,
+      opts: { reaction: string; reply?: string; unset?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = opts.unset
+        ? await unsetChannelMessageReaction(auth.token, teamId, channelId, messageId, opts.reaction, opts.reply)
+        : await setChannelMessageReaction(auth.token, teamId, channelId, messageId, opts.reaction, opts.reply);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.unset ? 'Reaction removed.' : 'Reaction set.');
+    }
+  );
+
+teamsCommand
+  .command('chat-message-react')
+  .description('Set or remove a reaction on a chat message (POST setReaction / unsetReaction)')
+  .argument('<chatId>', 'Chat id')
+  .argument('<messageId>', 'Message id')
+  .requiredOption('-r, --reaction <unicode>', 'Reaction unicode string')
+  .option('--unset', 'Call unsetReaction', false)
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      messageId: string,
+      opts: { reaction: string; unset?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = opts.unset
+        ? await unsetChatMessageReaction(auth.token, chatId, messageId, opts.reaction)
+        : await setChatMessageReaction(auth.token, chatId, messageId, opts.reaction);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.unset ? 'Reaction removed.' : 'Reaction set.');
+    }
+  );

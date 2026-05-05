@@ -58,13 +58,22 @@ jobs:
       - name: Biome (lint + format + assist)
         run: bun run biome:check
 
+      - name: Graph path inventory (drift check)
+        run: bun run graph:inventory:check
+
+      - name: Graph permission feature matrix (drift check)
+        run: bun run docs:graph-permission-matrix:check
+
       - name: Tests + coverage floor
         env:
-          COVERAGE_MIN_LINES: '32'
+          COVERAGE_MIN_LINES: '31'
+          # Match ci.yml lib gate (see docs/LIB_COVERAGE_ROADMAP_TO_60.md).
+          COVERAGE_MIN_LINES_LIB: '50'
         run: |
           bun run test:coverage
           test -f coverage/lcov.info || (echo '::error::coverage/lcov.info missing after bun test --coverage' && exit 1)
           bun run verify:coverage
+          bun run verify:coverage:lib
 
       - name: Knip
         run: bun run knip

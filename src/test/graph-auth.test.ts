@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { Buffer } from 'node:buffer';
+import { randomBytes } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { AuthResult } from '../lib/auth.js';
+import type { GraphAuthResult } from '../lib/graph-auth.js';
 import { GRAPH_DEVICE_CODE_LOGIN_SCOPES, GRAPH_REFRESH_SCOPE_CANDIDATES } from '../lib/graph-oauth-scopes.js';
+import * as jwtUtilsReal from '../lib/jwt-utils.js';
 
 const mockLoad = mock(() => Promise.resolve(null));
 const mockSave = mock(() => Promise.resolve());
@@ -21,54 +29,52 @@ mock.module('../lib/graph-oauth-scopes.js', () => ({
   ]
 }));
 
-mock.module('../lib/jwt-utils.js', () => ({
-  getMicrosoftTenantPathSegment: () => 'common',
-  isValidJwtStructure: () => true,
-  getJwtExpiration: () => Date.now() + 3_600_000,
-  getJwtPayloadAppId: (token: string) => {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return undefined;
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as {
-        appid?: string;
-        azp?: string;
-      };
-      return payload.appid || payload.azp;
-    } catch {
-      return undefined;
-    }
-  },
-  getJwtPayloadScopeSet: (token: string) => {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return new Set<string>();
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as { scp?: string };
-      if (typeof payload.scp !== 'string') return new Set<string>();
-      return new Set(
-        payload.scp
-          .split(/\s+/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-      );
-    } catch {
-      return new Set();
-    }
-  }
-}));
+/** Captured once before `mock.module` mutates the live module namespace (spread/`import()` can still see mocked slots). */
+const m365TokenCacheOriginal = await import('../lib/m365-token-cache.js');
+const m365RealLoad = m365TokenCacheOriginal.loadM365TokenCache;
+const m365RealSave = m365TokenCacheOriginal.saveM365TokenCache;
+const m365RealGetUnified = m365TokenCacheOriginal.getUnifiedRefreshTokenFromEnv;
+const m365RealAssertValid = m365TokenCacheOriginal.assertValidCacheIdentity;
 
-mock.module('../lib/m365-token-cache.js', () => ({
-  loadM365TokenCache: mockLoad,
-  saveM365TokenCache: mockSave,
-  getUnifiedRefreshTokenFromEnv: () =>
-    process.env.M365_REFRESH_TOKEN || process.env.GRAPH_REFRESH_TOKEN || process.env.EWS_REFRESH_TOKEN
-}));
+function applyM365TokenCacheMockForGraph() {
+  mock.module('../lib/m365-token-cache.js', () => ({
+    loadM365TokenCache: mockLoad,
+    saveM365TokenCache: mockSave,
+    getUnifiedRefreshTokenFromEnv: () =>
+      process.env.M365_REFRESH_TOKEN || process.env.GRAPH_REFRESH_TOKEN || process.env.EWS_REFRESH_TOKEN,
+    assertValidCacheIdentity: m365RealAssertValid
+  }));
+}
 
-import { resolveGraphAuth } from '../lib/graph-auth.js';
+function restoreRealM365TokenCacheModule() {
+  mock.module('../lib/m365-token-cache.js', () => ({
+    loadM365TokenCache: m365RealLoad,
+    saveM365TokenCache: m365RealSave,
+    getUnifiedRefreshTokenFromEnv: m365RealGetUnified,
+    assertValidCacheIdentity: m365RealAssertValid
+  }));
+}
 
 describe('resolveGraphAuth', () => {
   let originalEnv: NodeJS.ProcessEnv;
+  let resolveGraphAuth: (options?: {
+    token?: string;
+    identity?: string;
+    forceRefresh?: boolean;
+  }) => Promise<GraphAuthResult>;
 
-  beforeEach(() => {
+  function applyJwtUtilsMock() {
+    mock.module('../lib/jwt-utils.js', () => ({
+      ...jwtUtilsReal,
+      getMicrosoftTenantPathSegment: mock(() => 'common')
+    }));
+  }
+
+  beforeEach(async () => {
+    applyJwtUtilsMock();
+    applyM365TokenCacheMockForGraph();
+    const mod = await import(`../lib/graph-auth.js?graphAuthTest=${Date.now()}`);
+    resolveGraphAuth = mod.resolveGraphAuth;
     originalEnv = { ...process.env };
     global.fetch = mockFetch as unknown as typeof fetch;
     mockLoad.mockReset();
@@ -79,6 +85,10 @@ describe('resolveGraphAuth', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    // `mock.module` persists across files in Bun; `mock.restore()` then re-bind the real module (see oven-sh/bun#7823).
+    mock.restore();
+    restoreRealM365TokenCacheModule();
+    mock.module('../lib/jwt-utils.js', () => jwtUtilsReal);
   });
 
   test('returns error when EWS_CLIENT_ID is missing', async () => {
@@ -258,5 +268,175 @@ describe('resolveGraphAuth', () => {
     const r = await resolveGraphAuth();
     expect(r.success).toBe(false);
     expect(r.error).toContain('Graph token refresh failed');
+  });
+
+  afterAll(() => {
+    mock.restore();
+    restoreRealM365TokenCacheModule();
+    mock.module('../lib/jwt-utils.js', () => jwtUtilsReal);
+  });
+});
+
+/** EWS OAuth disk cache tests live in this file (after `resolveGraphAuth`) so Bun `mock.module` teardown stays scoped. */
+function ewsFixtureAccessToken(seed: string): string {
+  const p = Buffer.from(JSON.stringify({ exp: 2_000_000_000, sub: seed })).toString('base64url');
+  return `e.${p}.x`;
+}
+
+function tokenCachePath(home: string, identity: string): string {
+  return join(home, '.config', 'm365-agent-cli', `token-cache-${identity}.json`);
+}
+
+async function writePrimaryCache(home: string, identity: string, json: Record<string, unknown>): Promise<void> {
+  const dir = join(home, '.config', 'm365-agent-cli');
+  await mkdir(dir, { recursive: true });
+  await writeFile(tokenCachePath(home, identity), JSON.stringify(json), 'utf8');
+}
+
+describe('auth resolution', () => {
+  let originalEnv: NodeJS.ProcessEnv;
+  let resolveAuth: (options?: { token?: string; identity?: string }) => Promise<AuthResult>;
+  let testHome: string;
+  let cacheIdentity: string;
+  let authFetchMock: ReturnType<typeof mock>;
+
+  beforeEach(async () => {
+    originalEnv = { ...process.env };
+    testHome = await mkdtemp(join(tmpdir(), 'm365-auth-test-'));
+    cacheIdentity = `t${randomBytes(12).toString('hex')}`;
+    process.env.M365_AGENT_CLI_CONFIG_DIR = join(testHome, '.config', 'm365-agent-cli');
+    process.env.EWS_TENANT_ID = 'common';
+
+    restoreRealM365TokenCacheModule();
+    mock.module('../lib/jwt-utils.js', () => jwtUtilsReal);
+
+    authFetchMock = mock();
+    const auth = await import(`../lib/auth.js?authDiskTest=${Date.now()}`);
+    resolveAuth = auth.resolveAuth;
+    global.fetch = authFetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(async () => {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    await rm(testHome, { recursive: true, force: true }).catch(() => {});
+  });
+
+  test('uses explicit token when provided', async () => {
+    const result = await resolveAuth({ token: 'my-explicit-token' });
+    expect(result.success).toBe(true);
+    expect(result.token).toBe('my-explicit-token');
+  });
+
+  test('returns error if client ID or refresh token missing', async () => {
+    delete process.env.EWS_CLIENT_ID;
+    delete process.env.EWS_REFRESH_TOKEN;
+    delete process.env.GRAPH_REFRESH_TOKEN;
+    delete process.env.M365_REFRESH_TOKEN;
+    const result = await resolveAuth();
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Missing EWS_CLIENT_ID or refresh token');
+  });
+
+  test('uses valid cached token', async () => {
+    process.env.EWS_CLIENT_ID = 'client';
+    process.env.EWS_REFRESH_TOKEN = 'refresh';
+    const cachedTok = ewsFixtureAccessToken('cached');
+
+    await writePrimaryCache(testHome, cacheIdentity, {
+      version: 1,
+      refreshToken: 'cached-refresh-token',
+      ews: {
+        accessToken: cachedTok,
+        expiresAt: Date.now() + 1000_000
+      }
+    });
+
+    const result = await resolveAuth({ identity: cacheIdentity });
+    expect(result.success).toBe(true);
+    expect(result.token).toBe(cachedTok);
+    expect(authFetchMock).not.toHaveBeenCalled();
+  });
+
+  test('accepts legacy flat EWS cache shape', async () => {
+    process.env.EWS_CLIENT_ID = 'client';
+    process.env.EWS_REFRESH_TOKEN = 'refresh';
+    const legacyTok = ewsFixtureAccessToken('legacy');
+
+    await writePrimaryCache(testHome, cacheIdentity, {
+      accessToken: legacyTok,
+      refreshToken: 'cached-refresh-token',
+      expiresAt: Date.now() + 1000_000
+    });
+
+    const result = await resolveAuth({ identity: cacheIdentity });
+    expect(result.success).toBe(true);
+    expect(result.token).toBe(legacyTok);
+    expect(authFetchMock).not.toHaveBeenCalled();
+  });
+
+  test('M365_REFRESH_TOKEN satisfies auth without EWS_REFRESH_TOKEN', async () => {
+    process.env.EWS_CLIENT_ID = 'client';
+    delete process.env.EWS_REFRESH_TOKEN;
+    process.env.M365_REFRESH_TOKEN = 'unified-refresh';
+    const cachedTok = ewsFixtureAccessToken('m365');
+
+    await writePrimaryCache(testHome, cacheIdentity, {
+      version: 1,
+      ews: {
+        accessToken: cachedTok,
+        expiresAt: Date.now() + 1000_000
+      }
+    });
+
+    const result = await resolveAuth({ identity: cacheIdentity });
+    expect(result.success).toBe(true);
+    expect(result.token).toBe(cachedTok);
+  });
+
+  test('fetches new token if cache expired', async () => {
+    process.env.EWS_CLIENT_ID = 'client';
+    process.env.EWS_REFRESH_TOKEN = 'refresh';
+    const expiredTok = ewsFixtureAccessToken('expired');
+    const newTok = ewsFixtureAccessToken('new');
+
+    await writePrimaryCache(testHome, cacheIdentity, {
+      version: 1,
+      refreshToken: 'cached-refresh-token',
+      ews: {
+        accessToken: expiredTok,
+        expiresAt: Date.now() - 1000_000
+      }
+    });
+
+    authFetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          access_token: newTok,
+          refresh_token: 'new-refresh-token',
+          expires_in: 3600
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await resolveAuth({ identity: cacheIdentity });
+    expect(result.success).toBe(true);
+    expect(result.token).toBe(newTok);
+    expect(authFetchMock).toHaveBeenCalled();
+    const saved = JSON.parse(await readFile(tokenCachePath(testHome, cacheIdentity), 'utf8')) as {
+      refreshToken?: string;
+    };
+    expect(saved.refreshToken).toBe('new-refresh-token');
   });
 });

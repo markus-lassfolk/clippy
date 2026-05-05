@@ -5,11 +5,18 @@ import { AttachmentPathError, validateAttachmentPath } from '../lib/attachments.
 import { resolveAuth } from '../lib/auth.js';
 import { type EmailAttachment, type ReferenceAttachmentInput, sendEmail } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
+import { GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES } from '../lib/graph-attachment-upload-session.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { buildGraphSendMailPayload } from '../lib/graph-send-mail.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { lookupMimeType } from '../lib/mime-type.js';
-import { sendMail as graphSendMail } from '../lib/outlook-graph-client.js';
+import {
+  addFileAttachmentToMailMessage,
+  addReferenceAttachmentToMailMessage,
+  createDraftMessage,
+  sendMail as graphSendMail,
+  sendMailMessage
+} from '../lib/outlook-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 /** Graph sendMail often returns access denied without Mail.Send on the app registration + refreshed token. */
@@ -246,38 +253,139 @@ export const sendCommand = new Command('send')
         return;
       }
 
-      const payload = buildGraphSendMailPayload({
-        to: toList,
-        cc: ccList,
-        bcc: bccList,
-        subject: options.subject,
-        body,
-        html,
-        categories,
-        fileAttachments: attachments,
-        referenceAttachments: referenceAttachments?.map((a) => ({ name: a.name, sourceUrl: a.url }))
-      });
+      const anyLargeFile =
+        attachments?.some((a) => {
+          try {
+            return Buffer.from(a.contentBytes, 'base64').byteLength > GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES;
+          } catch {
+            return false;
+          }
+        }) ?? false;
 
-      const result = await graphSendMail(graphAuth.token, payload, user);
-      if (!result.ok) {
-        if (backend === 'auto') {
-          await sendEws();
-          return;
+      if (anyLargeFile) {
+        const dr = await createDraftMessage(
+          graphAuth.token,
+          {
+            subject: options.subject,
+            bodyContent: body,
+            bodyContentType: html ? 'HTML' : 'Text',
+            toAddresses: toList,
+            ccAddresses: ccList,
+            bccAddresses: bccList,
+            categories
+          },
+          user
+        );
+        if (!dr.ok || !dr.data?.id) {
+          if (backend === 'auto') {
+            await sendEws();
+            return;
+          }
+          if (options.json) {
+            console.log(
+              JSON.stringify({ error: dr.error?.message || 'Failed to create draft for large attachments' }, null, 2)
+            );
+          } else {
+            console.error(`Error: ${dr.error?.message || 'Failed to create draft for large attachments'}`);
+          }
+          process.exit(1);
         }
-        if (options.json) {
-          const payload: Record<string, unknown> = {
-            error: result.error?.message || 'Failed to send email',
-            backend: 'graph'
-          };
-          const hint = graphSendDeniedHint(result.error?.message || '', result.error?.code);
-          if (hint) payload.hint = hint;
-          console.log(JSON.stringify(payload, null, 2));
-        } else {
-          console.error(`Error: ${result.error?.message || 'Failed to send email'}`);
-          const hint = graphSendDeniedHint(result.error?.message || '', result.error?.code);
-          if (hint) console.error(hint);
+        const draftId = dr.data.id;
+        for (const a of attachments ?? []) {
+          const ar = await addFileAttachmentToMailMessage(
+            graphAuth.token,
+            draftId,
+            { name: a.name, contentType: a.contentType, contentBytes: a.contentBytes },
+            user
+          );
+          if (!ar.ok) {
+            if (backend === 'auto') {
+              await sendEws();
+              return;
+            }
+            if (options.json) {
+              console.log(JSON.stringify({ error: ar.error?.message || 'Failed to attach file' }, null, 2));
+            } else {
+              console.error(`Error: ${ar.error?.message || 'Failed to attach file'}`);
+            }
+            process.exit(1);
+          }
         }
-        process.exit(1);
+        for (const ref of referenceAttachments ?? []) {
+          const lr = await addReferenceAttachmentToMailMessage(
+            graphAuth.token,
+            draftId,
+            { name: ref.name, sourceUrl: ref.url },
+            user
+          );
+          if (!lr.ok) {
+            if (backend === 'auto') {
+              await sendEws();
+              return;
+            }
+            if (options.json) {
+              console.log(JSON.stringify({ error: lr.error?.message || 'Failed to attach link' }, null, 2));
+            } else {
+              console.error(`Error: ${lr.error?.message || 'Failed to attach link'}`);
+            }
+            process.exit(1);
+          }
+        }
+        const sr = await sendMailMessage(graphAuth.token, draftId, user);
+        if (!sr.ok) {
+          if (backend === 'auto') {
+            await sendEws();
+            return;
+          }
+          if (options.json) {
+            const payloadErr: Record<string, unknown> = {
+              error: sr.error?.message || 'Failed to send draft',
+              backend: 'graph'
+            };
+            const hint = graphSendDeniedHint(sr.error?.message || '', sr.error?.code);
+            if (hint) payloadErr.hint = hint;
+            console.log(JSON.stringify(payloadErr, null, 2));
+          } else {
+            console.error(`Error: ${sr.error?.message || 'Failed to send draft'}`);
+            const hint = graphSendDeniedHint(sr.error?.message || '', sr.error?.code);
+            if (hint) console.error(hint);
+          }
+          process.exit(1);
+        }
+      } else {
+        const payload = buildGraphSendMailPayload({
+          to: toList,
+          cc: ccList,
+          bcc: bccList,
+          subject: options.subject,
+          body,
+          html,
+          categories,
+          fileAttachments: attachments,
+          referenceAttachments: referenceAttachments?.map((a) => ({ name: a.name, sourceUrl: a.url }))
+        });
+
+        const result = await graphSendMail(graphAuth.token, payload, user);
+        if (!result.ok) {
+          if (backend === 'auto') {
+            await sendEws();
+            return;
+          }
+          if (options.json) {
+            const payload: Record<string, unknown> = {
+              error: result.error?.message || 'Failed to send email',
+              backend: 'graph'
+            };
+            const hint = graphSendDeniedHint(result.error?.message || '', result.error?.code);
+            if (hint) payload.hint = hint;
+            console.log(JSON.stringify(payload, null, 2));
+          } else {
+            console.error(`Error: ${result.error?.message || 'Failed to send email'}`);
+            const hint = graphSendDeniedHint(result.error?.message || '', result.error?.code);
+            if (hint) console.error(hint);
+          }
+          process.exit(1);
+        }
       }
 
       if (options.json) {

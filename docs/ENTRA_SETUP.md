@@ -167,7 +167,7 @@ If `verify-token` shows **fewer `scp` scopes** than you expect, run it with **`-
 
 The application requires specific Delegated permissions for both Microsoft Graph and Office 365 Exchange Online.
 
-**Full table (purpose of each scope):** see **[GRAPH_SCOPES.md](./GRAPH_SCOPES.md)** — keep the portal list aligned with that file and with [`src/lib/graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts).
+**Full table (purpose of each scope):** see **[GRAPH_SCOPES.md](./GRAPH_SCOPES.md)** — keep the portal list aligned with that file and with [`src/lib/graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts). For **feature-based consent planning** (what to enable in Entra for mail vs Teams vs files, and the reverse), use **[GRAPH_PERMISSION_FEATURE_MATRIX.md](./GRAPH_PERMISSION_FEATURE_MATRIX.md)**.
 
 #### Microsoft Graph Permissions
 
@@ -196,8 +196,14 @@ The application requires specific Delegated permissions for both Microsoft Graph
    - `Notes.ReadWrite.All` (`onenote`)
    - `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `ChannelMessage.Send` (`teams` — channels, messages, **channel-message-send**; message read often needs **admin consent**)
    - `Presence.Read.All`, `Presence.ReadWrite` (`presence` — **bulk**, **set-me** / **set-user**)
-   - `Bookings.ReadWrite.All` (`bookings` — read + create/update/delete appointments, customers, services, staff, custom questions, **business-update**)
+   - `Bookings.ReadWrite.All` (`bookings` — full Bookings business lifecycle incl. **business-create** / **delete** / **publish** / **unpublish**, appointments, customers, services, staff, custom questions, **currency-get**)
    - `Chat.ReadWrite` (`teams` chats, **chat-message-send**, members, pinned, …)
+   - `ExternalItem.Read.All` (**`copilot retrieval`** with Copilot connectors / `externalItem` data source — see [Retrieval API permissions](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/api/ai-services/retrieval/copilotroot-retrieval#permissions))
+   - `Reports.Read.All` (**`copilot reports`** — Copilot usage reports; admin reader role required per Microsoft)
+   - `CopilotPackages.Read.All`, `CopilotPackages.ReadWrite.All` (**`copilot packages`** — catalog read vs block/unblock/reassign/update)
+   - `OnlineMeetingAiInsight.Read.All`, `OnlineMeetingTranscript.Read.All` (**`copilot meeting-insights-*`**, **Copilot Chat**)
+   - `People.Read.All` (Copilot Chat API delegated bundle; broader than `People.Read`)
+   - `AiEnterpriseInteraction.Read` (delegated **Copilot interaction** change notifications — **`subscribe copilot-interactions`**)
    - `offline_access`
 4. Click **Add permissions**.
 

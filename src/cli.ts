@@ -1,10 +1,12 @@
 #!/usr/bin/env bun
 import './lib/global-env.js';
 import { Command } from 'commander';
+import { approvalsCommand } from './commands/approvals.js';
 import { autoReplyCommand } from './commands/auto-reply.js';
 import { bookingsCommand } from './commands/bookings.js';
 import { calendarCommand } from './commands/calendar.js';
 import { contactsCommand } from './commands/contacts.js';
+import { copilotCommand } from './commands/copilot.js';
 import { counterCommand } from './commands/counter.js';
 import { createEventCommand } from './commands/create-event.js';
 import { delegatesCommand } from './commands/delegates.js';
@@ -19,14 +21,20 @@ import { forwardEventCommand } from './commands/forward-event.js';
 import { graphCommand } from './commands/graph.js';
 import { graphCalendarCommand } from './commands/graph-calendar.js';
 import { graphSearchCommand } from './commands/graph-search.js';
+import { groupsCommand } from './commands/groups.js';
+import { insightsCommand } from './commands/insights.js';
 import { loginCommand } from './commands/login.js';
 import { mailCommand } from './commands/mail.js';
+import { mailboxSettingsCommand } from './commands/mailbox-settings.js';
 import { meetingCommand } from './commands/meeting.js';
 import { onenoteCommand } from './commands/onenote.js';
 import { oofCommand } from './commands/oof.js';
+import { orgCommand } from './commands/org.js';
 import { outlookCategoriesCommand } from './commands/outlook-categories.js';
 import { outlookGraphCommand } from './commands/outlook-graph.js';
+import { peopleCommand } from './commands/people.js';
 import { plannerCommand } from './commands/planner.js';
+import { powerpointCommand } from './commands/powerpoint.js';
 import { presenceCommand } from './commands/presence.js';
 import { respondCommand } from './commands/respond.js';
 import { roomsCommand } from './commands/rooms.js';
@@ -44,7 +52,9 @@ import { todoCommand } from './commands/todo.js';
 import { updateCommand } from './commands/update.js';
 import { updateEventCommand } from './commands/update-event.js';
 import { verifyTokenCommand } from './commands/verify-token.js';
+import { vivaCommand } from './commands/viva.js';
 import { whoamiCommand } from './commands/whoami.js';
+import { wordCommand } from './commands/word.js';
 import { captureCliException, flushGlitchTip, initGlitchTip } from './lib/glitchtip.js';
 import { getPackageVersionSync } from './lib/package-info.js';
 
@@ -66,6 +76,8 @@ program.addCommand(respondCommand);
 program.addCommand(createEventCommand);
 program.addCommand(deleteEventCommand);
 program.addCommand(findCommand);
+program.addCommand(peopleCommand);
+program.addCommand(orgCommand);
 program.addCommand(updateEventCommand);
 program.addCommand(mailCommand);
 program.addCommand(foldersCommand);
@@ -77,15 +89,18 @@ program.addCommand(forwardEventCommand);
 program.addCommand(counterCommand);
 program.addCommand(scheduleCommand);
 program.addCommand(suggestCommand);
+program.addCommand(vivaCommand);
 program.addCommand(subscribeCommand);
 program.addCommand(subscriptionsCommand);
 program.addCommand(serveCommand);
 program.addCommand(roomsCommand);
 program.addCommand(oofCommand);
+program.addCommand(mailboxSettingsCommand);
 program.addCommand(rulesCommand);
 program.addCommand(delegatesCommand);
 program.addCommand(todoCommand);
 program.addCommand(contactsCommand);
+program.addCommand(copilotCommand);
 program.addCommand(meetingCommand);
 program.addCommand(onenoteCommand);
 
@@ -98,7 +113,14 @@ program.addCommand(teamsCommand);
 program.addCommand(bookingsCommand);
 program.addCommand(presenceCommand);
 
+program.addCommand(insightsCommand);
+program.addCommand(groupsCommand);
+program.addCommand(approvalsCommand);
+
 program.addCommand(plannerCommand);
+
+program.addCommand(wordCommand);
+program.addCommand(powerpointCommand);
 
 program.addCommand(sharepointCommand);
 

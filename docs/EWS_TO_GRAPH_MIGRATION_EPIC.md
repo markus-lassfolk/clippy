@@ -140,7 +140,7 @@ Legend: ⬜ not started / EWS-only · 🟡 in progress / partial Graph · ✅ do
 
 ### Phase 6 — EWS removal
 
-- [ ] Remove `callEws`, `ews-client` usage, SOAP mocks  
+- [ ] Remove `callEws`, `ews-client` usage, SOAP mocks — prerequisites and file checklist: **[`PHASE6_EWS_REMOVAL.md`](./PHASE6_EWS_REMOVAL.md)**  
 - [ ] Remove legacy **`GRAPH_REFRESH_TOKEN` / `EWS_REFRESH_TOKEN`** env aliases (optional; `M365_REFRESH_TOKEN` only)  
 - [ ] Update Entra scripts, README, skills  
 

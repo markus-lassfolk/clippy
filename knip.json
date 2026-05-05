@@ -14,6 +14,10 @@
     "src/lib/graph-client.ts": ["exports"],
     "src/lib/calendar-range.ts": ["exports"],
     "src/lib/markdown.ts": ["exports"],
-    "src/lib/glitchtip-eligibility.ts": ["exports"]
+    "src/lib/glitchtip-eligibility.ts": ["exports"],
+    "src/lib/copilot-graph-client.ts": ["exports"],
+    "src/lib/graph-microsoft-search.ts": ["exports"],
+    "src/lib/graph-teams-client.ts": ["exports"],
+    "src/lib/places-client.ts": ["exports"]
   }
 }

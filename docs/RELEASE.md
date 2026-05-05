@@ -41,7 +41,7 @@ Trusted Publishing only applies **after** the package exists under your npm acco
 1. **Create an access token** on npm: [Access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens) — use a **Granular Access Token** with **Read and write** for the package (or **Automation** classic token if you prefer).
 2. **Locally** (or in a one-off CI job), from this repo at the release commit:
    - `npm run embed-sha`
-   - `npm pack` (optional sanity check)
+   - `npm pack` (optional sanity check — expect `skills/m365-agent-cli/SKILL.md`, `packaging/tools-md-snippet.md`, and `scripts/install-*.mjs` in the file list)
    - `npm publish --access public`  
      With a token: `npm config set //registry.npmjs.org/:_authToken=YOUR_TOKEN` (or `NPM_TOKEN` env with `npm publish` per npm docs). Do **not** commit the token.
 3. On [npmjs.com](https://www.npmjs.com/) open **`m365-agent-cli` → Package → Access → Trusted publishers** and add **GitHub Actions** with repository `markus-lassfolk/m365-agent-cli` and workflow file **`release.yml`** (see section above).

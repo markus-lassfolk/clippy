@@ -1,4 +1,13 @@
-import { callGraph, fetchAllPages, GraphApiError, type GraphResponse, graphError } from './graph-client.js';
+import {
+  callGraph,
+  fetchAllPages,
+  GraphApiError,
+  type GraphResponse,
+  getGraphBaseUrl,
+  graphError,
+  graphResult
+} from './graph-client.js';
+import { graphUserPath } from './graph-user-path.js';
 
 export interface Person {
   id: string;
@@ -35,7 +44,9 @@ export async function searchPeople(token: string, query: string): Promise<GraphR
   const searchParam = encodeURIComponent(`"${escapedQuery}"`);
   let result: GraphResponse<{ value: Person[] }>;
   try {
-    result = await callGraph<{ value: Person[] }>(token, `/me/people?$search=${searchParam}`);
+    result = await callGraph<{ value: Person[] }>(token, `/me/people?$search=${searchParam}`, {
+      headers: { ConsistencyLevel: 'eventual' }
+    });
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphError(err.message, err.code, err.status);
@@ -46,6 +57,60 @@ export async function searchPeople(token: string, query: string): Promise<GraphR
     return { ok: false, error: result.error };
   }
   return { ok: true, data: result.data.value };
+}
+
+function peopleCollectionPath(forUser?: string): string {
+  return graphUserPath(forUser, 'people');
+}
+
+/**
+ * List relevant people for /me or another user (GET …/people). Paginated when no $top.
+ * `$search` uses **ConsistencyLevel: eventual** per Graph advanced query rules.
+ */
+export async function listPeople(
+  token: string,
+  opts?: { user?: string; top?: number; search?: string }
+): Promise<GraphResponse<Person[]>> {
+  const base = peopleCollectionPath(opts?.user);
+  const params = new URLSearchParams();
+  if (opts?.top !== undefined) params.set('$top', String(opts.top));
+  if (opts?.search?.trim()) {
+    const escaped = opts.search.trim().replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    params.set('$search', `"${escaped}"`);
+  }
+  const qs = params.toString();
+  const path = qs ? `${base}?${qs}` : base;
+  const headers: Record<string, string> = opts?.search?.trim() ? { ConsistencyLevel: 'eventual' } : {};
+
+  if (opts?.top !== undefined) {
+    let result: GraphResponse<{ value: Person[] }>;
+    try {
+      result = await callGraph<{ value: Person[] }>(token, path, { headers });
+    } catch (err) {
+      if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+      return graphError(err instanceof Error ? err.message : 'Failed to list people');
+    }
+    if (!result.ok || !result.data) return { ok: false, error: result.error };
+    return graphResult(result.data.value ?? []);
+  }
+
+  return fetchAllPages<Person>(token, path, 'Failed to list people', getGraphBaseUrl(), { headers });
+}
+
+/** GET /me/people/{id} or /users/{id}/people/{personId}. */
+export async function getPerson(token: string, personId: string, forUser?: string): Promise<GraphResponse<Person>> {
+  const base = peopleCollectionPath(forUser);
+  const path = `${base}/${encodeURIComponent(personId)}`;
+  try {
+    const result = await callGraph<Person>(token, path);
+    if (!result.ok || !result.data) {
+      return { ok: false, error: result.error };
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get person');
+  }
 }
 
 export async function searchUsers(token: string, query: string): Promise<GraphResponse<User[]>> {

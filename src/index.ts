@@ -92,27 +92,56 @@ export type { GraphAuthResult } from './lib/graph-auth.js';
 export { resolveGraphAuth } from './lib/graph-auth.js';
 export type {
   CheckinResult,
+  DriveDeltaPage,
   DriveItem,
   DriveItemListResponse,
+  DriveItemPermission,
   DriveItemReference,
+  DriveItemThumbnailSet,
+  DriveLocation,
   GraphError,
   GraphResponse,
   OfficeCollabLinkResult,
+  SharedWithMeDriveItem,
   SharingLinkResult,
+  ThumbnailSizeInfo,
   UploadLargeResult
 } from './lib/graph-client.js';
 export {
+  assignDriveItemSensitivityLabel,
   checkinFile,
   checkoutFile,
   cleanupDownloadedFile,
   createOfficeCollaborationLink,
+  DEFAULT_DRIVE_LOCATION,
   defaultDownloadPath,
+  deleteDriveItemPermission,
   deleteFile,
   downloadFile,
+  driveDeltaStartPath,
+  driveItemPath,
+  driveLocationFromCliFlags,
+  driveRootPrefix,
+  extractDriveItemSensitivityLabels,
+  followDriveItem,
+  getDriveItemDeltaPage,
+  getDriveItemListItem,
+  getDriveItemRetentionLabel,
   getFileMetadata,
+  inviteDriveItem,
+  listDriveItemPermissions,
+  listDriveItemThumbnails,
+  listDriveSharedWithMe,
   listFiles,
+  moveDriveItem,
+  patchDriveItemPermission,
+  permanentDeleteDriveItem,
+  pollGraphAsyncJob,
+  removeDriveItemRetentionLabel,
   searchFiles,
   shareFile,
+  startCopyDriveItem,
+  unfollowDriveItem,
   uploadFile,
   uploadLargeFile
 } from './lib/graph-client.js';
@@ -123,6 +152,8 @@ export type {
 } from './lib/graph-directory.js';
 export {
   expandGroup,
+  getPerson,
+  listPeople,
   searchGroups,
   searchPeople,
   searchUsers
@@ -150,7 +181,11 @@ export type { AutomaticRepliesSetting, MailboxSettings, OofStatus } from './lib/
 export { getMailboxSettings, setMailboxSettings } from './lib/oof-client.js';
 export type { Place as PlaceRoom, RoomList as PlaceRoomList } from './lib/places-client.js';
 // places-client re-exports (aliases from EWS: getRoomLists/getRooms conflict)
-export { listPlaceRoomLists as getPlaceRoomLists, listRoomsInRoomList as getPlaceRooms } from './lib/places-client.js';
+export {
+  getPlace,
+  listPlaceRoomLists as getPlaceRoomLists,
+  listRoomsInRoomList as getPlaceRooms
+} from './lib/places-client.js';
 export type {
   CreateMessageRulePayload,
   MessageRule,

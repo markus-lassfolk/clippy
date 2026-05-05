@@ -1,12 +1,14 @@
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { expandGroup, searchGroups, searchPeople, searchUsers } from '../lib/graph-directory.js';
+import { findRooms } from '../lib/places-client.js';
 
 export const findCommand = new Command('find')
-  .description('Search for people or groups in the directory')
-  .argument('<query>', 'Search query (name, email, etc.)')
+  .description('Search people, groups, or meeting rooms (directory + Places API)')
+  .argument('<query>', 'Search query (name, email, room name, etc.)')
   .option('--people', 'Only search people/users')
   .option('--groups', 'Only search groups')
+  .option('--rooms', 'Only search meeting rooms (Places /rooms collection; Place.Read.All)')
   .option('--expand', 'Expand group members if the query matches a group')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
@@ -17,6 +19,7 @@ export const findCommand = new Command('find')
       options: {
         people?: boolean;
         groups?: boolean;
+        rooms?: boolean;
         expand?: boolean;
         json?: boolean;
         token?: string;
@@ -42,6 +45,50 @@ export const findCommand = new Command('find')
       try {
         const results: any[] = [];
         const errors: string[] = [];
+
+        if (options.rooms) {
+          const roomRes = await findRooms({ query }, { token, identity: options.identity });
+          if (!roomRes.ok || !roomRes.data) {
+            const msg = roomRes.error?.message || 'Room search failed';
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg, results: [] }, null, 2));
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(1);
+          }
+          for (const room of roomRes.data) {
+            results.push({
+              id: room.id,
+              type: 'Room',
+              name: room.displayName,
+              email: room.emailAddress,
+              capacity: room.capacity,
+              building: room.building,
+              floor: room.floorNumber,
+              tags: room.tags
+            });
+          }
+          if (options.json) {
+            console.log(JSON.stringify({ results }, null, 2));
+            return;
+          }
+          if (results.length === 0) {
+            console.log(`\nNo rooms matched "${query}"\n`);
+            return;
+          }
+          console.log(`\nRoom matches for "${query}":\n`);
+          console.log('\u2500'.repeat(80));
+          for (const res of results) {
+            console.log(`\n  \u{1F3E2} ${res.name} [Room]`);
+            if (res.email) console.log(`     Email: ${res.email}`);
+            if (res.capacity != null) console.log(`     Capacity: ${res.capacity}`);
+            if (res.building) console.log(`     Building: ${res.building}`);
+            if (res.tags?.length) console.log(`     Tags: ${res.tags.join(', ')}`);
+          }
+          console.log(`\n${'\u2500'.repeat(80)}\n`);
+          return;
+        }
 
         const searchAll = !options.people && !options.groups;
 

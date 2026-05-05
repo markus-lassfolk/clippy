@@ -9,7 +9,8 @@ import {
   graphError,
   graphResult
 } from './graph-client.js';
-import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBaseUrl, getGraphBetaUrl } from './graph-constants.js';
+import { graphUserPath } from './graph-user-path.js';
 
 export interface PlannerPlanContainer {
   '@odata.type'?: string;
@@ -380,7 +381,7 @@ export async function createPlannerPlan(
   title: string
 ): Promise<GraphResponse<PlannerPlan>> {
   try {
-    const base = GRAPH_BASE_URL.replace(/\/$/, '');
+    const base = getGraphBaseUrl().replace(/\/+$/, '');
     const result = await callGraph<PlannerPlan>(token, '/planner/plans', {
       method: 'POST',
       body: JSON.stringify({
@@ -397,6 +398,59 @@ export async function createPlannerPlan(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to create plan');
+  }
+}
+
+/**
+ * Beta: create a plan in the signed-in user's Planner container (`POST /me/planner/plans`).
+ * Graph requires `title` plus a `container` whose **url** is the beta **`/users/{id}`** resource (see plannerPlanContainer **user** type).
+ */
+export async function createPlannerPlanForSignedInUser(
+  token: string,
+  title: string
+): Promise<GraphResponse<PlannerPlan>> {
+  let meRes: GraphResponse<{ id: string }>;
+  try {
+    meRes = await callGraph<{ id: string }>(token, '/me?$select=id');
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to resolve user id');
+  }
+  if (!meRes.ok || !meRes.data?.id) {
+    return graphError(
+      meRes.error?.message || 'Failed to resolve signed-in user id',
+      meRes.error?.code,
+      meRes.error?.status
+    );
+  }
+
+  const betaBase = getGraphBetaUrl().replace(/\/+$/, '');
+  const body = {
+    title: title.trim(),
+    container: {
+      '@odata.type': '#microsoft.graph.plannerPlanContainer',
+      url: `${betaBase}/users/${encodeURIComponent(meRes.data.id)}`,
+      type: 'user'
+    }
+  };
+
+  try {
+    const result = await callGraphAt<PlannerPlan>(getGraphBetaUrl(), token, '/me/planner/plans', {
+      method: 'POST',
+      headers: { Prefer: 'include-unknown-enum-members' },
+      body: JSON.stringify(body)
+    });
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to create personal plan',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create personal plan');
   }
 }
 
@@ -440,6 +494,64 @@ export async function deletePlannerPlan(token: string, planId: string, etag: str
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to delete plan');
+  }
+}
+
+/** Beta: `POST /planner/plans/{id}/archive` — requires `If-Match` and `justification` in body. */
+export async function archivePlannerPlan(
+  token: string,
+  planId: string,
+  etag: string,
+  justification: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraphAt<void>(
+      getGraphBetaUrl(),
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/archive`,
+      {
+        method: 'POST',
+        headers: { 'If-Match': etag },
+        body: JSON.stringify({ justification: justification.trim() })
+      },
+      false
+    );
+    if (!result.ok) {
+      return graphError(result.error?.message || 'Failed to archive plan', result.error?.code, result.error?.status);
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to archive plan');
+  }
+}
+
+/** Beta: `POST /planner/plans/{id}/unarchive`. */
+export async function unarchivePlannerPlan(
+  token: string,
+  planId: string,
+  etag: string,
+  justification: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraphAt<void>(
+      getGraphBetaUrl(),
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/unarchive`,
+      {
+        method: 'POST',
+        headers: { 'If-Match': etag },
+        body: JSON.stringify({ justification: justification.trim() })
+      },
+      false
+    );
+    if (!result.ok) {
+      return graphError(result.error?.message || 'Failed to unarchive plan', result.error?.code, result.error?.status);
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to unarchive plan');
   }
 }
 
@@ -633,19 +745,98 @@ export async function updatePlannerPlanDetails(
   }
 }
 
-/** Beta: plans marked favorite by the current user. */
-export async function listFavoritePlans(token: string): Promise<GraphResponse<PlannerPlan[]>> {
+/** DELETE `/planner/plans/{id}/details` — removes the **details** facet (label names, sharedWith). Rare; requires the details resource ETag. */
+export async function deletePlannerPlanDetails(
+  token: string,
+  planId: string,
+  etag: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraph<void>(
+      token,
+      `/planner/plans/${encodeURIComponent(planId)}/details`,
+      { method: 'DELETE', headers: { 'If-Match': etag } },
+      false
+    );
+    if (!result.ok) {
+      return graphError(
+        result.error?.message || 'Failed to delete plan details',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete plan details');
+  }
+}
+
+/** DELETE `/planner/tasks/{id}/details` — removes task **details** (description, checklist, references). Task shell may remain until task delete. */
+export async function deletePlannerTaskDetails(
+  token: string,
+  taskId: string,
+  etag: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraph<void>(
+      token,
+      `/planner/tasks/${encodeURIComponent(taskId)}/details`,
+      { method: 'DELETE', headers: { 'If-Match': etag } },
+      false
+    );
+    if (!result.ok) {
+      return graphError(
+        result.error?.message || 'Failed to delete task details',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete task details');
+  }
+}
+
+/** Beta: plans marked favorite by the user (`GET …/planner/favoritePlans`). */
+export async function listFavoritePlans(token: string, user?: string): Promise<GraphResponse<PlannerPlan[]>> {
   return fetchAllPages<PlannerPlan>(
     token,
-    '/me/planner/favoritePlans',
+    graphUserPath(user, 'planner/favoritePlans'),
     'Failed to list favorite plans',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
-/** Beta: plans from rosters the user belongs to. */
-export async function listRosterPlans(token: string): Promise<GraphResponse<PlannerPlan[]>> {
-  return fetchAllPages<PlannerPlan>(token, '/me/planner/rosterPlans', 'Failed to list roster plans', GRAPH_BETA_URL);
+/** Beta: plans from rosters the user belongs to (`GET …/planner/rosterPlans`). */
+export async function listRosterPlans(token: string, user?: string): Promise<GraphResponse<PlannerPlan[]>> {
+  return fetchAllPages<PlannerPlan>(
+    token,
+    graphUserPath(user, 'planner/rosterPlans'),
+    'Failed to list roster plans',
+    getGraphBetaUrl()
+  );
+}
+
+/** Beta: tasks in the user’s My Day view (`GET …/planner/myDayTasks`). */
+export async function listPlannerMyDayTasks(token: string, user?: string): Promise<GraphResponse<PlannerTask[]>> {
+  return fetchAllPages<PlannerTask>(
+    token,
+    graphUserPath(user, 'planner/myDayTasks'),
+    'Failed to list My Day tasks',
+    getGraphBetaUrl()
+  );
+}
+
+/** Beta: plans the user recently viewed (`GET …/planner/recentPlans`). */
+export async function listPlannerRecentPlans(token: string, user?: string): Promise<GraphResponse<PlannerPlan[]>> {
+  return fetchAllPages<PlannerPlan>(
+    token,
+    graphUserPath(user, 'planner/recentPlans'),
+    'Failed to list recent plans',
+    getGraphBetaUrl()
+  );
 }
 
 export interface PlannerDeltaPage {
@@ -663,7 +854,7 @@ export async function getPlannerDeltaPage(
     if (nextOrDeltaUrl) {
       return await callGraphAbsolute<PlannerDeltaPage>(token, nextOrDeltaUrl);
     }
-    return await callGraphAt<PlannerDeltaPage>(GRAPH_BETA_URL, token, '/me/planner/all/delta');
+    return await callGraphAt<PlannerDeltaPage>(getGraphBetaUrl(), token, '/me/planner/all/delta');
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get Planner delta');
@@ -969,9 +1160,10 @@ export interface PlannerUser {
   recentPlanReferences?: Record<string, unknown>;
 }
 
-export async function getPlannerUser(token: string): Promise<GraphResponse<PlannerUser>> {
+export async function getPlannerUser(token: string, user?: string): Promise<GraphResponse<PlannerUser>> {
+  const path = graphUserPath(user, 'planner');
   try {
-    const result = await callGraphAt<PlannerUser>(GRAPH_BETA_URL, token, '/me/planner');
+    const result = await callGraphAt<PlannerUser>(getGraphBetaUrl(), token, path);
     if (!result.ok || !result.data) {
       return graphError(
         result.error?.message || 'Failed to get planner user',
@@ -988,27 +1180,20 @@ export async function getPlannerUser(token: string): Promise<GraphResponse<Plann
 
 async function patchPlannerUser(
   token: string,
+  user: string | undefined,
   etag: string,
-  body: {
-    favoritePlanReferences?: Record<string, unknown> | null;
-    recentPlanReferences?: Record<string, unknown> | null;
-  }
+  body: Record<string, unknown>
 ): Promise<GraphResponse<PlannerUser | undefined>> {
+  const path = graphUserPath(user, 'planner');
   try {
-    const result = await callGraphAt<PlannerUser>(
-      GRAPH_BETA_URL,
-      token,
-      '/me/planner',
-      {
-        method: 'PATCH',
-        headers: {
-          'If-Match': etag,
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify(body)
+    const result = await callGraphAt<PlannerUser>(getGraphBetaUrl(), token, path, {
+      method: 'PATCH',
+      headers: {
+        'If-Match': etag,
+        Prefer: 'return=representation'
       },
-      true
-    );
+      body: JSON.stringify(body)
+    });
     if (!result.ok) {
       return graphError(
         result.error?.message || 'Failed to update planner user',
@@ -1023,19 +1208,30 @@ async function patchPlannerUser(
   }
 }
 
-/** Beta: add or update a favorite plan entry (PATCH /me/planner merge). */
+/** Beta: merge PATCH `plannerUser` (favorites, recents, or other documented properties). Requires `@odata.etag` from `getPlannerUser`. */
+export async function updatePlannerUser(
+  token: string,
+  user: string | undefined,
+  etag: string,
+  patch: Record<string, unknown>
+): Promise<GraphResponse<PlannerUser | undefined>> {
+  return patchPlannerUser(token, user, etag, patch);
+}
+
+/** Beta: add or update a favorite plan entry (PATCH …/planner merge). */
 export async function addPlannerFavoritePlan(
   token: string,
   planId: string,
-  planTitle: string
+  planTitle: string,
+  user?: string
 ): Promise<GraphResponse<PlannerUser | undefined>> {
-  const ur = await getPlannerUser(token);
+  const ur = await getPlannerUser(token, user);
   if (!ur.ok || !ur.data) {
     return graphError(ur.error?.message || 'Failed to get planner user', ur.error?.code, ur.error?.status);
   }
   const etag = ur.data['@odata.etag'];
   if (!etag) return graphError('plannerUser missing ETag', 'MISSING_ETAG', 500);
-  return patchPlannerUser(token, etag, {
+  return patchPlannerUser(token, user, etag, {
     favoritePlanReferences: {
       [planId]: {
         '@odata.type': '#microsoft.graph.plannerFavoritePlanReference',
@@ -1049,16 +1245,17 @@ export async function addPlannerFavoritePlan(
 /** Beta: remove a plan from favorites (set reference to null). */
 export async function removePlannerFavoritePlan(
   token: string,
-  planId: string
+  planId: string,
+  user?: string
 ): Promise<GraphResponse<PlannerUser | undefined>> {
-  const ur = await getPlannerUser(token);
+  const ur = await getPlannerUser(token, user);
   if (!ur.ok || !ur.data) {
     return graphError(ur.error?.message || 'Failed to get planner user', ur.error?.code, ur.error?.status);
   }
   const etag = ur.data['@odata.etag'];
   if (!etag) return graphError('plannerUser missing ETag', 'MISSING_ETAG', 500);
   const favoritePlanReferences: Record<string, unknown> = { [planId]: null };
-  return patchPlannerUser(token, etag, { favoritePlanReferences });
+  return patchPlannerUser(token, user, etag, { favoritePlanReferences });
 }
 
 /** Beta: security container for roster-backed plans (see Graph `plannerRoster`). */
@@ -1078,7 +1275,7 @@ export interface PlannerRosterMember {
 /** Beta: `POST /planner/rosters` — create an empty roster (then add members and add a plan). */
 export async function createPlannerRoster(token: string): Promise<GraphResponse<PlannerRoster>> {
   try {
-    const result = await callGraphAt<PlannerRoster>(GRAPH_BETA_URL, token, '/planner/rosters', {
+    const result = await callGraphAt<PlannerRoster>(getGraphBetaUrl(), token, '/planner/rosters', {
       method: 'POST',
       body: JSON.stringify({ '@odata.type': '#microsoft.graph.plannerRoster' })
     });
@@ -1096,7 +1293,7 @@ export async function createPlannerRoster(token: string): Promise<GraphResponse<
 export async function getPlannerRoster(token: string, rosterId: string): Promise<GraphResponse<PlannerRoster>> {
   try {
     const result = await callGraphAt<PlannerRoster>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}`
     );
@@ -1119,7 +1316,7 @@ export async function listPlannerRosterMembers(
     token,
     `/planner/rosters/${encodeURIComponent(rosterId)}/members`,
     'Failed to list roster members',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -1138,7 +1335,7 @@ export async function addPlannerRosterMember(
     if (options?.tenantId !== undefined) body.tenantId = options.tenantId;
     if (options?.roles !== undefined && options.roles.length > 0) body.roles = options.roles;
     const result = await callGraphAt<PlannerRosterMember>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}/members`,
       {
@@ -1168,7 +1365,7 @@ export async function removePlannerRosterMember(
 ): Promise<GraphResponse<void>> {
   try {
     const result = await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}/members/${encodeURIComponent(memberId)}`,
       { method: 'DELETE' },
@@ -1198,8 +1395,8 @@ export async function createPlannerPlanInRoster(
   title: string
 ): Promise<GraphResponse<PlannerPlan>> {
   try {
-    const base = GRAPH_BETA_URL.replace(/\/$/, '');
-    const result = await callGraphAt<PlannerPlan>(GRAPH_BETA_URL, token, '/planner/plans', {
+    const base = getGraphBetaUrl().replace(/\/+$/, '');
+    const result = await callGraphAt<PlannerPlan>(getGraphBetaUrl(), token, '/planner/plans', {
       method: 'POST',
       headers: { Prefer: 'include-unknown-enum-members' },
       body: JSON.stringify({
@@ -1222,5 +1419,56 @@ export async function createPlannerPlanInRoster(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to create plan in roster');
+  }
+}
+
+/** Beta: move a plan to another container (e.g. user roster → group). Requires plan `If-Match`. */
+export async function movePlannerPlanToContainer(
+  token: string,
+  planId: string,
+  etag: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<unknown>> {
+  try {
+    const result = await callGraphAt<unknown>(
+      getGraphBetaUrl(),
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/moveToContainer`,
+      {
+        method: 'POST',
+        headers: { 'If-Match': etag },
+        body: JSON.stringify(body)
+      }
+    );
+    if (!result.ok) {
+      return graphError(result.error?.message || 'Failed to move plan', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data as unknown);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to move plan');
+  }
+}
+
+/** Beta: `GET /planner/plans/{id}/getUsageRights()` */
+export async function getPlannerPlanUsageRights(token: string, planId: string): Promise<GraphResponse<unknown>> {
+  try {
+    const result = await callGraphAt<unknown>(
+      getGraphBetaUrl(),
+      token,
+      `/planner/plans/${encodeURIComponent(planId.trim())}/getUsageRights()`,
+      { method: 'GET' }
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to get plan usage rights',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get plan usage rights');
   }
 }

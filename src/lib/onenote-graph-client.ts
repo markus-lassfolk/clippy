@@ -3,14 +3,16 @@ import { basename, resolve } from 'node:path';
 import {
   callGraph,
   callGraphAbsolute,
+  callGraphAt,
   fetchAllPages,
   fetchGraphRaw,
   GraphApiError,
   type GraphResponse,
   graphError,
+  graphErrorFromApiError,
   graphResult
 } from './graph-client.js';
-import { GRAPH_BASE_URL } from './graph-constants.js';
+import { getGraphBaseUrl } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 import { lookupMimeType } from './mime-type.js';
 
@@ -670,30 +672,13 @@ export async function createOneNotePageMultipart(
       form.append(p.partName, new Blob([buf], { type: mime }), fileName);
     }
 
-    const res = await fetch(`${GRAPH_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
-    });
-
-    const text = await res.text();
-    if (!res.ok) {
-      let message = text || `HTTP ${res.status}`;
-      try {
-        const j = JSON.parse(text) as { error?: { message?: string } };
-        if (j.error?.message) message = j.error.message;
-      } catch {
-        /* ignore */
-      }
-      return graphError(message, undefined, res.status);
+    const r = await callGraphAt<OneNotePage>(getGraphBaseUrl(), token, path, { method: 'POST', body: form }, true);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to create page (multipart)', r.error?.code, r.error?.status);
     }
-    if (!text.trim()) {
-      return graphError('Empty response from create page');
-    }
-    const data = JSON.parse(text) as OneNotePage;
-    return graphResult(data);
+    return graphResult(r.data);
   } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to create page (multipart)');
   }
 }
@@ -723,26 +708,13 @@ export async function patchOneNotePageContentMultipart(
       form.append(p.partName, new Blob([buf], { type: mime }), fileName);
     }
 
-    const res = await fetch(`${GRAPH_BASE_URL}${path}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
-    });
-
-    if (res.status === 204 || res.ok) {
-      return graphResult(undefined as undefined);
+    const r = await callGraphAt<void>(getGraphBaseUrl(), token, path, { method: 'PATCH', body: form }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to patch page (multipart)', r.error?.code, r.error?.status);
     }
-    const text = await res.text();
-    let message = text || `HTTP ${res.status}`;
-    try {
-      const j = JSON.parse(text) as { error?: { message?: string } };
-      if (j.error?.message) message = j.error.message;
-    } catch {
-      /* ignore */
-    }
-    return graphError(message, undefined, res.status);
+    return graphResult(undefined as undefined);
   } catch (err) {
-    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to patch page (multipart)');
   }
 }

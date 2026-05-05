@@ -36,7 +36,23 @@ export const GRAPH_DEVICE_CODE_LOGIN_SCOPES = [
   'Presence.Read.All',
   'Presence.ReadWrite',
   'Bookings.ReadWrite.All',
-  'Chat.ReadWrite'
+  'Chat.ReadWrite',
+  'TeamsActivity.Send',
+  'ExternalItem.Read.All',
+  'Reports.Read.All',
+  'CopilotPackages.Read.All',
+  'CopilotPackages.ReadWrite.All',
+  'OnlineMeetingAiInsight.Read.All',
+  'OnlineMeetingRecording.Read.All',
+  'OnlineMeetingTranscript.Read.All',
+  'People.Read.All',
+  'AiEnterpriseInteraction.Read',
+  'ApprovalSolution.ReadWrite',
+  'AppCatalog.Read.All',
+  'TeamsAppInstallation.ReadWriteSelfForUser',
+  'LearningAssignedCourse.Read.All',
+  'EngagementRole.Read.All',
+  'EngagementRole.ReadWrite.All'
 ].join(' ');
 
 /**
@@ -80,7 +96,23 @@ const GRAPH_RESOURCE_SCOPES_FULL = [
   G('Presence.Read.All'),
   G('Presence.ReadWrite'),
   G('Bookings.ReadWrite.All'),
-  G('Chat.ReadWrite')
+  G('Chat.ReadWrite'),
+  G('TeamsActivity.Send'),
+  G('ExternalItem.Read.All'),
+  G('Reports.Read.All'),
+  G('CopilotPackages.Read.All'),
+  G('CopilotPackages.ReadWrite.All'),
+  G('OnlineMeetingAiInsight.Read.All'),
+  G('OnlineMeetingRecording.Read.All'),
+  G('OnlineMeetingTranscript.Read.All'),
+  G('People.Read.All'),
+  G('AiEnterpriseInteraction.Read'),
+  G('ApprovalSolution.ReadWrite'),
+  G('AppCatalog.Read.All'),
+  G('TeamsAppInstallation.ReadWriteSelfForUser'),
+  G('LearningAssignedCourse.Read.All'),
+  G('EngagementRole.Read.All'),
+  G('EngagementRole.ReadWrite.All')
 ].join(' ');
 
 /**
@@ -113,7 +145,23 @@ const GRAPH_RESOURCE_SCOPES_WITHOUT_USER_READ_ALL = [
   G('Presence.Read.All'),
   G('Presence.ReadWrite'),
   G('Bookings.ReadWrite.All'),
-  G('Chat.ReadWrite')
+  G('Chat.ReadWrite'),
+  G('TeamsActivity.Send'),
+  G('ExternalItem.Read.All'),
+  G('Reports.Read.All'),
+  G('CopilotPackages.Read.All'),
+  G('CopilotPackages.ReadWrite.All'),
+  G('OnlineMeetingAiInsight.Read.All'),
+  G('OnlineMeetingRecording.Read.All'),
+  G('OnlineMeetingTranscript.Read.All'),
+  G('People.Read.All'),
+  G('AiEnterpriseInteraction.Read'),
+  G('ApprovalSolution.ReadWrite'),
+  G('AppCatalog.Read.All'),
+  G('TeamsAppInstallation.ReadWriteSelfForUser'),
+  G('LearningAssignedCourse.Read.All'),
+  G('EngagementRole.Read.All'),
+  G('EngagementRole.ReadWrite.All')
 ].join(' ');
 
 /**

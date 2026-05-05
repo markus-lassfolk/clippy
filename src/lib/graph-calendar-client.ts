@@ -1,11 +1,17 @@
+import { decodeGraphFileAttachmentBase64 } from './graph-attachment-base64.js';
+import {
+  createCalendarEventFileAttachmentUploadSession,
+  GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES,
+  uploadBufferViaGraphUploadUrl
+} from './graph-attachment-upload-session.js';
 import {
   callGraph,
   callGraphAbsolute,
   fetchAllPages,
   fetchGraphRaw,
-  GRAPH_BASE_URL,
   GraphApiError,
   type GraphResponse,
+  getGraphBaseUrl,
   graphError,
   graphResult
 } from './graph-client.js';
@@ -53,7 +59,10 @@ export interface GraphCalendarEvent {
     emailAddress?: { name?: string; address?: string };
     status?: { response?: string };
   }>;
-  location?: { displayName?: string };
+  location?: { displayName?: string; locationEmailAddress?: string; locationType?: string };
+  /** Additional locations (room mailboxes, etc.); aligns with Graph [event](https://learn.microsoft.com/en-us/graph/api/resources/event) `locations`. */
+  locations?: Array<{ displayName?: string; locationEmailAddress?: string; locationType?: string }>;
+  showAs?: string;
   webLink?: string;
   /** Teams / Skype meeting details when `isOnlineMeeting` is true ([onlineMeetingInfo](https://learn.microsoft.com/en-us/graph/api/resources/onlinemeetinginfo)). */
   onlineMeeting?: {
@@ -85,7 +94,14 @@ export interface GraphCreateEventRequest {
   body?: { contentType: 'text' | 'html'; content: string };
   start: { dateTime: string; timeZone: string };
   end: { dateTime: string; timeZone: string };
-  location?: { displayName: string };
+  location?: { displayName: string; locationEmailAddress?: string; locationType?: string };
+  locations?: Array<{
+    displayName?: string;
+    locationEmailAddress?: string;
+    locationType?: string;
+    uniqueId?: string;
+    uniqueIdType?: string;
+  }>;
   attendees?: Array<{
     emailAddress: { address: string; name?: string };
     type: 'required' | 'optional' | 'resource';
@@ -96,6 +112,8 @@ export interface GraphCreateEventRequest {
   sensitivity?: 'normal' | 'personal' | 'private' | 'confidential';
   categories?: string[];
   recurrence?: GraphPatternedRecurrence;
+  /** Outlook free/busy line: free, tentative, busy, oof, workingElsewhere, unknown */
+  showAs?: 'free' | 'tentative' | 'busy' | 'oof' | 'workingElsewhere' | 'unknown';
 }
 
 /** [patternedRecurrence](https://learn.microsoft.com/en-us/graph/api/resources/patternedrecurrence) (subset). */
@@ -120,6 +138,143 @@ export interface GraphPatternedRecurrence {
 
 function calendarsRoot(user?: string): string {
   return graphUserPath(user, 'calendars');
+}
+
+function calendarGroupsRoot(user?: string): string {
+  return graphUserPath(user, 'calendarGroups');
+}
+
+/** Graph [calendarGroup](https://learn.microsoft.com/en-us/graph/api/resources/calendargroup) (subset). */
+export interface GraphCalendarGroupResource {
+  id: string;
+  name?: string;
+}
+
+export async function listCalendarGroups(
+  token: string,
+  user?: string
+): Promise<GraphResponse<GraphCalendarGroupResource[]>> {
+  return fetchAllPages<GraphCalendarGroupResource>(token, calendarGroupsRoot(user), 'Failed to list calendar groups');
+}
+
+export async function createCalendarGroup(
+  token: string,
+  name: string,
+  user?: string
+): Promise<GraphResponse<GraphCalendarGroupResource>> {
+  try {
+    const result = await callGraph<GraphCalendarGroupResource>(token, calendarGroupsRoot(user), {
+      method: 'POST',
+      body: JSON.stringify({ name: name.trim() })
+    });
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to create calendar group',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create calendar group');
+  }
+}
+
+export async function deleteCalendarGroup(token: string, groupId: string, user?: string): Promise<GraphResponse<void>> {
+  try {
+    return await callGraph<void>(
+      token,
+      `${calendarGroupsRoot(user)}/${encodeURIComponent(groupId)}`,
+      { method: 'DELETE' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete calendar group');
+  }
+}
+
+/**
+ * Create a calendar ([user post calendars](https://learn.microsoft.com/en-us/graph/api/user-post-calendars)
+ * or [calendarGroup post calendars](https://learn.microsoft.com/en-us/graph/api/calendargroup-post-calendars) when `calendarGroupId` is set).
+ */
+export async function createCalendarResource(
+  token: string,
+  body: { name: string; color?: string },
+  user?: string,
+  calendarGroupId?: string
+): Promise<GraphResponse<GraphCalendarResource>> {
+  const gid = calendarGroupId?.trim();
+  const path = gid ? `${calendarGroupsRoot(user)}/${encodeURIComponent(gid)}/calendars` : calendarsRoot(user);
+  const payload: Record<string, unknown> = { name: body.name.trim() };
+  if (body.color?.trim()) {
+    payload.color = body.color.trim();
+  }
+  try {
+    const result = await callGraph<GraphCalendarResource>(token, path, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!result.ok || !result.data) {
+      return graphError(result.error?.message || 'Failed to create calendar', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to create calendar');
+  }
+}
+
+/** PATCH [calendar](https://learn.microsoft.com/en-us/graph/api/calendar-update). */
+export async function updateCalendarResource(
+  token: string,
+  calendarId: string,
+  patch: { name?: string; color?: string },
+  user?: string
+): Promise<GraphResponse<GraphCalendarResource>> {
+  const body: Record<string, string> = {};
+  if (patch.name !== undefined) body.name = patch.name.trim();
+  if (patch.color?.trim()) body.color = patch.color.trim();
+  if (Object.keys(body).length === 0) {
+    return graphError('Nothing to update: provide --name and/or --color', undefined, 400);
+  }
+  try {
+    const result = await callGraph<GraphCalendarResource>(
+      token,
+      `${calendarsRoot(user)}/${encodeURIComponent(calendarId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(body)
+      }
+    );
+    if (!result.ok || !result.data) {
+      return graphError(result.error?.message || 'Failed to update calendar', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to update calendar');
+  }
+}
+
+/** DELETE [calendar](https://learn.microsoft.com/en-us/graph/api/calendar-delete). */
+export async function deleteCalendarResource(
+  token: string,
+  calendarId: string,
+  user?: string
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraph<void>(
+      token,
+      `${calendarsRoot(user)}/${encodeURIComponent(calendarId)}`,
+      { method: 'DELETE' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete calendar');
+  }
 }
 
 export async function listCalendars(token: string, user?: string): Promise<GraphResponse<GraphCalendarResource[]>> {
@@ -168,15 +323,19 @@ export async function listCalendarView(
 }
 
 /**
- * Create an event on the default calendar ([create event](https://learn.microsoft.com/en-us/graph/api/user-post-events)).
+ * Create an event on the default calendar ([user post events](https://learn.microsoft.com/en-us/graph/api/user-post-events))
+ * or on a specific calendar ([calendar post events](https://learn.microsoft.com/en-us/graph/api/calendar-post-events)) when `calendarId` is set.
  */
 export async function createCalendarEvent(
   token: string,
   body: GraphCreateEventRequest,
-  user?: string
+  user?: string,
+  calendarId?: string
 ): Promise<GraphResponse<GraphCalendarEvent>> {
   try {
-    const result = await callGraph<GraphCalendarEvent>(token, graphUserPath(user, 'events'), {
+    const cal = calendarId?.trim();
+    const path = cal ? `${calendarsRoot(user)}/${encodeURIComponent(cal)}/events` : graphUserPath(user, 'events');
+    const result = await callGraph<GraphCalendarEvent>(token, path, {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -278,7 +437,13 @@ export async function listEventInstances(
   const requestInit: RequestInit | undefined = options?.preferOutlookTimezoneUtc
     ? { headers: { Prefer: PREFER_OUTLOOK_TIMEZONE_UTC } }
     : undefined;
-  return fetchAllPages<GraphCalendarEvent>(token, path, 'Failed to list event instances', GRAPH_BASE_URL, requestInit);
+  return fetchAllPages<GraphCalendarEvent>(
+    token,
+    path,
+    'Failed to list event instances',
+    getGraphBaseUrl(),
+    requestInit
+  );
 }
 
 export async function getEvent(
@@ -509,12 +674,41 @@ export async function getEventAttachment(
 }
 
 /** `POST /me/events/{id}/attachments` — file attachment on an event (draft or existing). */
-export async function addFileAttachmentToCalendarEvent(
+async function addFileAttachmentToCalendarEvent(
   token: string,
   eventId: string,
   attachment: { name: string; contentType: string; contentBytes: string },
   user?: string
 ): Promise<GraphResponse<GraphEventAttachment>> {
+  const raw = decodeGraphFileAttachmentBase64(attachment.contentBytes);
+  if (!raw) {
+    return graphError('Invalid base64 in attachment contentBytes', undefined, 400);
+  }
+  if (raw.byteLength > GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES) {
+    const sess = await createCalendarEventFileAttachmentUploadSession(
+      token,
+      eventId,
+      attachment.name,
+      raw.byteLength,
+      attachment.contentType,
+      user
+    );
+    if (!sess.ok || !sess.data?.uploadUrl) {
+      return graphError(sess.error?.message || 'Upload session failed', sess.error?.code, sess.error?.status);
+    }
+    const up = await uploadBufferViaGraphUploadUrl(sess.data.uploadUrl, raw);
+    if (!up.ok) {
+      return graphError(up.error?.message || 'Upload failed', up.error?.code, up.error?.status);
+    }
+    const id = typeof up.data?.id === 'string' ? up.data.id : 'uploaded';
+    return graphResult({
+      id,
+      name: attachment.name,
+      contentType: attachment.contentType,
+      '@odata.type': '#microsoft.graph.fileAttachment'
+    });
+  }
+
   const body = {
     '@odata.type': '#microsoft.graph.fileAttachment',
     name: attachment.name,

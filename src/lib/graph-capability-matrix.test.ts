@@ -48,7 +48,7 @@ describe('evaluateGraphCapabilities', () => {
     expect(row?.readOk).toBe(false);
   });
 
-  test('SharePoint write needs Sites.ReadWrite or Sites.Manage', () => {
+  test('SharePoint write needs Sites.ReadWrite.All or Sites.Manage.All', () => {
     const readOnly = evaluateGraphCapabilities(new Set(['Sites.Read.All']));
     const sp = readOnly.find((r) => r.id === 'sharepoint.sites');
     expect(sp?.readOk).toBe(true);
@@ -57,11 +57,29 @@ describe('evaluateGraphCapabilities', () => {
     const write = evaluateGraphCapabilities(new Set(['Sites.ReadWrite.All']));
     const sp2 = write.find((r) => r.id === 'sharepoint.sites');
     expect(sp2?.writeOk).toBe(true);
+
+    const manage = evaluateGraphCapabilities(new Set(['Sites.Manage.All']));
+    const sp3 = manage.find((r) => r.id === 'sharepoint.sites');
+    expect(sp3?.readOk && sp3?.writeOk).toBe(true);
   });
 
   test('matrix has stable ids', () => {
     const ids = new Set(GRAPH_CAPABILITY_MATRIX.map((r) => r.id));
     expect(ids.size).toBe(GRAPH_CAPABILITY_MATRIX.length);
+  });
+
+  test('copilot.retrieval: typical Files+Sites read scopes satisfy read', () => {
+    const ev = evaluateGraphCapabilities(new Set(['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read']));
+    const row = ev.find((r) => r.id === 'copilot.retrieval');
+    expect(row?.readOk).toBe(true);
+    expect(row?.writeOk).toBe(false);
+  });
+
+  test('copilot.reports: Reports.Read.All satisfies read', () => {
+    const ev = evaluateGraphCapabilities(new Set(['Reports.Read.All']));
+    const row = ev.find((r) => r.id === 'copilot.reports');
+    expect(row?.readOk).toBe(true);
+    expect(row?.writeOk).toBe(false);
   });
 });
 

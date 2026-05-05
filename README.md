@@ -79,6 +79,10 @@ bun run src/cli.ts -- --help
 
 Stable releases are versioned in `package.json` and published to npm when a maintainer pushes a matching Git tag — see [CHANGELOG.md](CHANGELOG.md) and [docs/RELEASE.md](docs/RELEASE.md).
 
+**Node without Bun:** the published `bin` entry is a TypeScript file with a Bun shebang. If `m365-agent-cli` is not executable on your system, run the CLI via **tsx**, for example `npx tsx node_modules/m365-agent-cli/src/cli.ts -- --help` (for a global install, replace `node_modules/m365-agent-cli` with `$(npm root -g)/m365-agent-cli`).
+
+**OpenClaw from npm:** after `npm install m365-agent-cli`, the skill ships at **`node_modules/m365-agent-cli/skills/m365-agent-cli/SKILL.md`**. Copy or symlink that folder into your OpenClaw skills directory, or set **`OPENCLAW_SKILLS_DIR`** to that skills root and reinstall so **postinstall** copies the skill (see [skills/README.md](skills/README.md)). To merge versioned notes into **`TOOLS.md`** without duplicate paragraphs, run **`npm run install-tools-md -- path/to/TOOLS.md`** from a clone or **`node node_modules/m365-agent-cli/scripts/install-tools-md.mjs path/to/TOOLS.md`** from an npm install.
+
 ---
 
 ## Sign in once
@@ -115,9 +119,13 @@ Every command, flag, read-only matrix, Planner/SharePoint/Graph examples, and sc
 | Topic | Where |
 | --- | --- |
 | Full CLI reference and examples | [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) |
+| Agent workflows (deltas, Teams + files, scripting) | [docs/AGENT_WORKFLOWS.md](docs/AGENT_WORKFLOWS.md) |
+| `--json` / read-only inventory | [docs/CLI_SCRIPTING_APPENDIX.md](docs/CLI_SCRIPTING_APPENDIX.md) · [docs/CLI_SCRIPTING_INVENTORY.md](docs/CLI_SCRIPTING_INVENTORY.md) |
+| Optional MCP stdio server (Cursor, etc.) | [packages/m365-agent-cli-mcp/README.md](packages/m365-agent-cli-mcp/README.md) |
 | OAuth, tokens, shared mailboxes | [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) |
 | Entra app registration (scripts + portal) | [docs/ENTRA_SETUP.md](docs/ENTRA_SETUP.md) |
 | Delegated Graph scopes | [docs/GRAPH_SCOPES.md](docs/GRAPH_SCOPES.md) |
+| Assistants: `--mailbox` vs `--user`, Teams, org | [docs/PERSONAL_ASSISTANT_DELEGATION.md](docs/PERSONAL_ASSISTANT_DELEGATION.md) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Graph vs EWS coverage | [docs/GRAPH_V2_STATUS.md](docs/GRAPH_V2_STATUS.md) |
 | Graph / EWS parity matrix | [docs/GRAPH_EWS_PARITY_MATRIX.md](docs/GRAPH_EWS_PARITY_MATRIX.md) |

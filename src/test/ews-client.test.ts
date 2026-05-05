@@ -109,6 +109,37 @@ describe('ews-client safety and conflict behavior', () => {
     );
   });
 
+  it('getEmails combines isRead and flagStatus into And restriction', async () => {
+    const bodies: string[] = [];
+    const emptyFindItem = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages">
+  <soap:Body>
+    <m:FindItemResponse>
+      <m:ResponseMessages>
+        <m:FindItemResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:RootFolder IncludesLastItemInRange="true" TotalItemsInView="0" IndexedPagingOffset="0" />
+        </m:FindItemResponseMessage>
+      </m:ResponseMessages>
+    </m:FindItemResponse>
+  </soap:Body>
+</soap:Envelope>`;
+
+    globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(String(init?.body || ''));
+      return new Response(emptyFindItem, { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { getEmails } = await import('../lib/ews-client.js');
+    const result = await getEmails({ token: 'token', isRead: false, flagStatus: 'Flagged' });
+
+    expect(result.ok).toBe(true);
+    expect(bodies[0]).toContain('<t:And>');
+    expect(bodies[0]).toContain('message:IsRead');
+    expect(bodies[0]).toContain('item:Flag/FlagStatus');
+    expect(bodies[0]).toContain('Value="Flagged"');
+  });
+
   it('returns explicit error when getOwaUserInfo fails instead of silent fallback', async () => {
     globalThis.fetch = mock(async () => {
       return new Response('gateway timeout', { status: 504 });
