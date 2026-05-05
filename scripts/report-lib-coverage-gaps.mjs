@@ -2,6 +2,7 @@
 /**
  * Print src/lib files (minus ews-client.ts) sorted by uncovered lines (LF−LH).
  * Merges duplicate SF records for the same path (Bun --isolate) like check-coverage-lib.mjs.
+ * Denominator uses merged `LF:` only (plus DA entry count if needed), not max DA line number.
  * Usage: node scripts/report-lib-coverage-gaps.mjs [--top N] [coverage/lcov.info]
  */
 import { readFileSync } from 'node:fs';
@@ -73,11 +74,7 @@ for (const block of raw.split('end_of_record')) {
     mergedByFile.set(key, { lf: 0, lineHits: new Map() });
   }
   const agg = mergedByFile.get(key);
-  let maxLine = 0;
-  for (const ln of lineHits.keys()) {
-    if (ln > maxLine) maxLine = ln;
-  }
-  agg.lf = Math.max(agg.lf, blockLf, maxLine);
+  agg.lf = Math.max(agg.lf, blockLf);
   for (const [ln, hits] of lineHits) {
     agg.lineHits.set(ln, Math.max(agg.lineHits.get(ln) ?? 0, hits));
   }
@@ -85,10 +82,10 @@ for (const block of raw.split('end_of_record')) {
 
 const rows = [];
 for (const [file, agg] of mergedByFile) {
-  const lf = agg.lf;
+  const lf = Math.max(agg.lf, agg.lineHits.size);
   let lh = 0;
-  for (let lineNo = 1; lineNo <= lf; lineNo += 1) {
-    if ((agg.lineHits.get(lineNo) ?? 0) > 0) lh += 1;
+  for (const hits of agg.lineHits.values()) {
+    if (hits > 0) lh += 1;
   }
   const unc = lf - lh;
   if (lf > 0) rows.push({ file, lf, lh, unc, pct: ((lh / lf) * 100).toFixed(1) });

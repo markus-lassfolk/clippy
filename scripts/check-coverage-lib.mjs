@@ -3,7 +3,8 @@
  * Line coverage for `src/lib/**` only, excluding `src/lib/ews-client.ts` (SOAP surface; tracked separately).
  * Reads Bun lcov output per-file (SF record). When the same source file appears in multiple records
  * (e.g. `bun test --isolate` merging), DA lines are merged with max hit counts so coverage is not
- * under-counted.
+ * under-counted. Denominator uses merged `LF:` (lines found) only — never the max DA line number,
+ * which can exceed LF and falsely inflate “uncovered” lines.
  *
  * Set COVERAGE_MIN_LINES_LIB (default 80) for the gate. While ramping CI, set env below target until tests catch up.
  */
@@ -66,11 +67,7 @@ for (const block of raw.split('end_of_record')) {
     mergedByFile.set(key, { lf: 0, lineHits: new Map() });
   }
   const agg = mergedByFile.get(key);
-  let maxLine = 0;
-  for (const ln of lineHits.keys()) {
-    if (ln > maxLine) maxLine = ln;
-  }
-  agg.lf = Math.max(agg.lf, blockLf, maxLine);
+  agg.lf = Math.max(agg.lf, blockLf);
   for (const [ln, hits] of lineHits) {
     agg.lineHits.set(ln, Math.max(agg.lineHits.get(ln) ?? 0, hits));
   }
@@ -79,10 +76,10 @@ for (const block of raw.split('end_of_record')) {
 let lf = 0;
 let lh = 0;
 for (const agg of mergedByFile.values()) {
-  const fileLf = agg.lf;
+  const fileLf = Math.max(agg.lf, agg.lineHits.size);
   let fileLh = 0;
-  for (let lineNo = 1; lineNo <= fileLf; lineNo += 1) {
-    if ((agg.lineHits.get(lineNo) ?? 0) > 0) fileLh += 1;
+  for (const hits of agg.lineHits.values()) {
+    if (hits > 0) fileLh += 1;
   }
   lf += fileLf;
   lh += fileLh;
