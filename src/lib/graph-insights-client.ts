@@ -1,8 +1,10 @@
 import {
   callGraph,
+  callGraphAt,
   type DriveLocation,
   driveItemPath,
   GraphApiError,
+  GRAPH_BASE_URL,
   type GraphResponse,
   graphError,
   graphErrorFromApiError,
@@ -85,12 +87,13 @@ export async function listDriveItemActivities(
   token: string,
   loc: DriveLocation,
   itemId: string,
-  options: { top?: number } = {}
+  options: { top?: number; graphBaseUrl?: string } = {}
 ): Promise<GraphResponse<ItemActivitiesResponse>> {
+  const base = options.graphBaseUrl ?? GRAPH_BASE_URL;
   const top = options.top && options.top > 0 ? `?$top=${Math.min(Math.max(1, options.top), 200)}` : '';
   const path = `${driveItemPath(loc, itemId)}/activities${top}`;
   try {
-    return await callGraph<ItemActivitiesResponse>(token, path);
+    return await callGraphAt<ItemActivitiesResponse>(base, token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to list drive item activities');
@@ -111,7 +114,8 @@ export async function createDriveItemPreview(
   token: string,
   loc: DriveLocation,
   itemId: string,
-  body: { page?: number | string; zoom?: number; allowEdit?: boolean; chromeless?: boolean } = {}
+  body: { page?: number | string; zoom?: number; allowEdit?: boolean; chromeless?: boolean } = {},
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemPreview>> {
   const path = `${driveItemPath(loc, itemId)}/preview`;
   const cleaned: Record<string, unknown> = {};
@@ -120,7 +124,7 @@ export async function createDriveItemPreview(
   if (body.allowEdit !== undefined) cleaned.allowEdit = body.allowEdit;
   if (body.chromeless !== undefined) cleaned.chromeless = body.chromeless;
   try {
-    const r = await callGraph<DriveItemPreview>(token, path, {
+    const r = await callGraphAt<DriveItemPreview>(graphBaseUrl, token, path, {
       method: 'POST',
       body: JSON.stringify(cleaned)
     });
@@ -148,9 +152,12 @@ export interface FollowedSitesResponse {
 }
 
 /** `GET /me/followedSites` — sites the user follows. */
-export async function listFollowedSites(token: string): Promise<GraphResponse<FollowedSitesResponse>> {
+export async function listFollowedSites(
+  token: string,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<FollowedSitesResponse>> {
   try {
-    return await callGraph<FollowedSitesResponse>(token, '/me/followedSites');
+    return await callGraphAt<FollowedSitesResponse>(graphBaseUrl, token, '/me/followedSites');
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to list /me/followedSites');
@@ -158,13 +165,17 @@ export async function listFollowedSites(token: string): Promise<GraphResponse<Fo
 }
 
 /** `POST /me/followedSites/add` — follow one or more sites. */
-export async function followSites(token: string, siteIds: string[]): Promise<GraphResponse<FollowedSitesResponse>> {
+export async function followSites(
+  token: string,
+  siteIds: string[],
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<FollowedSitesResponse>> {
   if (siteIds.length === 0) {
     return graphError('Provide at least one site id');
   }
   const body = { value: siteIds.map((id) => ({ id })) };
   try {
-    return await callGraph<FollowedSitesResponse>(token, '/me/followedSites/add', {
+    return await callGraphAt<FollowedSitesResponse>(graphBaseUrl, token, '/me/followedSites/add', {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -175,13 +186,18 @@ export async function followSites(token: string, siteIds: string[]): Promise<Gra
 }
 
 /** `POST /me/followedSites/remove` — unfollow one or more sites. */
-export async function unfollowSites(token: string, siteIds: string[]): Promise<GraphResponse<void>> {
+export async function unfollowSites(
+  token: string,
+  siteIds: string[],
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
   if (siteIds.length === 0) {
     return graphError('Provide at least one site id');
   }
   const body = { value: siteIds.map((id) => ({ id })) };
   try {
-    return await callGraph<void>(
+    return await callGraphAt<void>(
+      graphBaseUrl,
       token,
       '/me/followedSites/remove',
       { method: 'POST', body: JSON.stringify(body) },

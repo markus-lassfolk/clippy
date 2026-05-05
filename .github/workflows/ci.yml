@@ -16,6 +16,8 @@ permissions:
   contents: read
 
 jobs:
+  # Runs on every PR targeting main and on every push to main. A failing step blocks merge
+  # (when branch protection requires this workflow) and blocks direct pushes to main.
   quality:
     name: Quality gate
     runs-on: ubuntu-latest
@@ -34,6 +36,13 @@ jobs:
 
       - name: Biome (lint + format + assist)
         run: bun run biome:check
+
+      - name: Graph path inventory (drift check)
+        run: bun run graph:inventory:check
+
+      # Fails if docs/GRAPH_PERMISSION_FEATURE_MATRIX.md ≠ generated output from GRAPH_CAPABILITY_MATRIX (exit 1).
+      - name: Graph permission feature matrix (drift check — blocks merge if stale)
+        run: bun run docs:graph-permission-matrix:check
 
       # Bun/Linux vs Windows can shift global line totals in lcov; scripts/check-coverage.mjs notes the same drift.
       - name: Tests + coverage floor

@@ -1,5 +1,5 @@
 import { callGraph, callGraphAt, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 
 export interface GraphTeam {
@@ -66,6 +66,26 @@ export interface TeamsAppInstallation {
     teamsAppId?: string;
     version?: string;
   };
+}
+
+/** Entry in `GET /appCatalogs/teamsApps` (catalog id ≠ manifest id unless store distribution). */
+export interface TeamsAppCatalogEntry {
+  id?: string;
+  externalId?: string;
+  displayName?: string;
+  distributionMethod?: string;
+  appDefinitions?: unknown[];
+  [key: string]: unknown;
+}
+
+/** OData bind URL for `POST …/installedApps` bodies (`teamsApp@odata.bind`). */
+export function teamsAppCatalogBindUrl(catalogTeamsAppId: string): string {
+  const base = GRAPH_BASE_URL.replace(/\/$/, '');
+  return `${base}/appCatalogs/teamsApps/${encodeURIComponent(catalogTeamsAppId.trim())}`;
+}
+
+export function buildAddTeamsAppInstallationBody(catalogTeamsAppId: string): Record<string, string> {
+  return { 'teamsApp@odata.bind': teamsAppCatalogBindUrl(catalogTeamsAppId) };
 }
 
 /**
@@ -570,6 +590,371 @@ export async function listTeamInstalledApps(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to list installed apps');
+  }
+}
+
+export async function listTeamsAppCatalog(
+  token: string,
+  filter?: string,
+  expand?: string
+): Promise<GraphResponse<TeamsAppCatalogEntry[]>> {
+  try {
+    const q: string[] = [];
+    if (filter?.trim()) q.push(`$filter=${encodeURIComponent(filter.trim())}`);
+    if (expand?.trim()) q.push(`$expand=${encodeURIComponent(expand.trim())}`);
+    const suffix = q.length > 0 ? `?${q.join('&')}` : '';
+    const r = await callGraph<{ value: TeamsAppCatalogEntry[] }>(token, `/appCatalogs/teamsApps${suffix}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to list app catalog', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data.value ?? []);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list app catalog');
+  }
+}
+
+export async function getTeamsAppCatalogEntry(
+  token: string,
+  catalogTeamsAppId: string,
+  expand?: string
+): Promise<GraphResponse<TeamsAppCatalogEntry>> {
+  try {
+    const id = encodeURIComponent(catalogTeamsAppId.trim());
+    const q = expand?.trim() ? `?$expand=${encodeURIComponent(expand.trim())}` : '';
+    const r = await callGraph<TeamsAppCatalogEntry>(token, `/appCatalogs/teamsApps/${id}${q}`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get catalog app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get catalog app');
+  }
+}
+
+export async function getTeamInstalledApp(
+  token: string,
+  teamId: string,
+  installationId: string
+): Promise<GraphResponse<TeamsAppInstallation>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<TeamsAppInstallation>(token, `/teams/${t}/installedApps/${i}?$expand=teamsAppDefinition`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get installed app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get installed app');
+  }
+}
+
+export async function addTeamInstalledApp(
+  token: string,
+  teamId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/teams/${t}/installedApps`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to install app on team', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to install app on team');
+  }
+}
+
+export async function patchTeamInstalledApp(
+  token: string,
+  teamId: string,
+  installationId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<TeamsAppInstallation>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<TeamsAppInstallation>(token, `/teams/${t}/installedApps/${i}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to patch installed app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to patch installed app');
+  }
+}
+
+export async function deleteTeamInstalledApp(
+  token: string,
+  teamId: string,
+  installationId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const r = await callGraph<void>(token, `/teams/${t}/installedApps/${i}`, { method: 'DELETE', headers }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to remove app from team', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to remove app from team');
+  }
+}
+
+export async function upgradeTeamInstalledApp(
+  token: string,
+  teamId: string,
+  installationId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const t = encodeURIComponent(teamId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/teams/${t}/installedApps/${i}/upgrade`,
+      { method: 'POST', body: '{}' },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to upgrade installed app', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to upgrade installed app');
+  }
+}
+
+export async function listChatInstalledApps(
+  token: string,
+  chatId: string
+): Promise<GraphResponse<TeamsAppInstallation[]>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const r = await callGraph<{ value: TeamsAppInstallation[] }>(
+      token,
+      `/chats/${c}/installedApps?$expand=teamsAppDefinition`
+    );
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to list chat apps', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data.value ?? []);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list chat apps');
+  }
+}
+
+export async function getChatInstalledApp(
+  token: string,
+  chatId: string,
+  installationId: string
+): Promise<GraphResponse<TeamsAppInstallation>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<TeamsAppInstallation>(token, `/chats/${c}/installedApps/${i}?$expand=teamsAppDefinition`);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get chat app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get chat app');
+  }
+}
+
+export async function addChatInstalledApp(
+  token: string,
+  chatId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/chats/${c}/installedApps`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to install app on chat', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to install app on chat');
+  }
+}
+
+export async function patchChatInstalledApp(
+  token: string,
+  chatId: string,
+  installationId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<TeamsAppInstallation>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<TeamsAppInstallation>(token, `/chats/${c}/installedApps/${i}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to patch chat app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to patch chat app');
+  }
+}
+
+export async function deleteChatInstalledApp(
+  token: string,
+  chatId: string,
+  installationId: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const r = await callGraph<void>(token, `/chats/${c}/installedApps/${i}`, { method: 'DELETE', headers }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to remove app from chat', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to remove app from chat');
+  }
+}
+
+export async function upgradeChatInstalledApp(
+  token: string,
+  chatId: string,
+  installationId: string
+): Promise<GraphResponse<void>> {
+  try {
+    const c = encodeURIComponent(chatId.trim());
+    const i = encodeURIComponent(installationId.trim());
+    const r = await callGraph<void>(
+      token,
+      `/chats/${c}/installedApps/${i}/upgrade`,
+      { method: 'POST', body: '{}' },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to upgrade chat app', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to upgrade chat app');
+  }
+}
+
+/** Personal-scope apps: `GET …/teamwork/installedApps` for `/me` or `/users/{id}/…`. */
+export async function listUserTeamworkInstalledApps(
+  token: string,
+  forUser?: string
+): Promise<GraphResponse<TeamsAppInstallation[]>> {
+  try {
+    const path = `${graphUserPath(forUser, 'teamwork/installedApps')}?$expand=teamsAppDefinition`;
+    const r = await callGraph<{ value: TeamsAppInstallation[] }>(token, path);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to list user teamwork apps', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data.value ?? []);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list user teamwork apps');
+  }
+}
+
+export async function getUserTeamworkInstalledApp(
+  token: string,
+  installationId: string,
+  forUser?: string
+): Promise<GraphResponse<TeamsAppInstallation>> {
+  try {
+    const i = encodeURIComponent(installationId.trim());
+    const path = `${graphUserPath(forUser, `teamwork/installedApps/${i}`)}?$expand=teamsAppDefinition`;
+    const r = await callGraph<TeamsAppInstallation>(token, path);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get user teamwork app', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get user teamwork app');
+  }
+}
+
+export async function addUserTeamworkInstalledApp(
+  token: string,
+  body: Record<string, unknown>,
+  forUser?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = graphUserPath(forUser, 'teamwork/installedApps');
+    const r = await callGraph<void>(token, path, { method: 'POST', body: JSON.stringify(body) }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to install user teamwork app', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to install user teamwork app');
+  }
+}
+
+export async function deleteUserTeamworkInstalledApp(
+  token: string,
+  installationId: string,
+  forUser?: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const i = encodeURIComponent(installationId.trim());
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    const path = graphUserPath(forUser, `teamwork/installedApps/${i}`);
+    const r = await callGraph<void>(token, path, { method: 'DELETE', headers }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to remove user teamwork app', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to remove user teamwork app');
   }
 }
 

@@ -4,17 +4,21 @@ import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   cancelBookingAppointment,
   createBookingAppointment,
+  createBookingBusiness,
   createBookingCustomer,
   createBookingCustomQuestion,
   createBookingService,
   createBookingStaffMember,
   deleteBookingAppointment,
+  deleteBookingBusiness,
   deleteBookingCustomer,
   deleteBookingCustomQuestion,
   deleteBookingService,
   deleteBookingStaffMember,
   getBookingAppointment,
   getBookingBusiness,
+  getBookingCurrency,
+  getBookingCustomQuestion,
   getBookingCustomer,
   getBookingService,
   getBookingStaffAvailability,
@@ -27,6 +31,8 @@ import {
   listBookingCustomQuestions,
   listBookingServices,
   listBookingStaffMembers,
+  publishBookingBusiness,
+  unpublishBookingBusiness,
   updateBookingAppointment,
   updateBookingBusiness,
   updateBookingCustomer,
@@ -37,7 +43,7 @@ import {
 import { checkReadOnly } from '../lib/utils.js';
 
 export const bookingsCommand = new Command('bookings').description(
-  'Microsoft Bookings (Graph): read + write (`Bookings.ReadWrite.All`) — businesses, appointments, customers, services, staff, custom questions, calendar (see GRAPH_SCOPES.md)'
+  'Microsoft Bookings (Graph): full v1 surface under `/solutions/bookingBusinesses` (`Bookings.ReadWrite.All`) — create/delete business, publish/unpublish page, appointments, customers, services, staff, custom questions, currencies, calendar; **`staff-availability`** is app-only per Microsoft (see GRAPH_SCOPES.md)'
 );
 
 bookingsCommand
@@ -92,6 +98,124 @@ bookingsCommand
   });
 
 bookingsCommand
+  .command('business-create')
+  .description('Create a booking business (POST /solutions/bookingBusinesses; body: --json-file)')
+  .requiredOption('--json-file <path>', 'JSON body per Graph bookingBusiness')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await createBookingBusiness(auth.token, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id}`);
+    }
+  );
+
+bookingsCommand
+  .command('business-delete')
+  .description('Delete a booking business (DELETE /solutions/bookingBusinesses/{id})')
+  .argument('<businessId>', 'Booking business id')
+  .option('--confirm', 'Required to perform delete', false)
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      businessId: string,
+      opts: { confirm?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      if (!opts.confirm) {
+        console.error('Error: pass --confirm to delete a booking business.');
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteBookingBusiness(auth.token, businessId);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Deleted.');
+    }
+  );
+
+bookingsCommand
+  .command('business-publish')
+  .description(
+    'POST …/publish — make the scheduling page available (sets isPublished; optional body via --json-file)'
+  )
+  .argument('<businessId>', 'Booking business id')
+  .option('--json-file <path>', 'Optional POST body JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown> = {};
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      }
+      const r = await publishBookingBusiness(auth.token, businessId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Published.');
+    }
+  );
+
+bookingsCommand
+  .command('business-unpublish')
+  .description('POST …/unpublish — hide the scheduling page (optional body via --json-file)')
+  .argument('<businessId>', 'Booking business id')
+  .option('--json-file <path>', 'Optional POST body JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown> = {};
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      }
+      const r = await unpublishBookingBusiness(auth.token, businessId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Unpublished.');
+    }
+  );
+
+bookingsCommand
   .command('currencies')
   .description('List supported booking currency codes (GET /solutions/bookingCurrencies)')
   .option('--json', 'Output as JSON')
@@ -115,6 +239,31 @@ bookingsCommand
     for (const c of r.data) {
       console.log(`${c.id ?? ''}\t${c.symbol ?? ''}`);
     }
+  });
+
+bookingsCommand
+  .command('currency-get')
+  .description('Get one booking currency by id (currency code, e.g. USD) — GET /solutions/bookingCurrencies/{id}')
+  .argument('<currencyId>', 'Booking currency id (ISO code)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (currencyId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await getBookingCurrency(auth.token, currencyId);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log(
+      opts.json
+        ? JSON.stringify(r.data, null, 2)
+        : `${r.data.id ?? currencyId}\t${r.data.symbol ?? ''}`
+    );
   });
 
 bookingsCommand
@@ -374,6 +523,36 @@ bookingsCommand
       console.log(`${q.displayName ?? '(question)'}\t${q.answerInputType ?? ''}\t${optsStr}\t${q.id ?? ''}`);
     }
   });
+
+bookingsCommand
+  .command('custom-question')
+  .description('Get one custom question by id')
+  .argument('<businessId>', 'Booking business id')
+  .argument('<questionId>', 'Custom question id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (businessId: string, questionId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getBookingCustomQuestion(auth.token, businessId, questionId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      const q = r.data;
+      if (opts.json) {
+        console.log(JSON.stringify(q, null, 2));
+        return;
+      }
+      const optsStr = (q.answerOptions ?? []).join(';');
+      console.log(`${q.displayName ?? '(question)'}\t${q.answerInputType ?? ''}\t${optsStr}\t${q.id ?? ''}`);
+    }
+  );
 
 bookingsCommand
   .command('appointment')

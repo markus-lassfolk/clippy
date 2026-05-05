@@ -21,5 +21,5 @@ Root `package.json` exposes **`npm run inventory:scripting`** for the same comma
 ## Notes on the inventory
 
 - **`graph invoke`** always prints JSON to stdout; the inventory marks **`graph`** as “no `--json`” because there is no separate flag — behavior is JSON-only.
-- **`word`** / **`powerpoint`** register subcommands via [src/commands/office-docs-shared.ts](../src/commands/office-docs-shared.ts); the generator treats them as having `--json` when that shared module defines it.
+- **`word`** / **`powerpoint`** register subcommands via [src/commands/office-docs-shared.ts](../src/commands/office-docs-shared.ts) (which pulls in mirrored **`files`** verbs from [src/commands/office-docs-drive-mirror.ts](../src/commands/office-docs-drive-mirror.ts)); the generator treats them as having `--json` when that shared module defines it.
 - A **yes** in the `checkReadOnly` column means the file contains at least one guard call; the exact subcommands that are blocked live in **CLI_REFERENCE** (source of truth).

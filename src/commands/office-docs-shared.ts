@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import type { Command } from 'commander';
+import type { DriveLocationCliFlags } from '../lib/drive-location.js';
 import { registerDriveLocationCliOptions, resolveDriveLocationForCli } from '../lib/drive-location-cli.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
@@ -8,16 +9,17 @@ import {
   defaultDownloadPath,
   downloadFile,
   getFileMetadata,
+  graphApiRoot,
   listDriveItemThumbnails
 } from '../lib/graph-client.js';
 import { createDriveItemPreview } from '../lib/graph-office-client.js';
+import { registerOfficeDriveMirroredCommands } from './office-docs-drive-mirror.js';
 
-type DriveLocOpts = {
-  user?: string;
-  driveId?: string;
-  siteId?: string;
-  libraryDriveId?: string;
-};
+type DriveLocOpts = DriveLocationCliFlags;
+
+function graphRoot(flags: { beta?: boolean }): string {
+  return graphApiRoot(!!flags.beta);
+}
 
 /**
  * Registers `preview`, `meta`, `download`, and `thumbnails` on `word` / `powerpoint` roots (drive-item helpers).
@@ -26,7 +28,7 @@ type DriveLocOpts = {
 export function registerOfficeDocumentCommands(parent: Command, productLabel: string): void {
   const rootCmd = parent.name();
   parent.description(
-    `${productLabel} files on OneDrive / SharePoint drives (Graph). **preview** — POST …/drive/items/{{id}}/preview (embed session). **meta** — GET item metadata. **download** — fetch bytes (same as \`files download\`). **thumbnails** — GET …/thumbnails (same as \`files thumbnails\`). For **permissions**, **versions**, **delta**, **copy**/**move**, **invite**, **analytics**, and other drive lifecycle ops, use \`files\` with the same \`--user\` / \`--drive-id\` / \`--site-id\` / \`--library-drive-id\` flags. For **beta** or undocumented Graph paths (e.g. future deck APIs), use \`graph invoke\` — see docs/GRAPH_INVOKE_BOUNDARIES.md and docs/GRAPH_API_GAPS.md (${rootCmd} matrix + PowerPoint watchlist).`
+    `${productLabel} files on OneDrive / SharePoint drives (Graph). **preview**, **meta**, **download**, **thumbnails** — same as \`files\`. **Mirrored** item APIs (same Graph as \`files\`): **upload**, **upload-large**, **delete**, **share**, **invite**, **permissions**, **permission-remove**, **permission-update**, **copy**, **move**, **versions**, **restore**, **checkout**, **checkin**, **convert**, **analytics**, **activities**, **list-item** (SharePoint columns), **follow**/**unfollow**, **sensitivity-assign**/**sensitivity-extract** (MIP), **retention-label**/**retention-label-remove**, **permanent-delete**. **Folder** **list**/**delta**/**search** → \`files\`. In-file comments / slide OM → not in Graph; **graph invoke** for beta (GRAPH_INVOKE_BOUNDARIES.md).`
   );
 
   registerDriveLocationCliOptions(
@@ -59,7 +61,7 @@ export function registerOfficeDocumentCommands(parent: Command, productLabel: st
         }
       }
       const loc = resolveDriveLocationForCli(opts);
-      const r = await createDriveItemPreview(auth.token, itemId, body, loc);
+      const r = await createDriveItemPreview(auth.token, itemId, body, loc, graphRoot(opts));
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -90,7 +92,7 @@ export function registerOfficeDocumentCommands(parent: Command, productLabel: st
       process.exit(1);
     }
     const loc = resolveDriveLocationForCli(opts);
-    const r = await getFileMetadata(auth.token, itemId, loc);
+    const r = await getFileMetadata(auth.token, itemId, loc, graphRoot(opts));
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -134,14 +136,15 @@ export function registerOfficeDocumentCommands(parent: Command, productLabel: st
         process.exit(1);
       }
       const loc = resolveDriveLocationForCli(opts);
-      const meta = opts.out ? undefined : await getFileMetadata(auth.token, itemId, loc);
+      const meta = opts.out ? undefined : await getFileMetadata(auth.token, itemId, loc, graphRoot(opts));
       const defaultOut = meta?.ok && meta.data ? defaultDownloadPath(basename(meta.data.name || itemId)) : undefined;
       const result = await downloadFile(
         auth.token,
         itemId,
         opts.out || defaultOut,
         meta?.ok ? meta.data : undefined,
-        loc
+        loc,
+        graphRoot(opts)
       );
       if (!result.ok || !result.data) {
         console.error(`Error: ${result.error?.message || 'Download failed'}`);
@@ -171,7 +174,7 @@ export function registerOfficeDocumentCommands(parent: Command, productLabel: st
       process.exit(1);
     }
     const loc = resolveDriveLocationForCli(opts);
-    const result = await listDriveItemThumbnails(auth.token, itemId, loc);
+    const result = await listDriveItemThumbnails(auth.token, itemId, loc, graphRoot(opts));
     if (!result.ok || !result.data) {
       console.error(`Error: ${result.error?.message || 'Failed to list thumbnails'}`);
       process.exit(1);
@@ -195,4 +198,6 @@ export function registerOfficeDocumentCommands(parent: Command, productLabel: st
       }
     }
   });
+
+  registerOfficeDriveMirroredCommands(parent);
 }

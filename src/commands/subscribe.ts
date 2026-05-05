@@ -49,7 +49,7 @@ export const subscribeCommand = new Command('subscribe')
             console.error('Error: --user is required for copilot-interactions (resource includes user id).');
             process.exit(1);
           }
-          return `/copilot/users/${encodeURIComponent(user.trim())}/interactionHistory/getAllEnterpriseInteractions`;
+          return `/copilot/users/${encodeURIComponent(user.trim())}/interactionHistory/getAllEnterpriseInteractions()`;
         default:
           return res;
       }

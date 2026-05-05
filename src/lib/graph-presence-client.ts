@@ -1,4 +1,5 @@
 import { callGraph, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
+import { graphUserPath } from './graph-user-path.js';
 
 export interface UserPresence {
   id?: string;
@@ -109,5 +110,78 @@ export async function clearPresenceSession(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to clear presence');
+  }
+}
+
+/** `POST …/presence/setStatusMessage` — body is `{ statusMessage: { message: { content, contentType }, expiryDateTime?: … } }`. */
+export async function setPresenceStatusMessage(
+  token: string,
+  body: Record<string, unknown>,
+  forUser?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = graphUserPath(forUser, 'presence/setStatusMessage');
+    const r = await callGraph<void>(token, path, { method: 'POST', body: JSON.stringify(body) }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to set status message', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to set status message');
+  }
+}
+
+export interface PreferredPresencePayload {
+  availability: string;
+  activity: string;
+  expirationDuration?: string;
+}
+
+/** Preferred Teams state (distinct from app `setPresence` session). Requires an existing presence session or Teams sign-in. */
+export async function setPreferredPresence(
+  token: string,
+  payload: PreferredPresencePayload,
+  forUser?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const path = graphUserPath(forUser, 'presence/setUserPreferredPresence');
+    const r = await callGraph<void>(token, path, { method: 'POST', body: JSON.stringify(payload) }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to set preferred presence', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to set preferred presence');
+  }
+}
+
+export async function clearPreferredPresence(token: string, forUser?: string): Promise<GraphResponse<void>> {
+  try {
+    const path = graphUserPath(forUser, 'presence/clearUserPreferredPresence');
+    const r = await callGraph<void>(token, path, { method: 'POST', body: '{}' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to clear preferred presence', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to clear preferred presence');
+  }
+}
+
+/** Clears work-location signals for the current date (`POST …/presence/clearLocation`). */
+export async function clearPresenceLocation(token: string, forUser?: string): Promise<GraphResponse<void>> {
+  try {
+    const path = graphUserPath(forUser, 'presence/clearLocation');
+    const r = await callGraph<void>(token, path, { method: 'POST', body: '{}' }, false);
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to clear presence location', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to clear presence location');
   }
 }

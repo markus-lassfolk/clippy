@@ -395,8 +395,69 @@ export function createMockFetch(): any {
       }
       // Checkout
       if (url.includes('/me/drive/items/') && url.includes('/checkout')) {
-        return makeJsonResponse({});
+        return new Response(null, { status: 204 });
       }
+
+      // SharePoint sites / lists (sharepoint command)
+      try {
+        const u = new URL(url);
+        const path = u.pathname;
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'GET' && path.startsWith('/v1.0/sites/')) {
+          if (/\/drives\/?$/.test(path)) {
+            return makeJsonResponse({
+              value: [
+                {
+                  id: 'mock-site-drive-1',
+                  name: 'Documents',
+                  driveType: 'documentLibrary',
+                  webUrl: 'https://example.sharepoint.com/sites/mock/Shared%20Documents'
+                }
+              ]
+            });
+          }
+          if (/\/lists\/[^/]+\/columns/.test(path)) {
+            return makeJsonResponse({
+              value: [{ id: 'mock-col-1', name: 'Title', type: 'text' }]
+            });
+          }
+          if (/\/lists\/[^/]+\/items/.test(path)) {
+            return makeJsonResponse({
+              value: [
+                {
+                  id: 'mock-list-item-1',
+                  createdDateTime: '2024-01-01T00:00:00Z',
+                  lastModifiedDateTime: '2024-01-01T00:00:00Z',
+                  webUrl: 'https://example.sharepoint.com/item1',
+                  fields: { Title: 'Mock row' }
+                }
+              ]
+            });
+          }
+          if (/\/lists\/[^/]+$/.test(path) && path.includes('/lists/')) {
+            return makeJsonResponse({
+              id: 'mock-list-1',
+              name: 'MockList',
+              displayName: 'Mock List',
+              description: 'Test',
+              createdDateTime: '2024-01-01T00:00:00Z',
+              lastModifiedDateTime: '2024-01-01T00:00:00Z',
+              webUrl: 'https://example.sharepoint.com/lists/mock'
+            });
+          }
+          if (!path.includes('/lists/') && !path.includes('/drive') && !path.includes('/drives')) {
+            return makeJsonResponse({
+              id: 'mock-site-id',
+              displayName: 'Mock Team Site',
+              name: 'mock',
+              webUrl: 'https://example.sharepoint.com/sites/mock'
+            });
+          }
+        }
+      } catch {
+        // fall through
+      }
+
       return makeJsonResponse({ value: [] });
     }
 

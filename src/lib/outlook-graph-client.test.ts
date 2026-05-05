@@ -234,3 +234,31 @@ describe('mailMessagesDeltaPage', () => {
     }
   });
 });
+
+describe('listContacts structured query', () => {
+  it('GETs /me/contacts with $orderby when using ContactListQueryOptions', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        return new Response(JSON.stringify({ value: [{ id: 'c1', displayName: 'A' }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+
+      const { listContacts } = await import('./outlook-graph-client.js');
+      const r = await listContacts(token, undefined, { orderby: 'displayName asc' });
+
+      expect(r.ok).toBe(true);
+      expect(r.data?.[0]?.displayName).toBe('A');
+      expect(decodeURIComponent(urls[0])).toContain('/me/contacts');
+      expect(decodeURIComponent(urls[0])).toContain('$orderby=displayName+asc');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

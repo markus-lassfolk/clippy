@@ -108,6 +108,7 @@ export type {
   UploadLargeResult
 } from './lib/graph-client.js';
 export {
+  assignDriveItemSensitivityLabel,
   checkinFile,
   checkoutFile,
   cleanupDownloadedFile,
@@ -117,11 +118,15 @@ export {
   deleteDriveItemPermission,
   deleteFile,
   downloadFile,
+  extractDriveItemSensitivityLabels,
   driveDeltaStartPath,
   driveItemPath,
   driveLocationFromCliFlags,
   driveRootPrefix,
+  followDriveItem,
   getDriveItemDeltaPage,
+  getDriveItemListItem,
+  getDriveItemRetentionLabel,
   getFileMetadata,
   inviteDriveItem,
   listDriveItemPermissions,
@@ -130,10 +135,13 @@ export {
   listFiles,
   moveDriveItem,
   patchDriveItemPermission,
+  permanentDeleteDriveItem,
   pollGraphAsyncJob,
+  removeDriveItemRetentionLabel,
   searchFiles,
   shareFile,
   startCopyDriveItem,
+  unfollowDriveItem,
   uploadFile,
   uploadLargeFile
 } from './lib/graph-client.js';
@@ -144,6 +152,8 @@ export type {
 } from './lib/graph-directory.js';
 export {
   expandGroup,
+  getPerson,
+  listPeople,
   searchGroups,
   searchPeople,
   searchUsers
@@ -171,7 +181,11 @@ export type { AutomaticRepliesSetting, MailboxSettings, OofStatus } from './lib/
 export { getMailboxSettings, setMailboxSettings } from './lib/oof-client.js';
 export type { Place as PlaceRoom, RoomList as PlaceRoomList } from './lib/places-client.js';
 // places-client re-exports (aliases from EWS: getRoomLists/getRooms conflict)
-export { listPlaceRoomLists as getPlaceRoomLists, listRoomsInRoomList as getPlaceRooms } from './lib/places-client.js';
+export {
+  getPlace,
+  listPlaceRoomLists as getPlaceRoomLists,
+  listRoomsInRoomList as getPlaceRooms
+} from './lib/places-client.js';
 export type {
   CreateMessageRulePayload,
   MessageRule,

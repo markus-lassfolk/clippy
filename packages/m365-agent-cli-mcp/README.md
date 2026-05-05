@@ -33,7 +33,7 @@ npm install
 
 Mutating operations are intentionally **not** exposed as separate MCP tools; use the full CLI in a terminal or extend this package locally if your host policy allows it.
 
-**Office on drive (`word`, `powerpoint`, `excel`, `files`):** there are no dedicated MCP tools for these commands. Use **`m365_graph_invoke_get`** for read-only Graph paths, or invoke **`m365-agent-cli`** directly (e.g. `powerpoint preview`, `files permissions`) from a shell the MCP host provides.
+**Office on drive (`word`, `powerpoint`, `excel`, `files`):** there are no dedicated MCP tools for these commands. Use **`m365_graph_invoke_get`** for read-only Graph paths, or invoke **`m365-agent-cli`** directly (e.g. `powerpoint preview`, `word upload`, `files permissions`) from a shell the MCP host provides.
 
 ## Run
 

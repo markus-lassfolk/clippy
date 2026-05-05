@@ -48,7 +48,11 @@ export const GRAPH_DEVICE_CODE_LOGIN_SCOPES = [
   'People.Read.All',
   'AiEnterpriseInteraction.Read',
   'ApprovalSolution.ReadWrite',
-  'TeamsActivity.Send'
+  'AppCatalog.Read.All',
+  'TeamsAppInstallation.ReadWriteSelfForUser',
+  'LearningAssignedCourse.Read.All',
+  'EngagementRole.Read.All',
+  'EngagementRole.ReadWrite.All'
 ].join(' ');
 
 /**
@@ -104,7 +108,11 @@ const GRAPH_RESOURCE_SCOPES_FULL = [
   G('People.Read.All'),
   G('AiEnterpriseInteraction.Read'),
   G('ApprovalSolution.ReadWrite'),
-  G('TeamsActivity.Send')
+  G('AppCatalog.Read.All'),
+  G('TeamsAppInstallation.ReadWriteSelfForUser'),
+  G('LearningAssignedCourse.Read.All'),
+  G('EngagementRole.Read.All'),
+  G('EngagementRole.ReadWrite.All')
 ].join(' ');
 
 /**
@@ -149,7 +157,11 @@ const GRAPH_RESOURCE_SCOPES_WITHOUT_USER_READ_ALL = [
   G('People.Read.All'),
   G('AiEnterpriseInteraction.Read'),
   G('ApprovalSolution.ReadWrite'),
-  G('TeamsActivity.Send')
+  G('AppCatalog.Read.All'),
+  G('TeamsAppInstallation.ReadWriteSelfForUser'),
+  G('LearningAssignedCourse.Read.All'),
+  G('EngagementRole.Read.All'),
+  G('EngagementRole.ReadWrite.All')
 ].join(' ');
 
 /**

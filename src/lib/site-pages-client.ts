@@ -1,4 +1,11 @@
-import { callGraph, fetchAllPages, GraphApiError, type GraphResponse, graphError } from './graph-client.js';
+import {
+  callGraphAt,
+  fetchAllPages,
+  GraphApiError,
+  GRAPH_BASE_URL,
+  type GraphResponse,
+  graphError
+} from './graph-client.js';
 
 export interface SitePage {
   id: string;
@@ -13,15 +20,34 @@ export interface SitePage {
   [key: string]: any;
 }
 
-export async function listSitePages(token: string, siteId: string): Promise<GraphResponse<SitePage[]>> {
-  return fetchAllPages<SitePage>(token, `/sites/${siteId}/pages/microsoft.graph.sitePage`, 'Failed to list site pages');
+function siteBase(siteId: string): string {
+  return `/sites/${encodeURIComponent(siteId)}`;
 }
 
-export async function getSitePage(token: string, siteId: string, pageId: string): Promise<GraphResponse<SitePage>> {
+export async function listSitePages(
+  token: string,
+  siteId: string,
+  apiBase: string = GRAPH_BASE_URL
+): Promise<GraphResponse<SitePage[]>> {
+  return fetchAllPages<SitePage>(
+    token,
+    `${siteBase(siteId)}/pages/microsoft.graph.sitePage`,
+    'Failed to list site pages',
+    apiBase
+  );
+}
+
+export async function getSitePage(
+  token: string,
+  siteId: string,
+  pageId: string,
+  apiBase: string = GRAPH_BASE_URL
+): Promise<GraphResponse<SitePage>> {
   try {
-    return await callGraph<SitePage>(
+    return await callGraphAt<SitePage>(
+      apiBase,
       token,
-      `/sites/${siteId}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`
+      `${siteBase(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`
     );
   } catch (err) {
     if (err instanceof GraphApiError) {
@@ -35,12 +61,14 @@ export async function updateSitePage(
   token: string,
   siteId: string,
   pageId: string,
-  pageData: Partial<SitePage>
+  pageData: Partial<SitePage>,
+  apiBase: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<SitePage>> {
   try {
-    return await callGraph<SitePage>(
+    return await callGraphAt<SitePage>(
+      apiBase,
       token,
-      `/sites/${siteId}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`,
+      `${siteBase(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage`,
       {
         method: 'PATCH',
         body: JSON.stringify({ '@odata.type': '#microsoft.graph.sitePage', ...pageData })
@@ -54,15 +82,21 @@ export async function updateSitePage(
   }
 }
 
-export async function publishSitePage(token: string, siteId: string, pageId: string): Promise<GraphResponse<void>> {
+export async function publishSitePage(
+  token: string,
+  siteId: string,
+  pageId: string,
+  apiBase: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(
+    return await callGraphAt<void>(
+      apiBase,
       token,
-      `/sites/${siteId}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage/publish`,
+      `${siteBase(siteId)}/pages/${encodeURIComponent(pageId)}/microsoft.graph.sitePage/publish`,
       {
         method: 'POST'
       },
-      false // might not return JSON, just 204 No Content
+      false
     );
   } catch (err) {
     if (err instanceof GraphApiError) {

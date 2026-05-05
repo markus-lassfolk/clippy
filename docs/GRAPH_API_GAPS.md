@@ -23,15 +23,15 @@ Measurable exit criteria for workloads still **Partial** / **Gap**. Command refe
 | Workload | Delegated target verbs / docs | App-only or invoke-only | Exit criteria (Partial → Implemented or documented closure) |
 | --- | --- | --- | --- |
 | **Excel** | **`excel`** — worksheets, **range** / **range-patch** / **range-clear**, **used-range**, **tables** (list/get + **table-add|patch|delete**, rows add/**table-row-patch|delete**, **table-columns|column-get|column-patch**), **pivot-tables** + **pivot-table-*** refresh, **names** + **name-get** + **worksheet-names** / **worksheet-name-get**, charts, **workbook-get**, **application-calculate**, **session-create|refresh|close**, optional **`--session-id`** on mutating calls, **`comments-*`** (beta) | — | **Implemented** for script/agent workbook automation; workbook **images** / **shapes** / deep **range()** method graph → **`graph invoke`** (see [`CLI_REFERENCE.md`](./CLI_REFERENCE.md)). |
-| **Word (.docx)** | **`word`**: **`preview`**, **`meta`**, **`download`**, **`thumbnails`** (+ drive location flags like **`files`**) | — | **Graph-complete** for drive-hosted Word: every stable delegated drive-item op for `.docx` is **`files`** or **`word`** per the Word matrix below, or **Gap** (in-document comments — no Graph path in OpenAPI index). |
-| **PowerPoint (.pptx)** | **`powerpoint`**: **`preview`**, **`meta`**, **`download`**, **`thumbnails`** (+ drive flags) | — | **Graph-complete** for drive-hosted decks: Microsoft Graph exposes no `…/presentation/…` object model on drive items (unlike Excel `…/workbook/…`); **`powerpoint`** wraps preview/meta/download/thumbnails only. Slide-level / in-deck comments → **Gap** until Graph ships APIs; use **`files`** for permissions/versions/**`delta`**/**`copy`**/**`invite`**/etc. and **`graph invoke`** for beta experiments — see **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)** and **PowerPoint Graph API watchlist** below. |
-| **Teams** | **`teams`** — joined teams, channels, messages (send/read/**patch**/**soft-delete**/**hard-delete**/**undo-soft** with **`--beta`** where needed), replies, reactions, **`activity-notify`**, **`chat-create`** / **`chat-member-add`**, **`team-member-add`** / **`channel-member-add`**, **tabs** (list/**get**/**create**/**patch**/**delete**), chats, apps | RSC / tenant admin | **`teams list --user`** = **`GET /users/{id}/joinedTeams`**; chat **list** stays **`/me/chats`**; **`POST /users/{id}/teamwork/sendActivityNotification`** app-only → **`graph invoke`**; admin/RSC/shifts → **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)**. |
-| **Presence** | **`presence`** read/set/clear | — | All **direct** presence Graph reads in scope; **subscription** automation via **`subscribe`** + **`serve`** (see command help). |
-| **Search** | **`graph-search`**: `--preset default|extended|connectors` or `--types` | Exotic connectors | Presets cover main **entityTypes**; long tail **invoke** recipes in gaps + boundaries doc. |
-| **Files / SharePoint** | **`files`** (delta, **`shared-with-me`**, **`thumbnails`**, copy/move, drive flags, **`invite`**, **`permissions`**, **`permission-remove`**, **`permission-update`**), **`sharepoint`** (get/delete item, items-delta, **`resolve-site`**, **`--json-file`** on create/update), **`site-pages`**, **`excel`** (workbook object model incl. comments beta), **`teams channel-files-folder`** | — | Core drive + list sync + sharing + Excel on-item workbook APIs wrapped; long tail stays **`graph invoke`**. |
-| **Copilot** | **`copilot`** | — | Stable Graph `/copilot` endpoints only; preview APIs labeled in help. |
-| **Directory / rooms** | **`find`**, **`rooms`**, **`schedule`**, **`suggest`** | Admin directory | Delegated **Places/People** paths per **GRAPH_SCOPES**; admin-only → **invoke**. |
-| **Bookings** | Full CRUD + reads | **`bookings staff-availability`** | Delegated token **fails by design** — use **`--token`** app-only; document, no “delegated fix”. |
+| **Word (.docx)** | **`word`**: full **`files`** item mirror incl. **`list-item`**, **`follow`**/**`unfollow`**, **`sensitivity-assign`**/**`sensitivity-extract`**, **`retention-label`**/**`retention-label-remove`**, **`permanent-delete`** (+ **`preview`** … **`activities`**) | — | **Implemented** for Graph-documented drive-item APIs; **Gap** = in-document threaded comments (no OpenAPI path). Folder **list**/**`delta`**/**`search`** → **`files`**. |
+| **PowerPoint (.pptx)** | **`powerpoint`**: same mirror as **`word`** | — | **Implemented** on Graph; **Gap** = slide/body comments / `…/presentation/…` OM; beta → **`graph invoke`** — **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)** + watchlist. |
+| **Teams** | **`teams`** — as below + **app-catalog** / **app-catalog-get**, **apps** / **app-get** / **app-add** / **app-patch** / **app-upgrade** / **app-delete**, **chat-apps** / **chat-app-***, **user-apps** / **user-app-*** (personal scope) | RSC / tenant admin | **`teams list --user`** = **`GET /users/{id}/joinedTeams`**; chat **list** stays **`/me/chats`**; **`POST /users/{id}/teamwork/sendActivityNotification`** app-only → **`graph invoke`**; admin/RSC/shifts → **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)**. |
+| **Presence** | **`presence`** — **`me`** / **`user`** / **`bulk`**, session **set/clear**, **`status-message-set`**, **`preferred-set`** / **`preferred-clear`**, **`clear-location`** | — | **subscription** automation via **`subscribe`** + **`serve`** (see command help). |
+| **Search** | **`graph-search`**: presets / `--types`, **`searchRequest`** flags + **`--merge-json-file`**, raw **`--body-file`** | — | **Implemented** for `POST /search/query` automation; uncommon **`resultTemplateOptions`** / **`sharePointOneDriveOptions`** shapes → **`--merge-json-file`** or **`--body-file`**. |
+| **Files / SharePoint** | **`files`** (delta, **`shared-with-me`**, **`thumbnails`**, copy/move, drive flags, **`invite`**, **`permissions`**, **`permission-remove`**, **`permission-update`**, **`checkout`** / **`checkin`**), **`sharepoint`** (**`resolve-site`**, **`get-site`**, **`drives`**, **`lists`**, **`get-list`**, **`columns`**, **`items`** with OData paging, get/delete item, items-delta, **`--json-file`** on create/update, followed sites), **`site-pages`**, **`excel`** (workbook object model incl. comments beta), **`teams channel-files-folder`** | — | Core drive + site libraries + list schema + list sync + sharing + Excel on-item workbook APIs wrapped; long tail stays **`graph invoke`**. |
+| **Copilot** | **`copilot`** | — | Graph `/copilot` OpenAPI-aligned (incl. `$count`, `/copilot/users` **`ai-user`**, root/communications/reports nav, settings/admin deletes, meeting insight mutations, activity-feed root + counts); preview/beta labeled in help. |
+| **Directory / rooms** | **`find`**, **`people`**, **`org`**, **`rooms`**, **`schedule`**, **`suggest`** | Admin directory | **Implemented** for delegated **Places** (lists, rooms in list, find w/ **query**, **get** place, **`find --rooms`**) + **People** (**`people list|get`**, **`/users/{id}/people`** with **`--user`**) + **org** (**`user`**, **`transitive-reports`**, manager, direct-reports). Tenant admin directory CRUD → **invoke**. |
+| **Bookings** | Full CRUD + reads + **publish** / **unpublish** / business create-delete | **`bookings staff-availability`** | **Implemented** for delegated Bookings v1; **`staff-availability`** stays **app-only** (`--token`). |
 | **Cloud Communications** | — | **All** | **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)** **invoke** recipes only. |
 | **Mail migration** | **`oof`**, **`rules`**, **`update-event`** (Graph id) | **`auto-reply`** (EWS) | **auto-reply** 1:1 Graph template UX = **not** a goal; see [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md). |
 | **Discovery / Insights** (Phase 1) | **`insights trending`** / **`used`** / **`shared`**, **`files recent`** / **`files activities`** / **`files preview`**, **`sharepoint followed-sites`** / **`follow`** / **`unfollow`** | — | Wraps **`/me/insights/*`**, **`/me/drive/recent`**, **`/drives/{id}/items/{id}/activities`**, **`/me/drive/items/{id}/preview`**, **`/me/followedSites`** (+`add`/`remove`). Reuses **`Sites.ReadWrite.All`** + **`Files.ReadWrite.All`**. |
@@ -63,7 +63,7 @@ Measurable exit criteria for workloads still **Partial** / **Gap**. Command refe
 
 ## Word (.docx) drive-hosted Graph — coverage matrix
 
-**Definition of done (Graph “feature complete” for Word here):** every **stable delegated** drive-item operation that applies to `.docx` is **Implemented** via **`files`** (or **`word`** where we expose an Office-oriented entry), or explicitly **Gap / invoke** below. **`word`** is intentionally thin: preview + convenience mirrors; avoid duplicating every **`files`** subcommand under **`word`** (see [CLI_REFERENCE.md](./CLI_REFERENCE.md) Word section).
+**Definition of done (Graph “feature complete” for Word here):** every **stable delegated** drive-item operation that applies to `.docx` is **Implemented** via **`files`** and/or **`word`** ( **`word`** mirrors the common per-item **`files`** verbs listed below), or explicitly **Gap / invoke**. Folder-level ops (**list**, **delta**, **search**, **shared-with-me**) stay on **`files`** only.
 
 | Graph area (drive item) | `files` | `word` | `graph invoke` / other |
 | --- | --- | --- | --- |
@@ -71,16 +71,21 @@ Measurable exit criteria for workloads still **Partial** / **Gap**. Command refe
 | Metadata (`GET …/items/{id}`) | **Implemented** | **`word meta`** | — |
 | Download content | **Implemented** | **`word download`** | — |
 | Thumbnails (`GET …/items/{id}/thumbnails`) | **`files thumbnails`** | **`word thumbnails`** (same impl as **`powerpoint thumbnails`**) | — |
-| Upload / large upload / delete | **Implemented** | — | — |
-| Copy / move | **Implemented** | — | — |
-| Share link / collab / checkout / checkin | **Implemented** | — | — |
-| Invite / permissions / PATCH permission | **Implemented** | — | — |
-| Versions / restore | **Implemented** | — | — |
-| Convert format | **Implemented** | — | — |
-| Analytics | **Implemented** | — | — |
-| Preview session (`POST …/preview`) | — | **`word preview`** (also **`powerpoint preview`**) | **`graph invoke`** if you need non-CLI automation only |
+| Upload / large upload / delete | **Implemented** | **`word upload`**, **`word upload-large`**, **`word delete`** | — |
+| Copy / move | **Implemented** | **`word copy`**, **`word move`** | — |
+| Share link / collab / checkout / checkin | **Implemented** | **`word share`**, **`word checkout`**, **`word checkin`** | — |
+| Invite / permissions / PATCH permission | **Implemented** | **`word invite`**, **`word permissions`**, **`word permission-remove`**, **`word permission-update`** | — |
+| Versions / restore | **Implemented** | **`word versions`**, **`word restore`** | — |
+| Convert format | **Implemented** | **`word convert`** | — |
+| Analytics | **Implemented** | **`word analytics`** | — |
+| Per-item activity feed | **Implemented** | **`word activities`** | — |
+| Preview session (`POST …/preview`) | — | **`word preview`** (also **`powerpoint preview`**) | — |
 | In-document comments / review (Word-specific) | — | — | **Gap** — no **`…/workbook/comments`–style** Word path in OpenAPI index; Office client / OOXML / beta docs only |
-| Sensitivity / MIP labels (item) | Partial | — | Often **`graph invoke`** beta; confirm per tenant docs |
+| Sensitivity / MIP labels (assign, extract) | **Implemented** | **`word sensitivity-assign`**, **`sensitivity-extract`** (same as **`files`**) | Tenant licensing + Purview; confirm JSON body in [assignSensitivityLabel](https://learn.microsoft.com/en-us/graph/api/driveitem-assignsensitivitylabel) |
+| Retention label (get / remove) | **Implemented** | **`word retention-label`**, **`retention-label-remove`** | [getRetentionLabel](https://learn.microsoft.com/en-us/graph/api/driveitem-getretentionlabel) / [remove](https://learn.microsoft.com/en-us/graph/api/driveitem-removeretentionlabel) |
+| SharePoint **listItem** facet | **Implemented** | **`word list-item`** | **`GET …/listItem`** — library columns; often 404 on personal OneDrive |
+| Follow file (OneDrive for Business) | **Implemented** | **`word follow`**, **`word unfollow`** | [follow](https://learn.microsoft.com/en-us/graph/api/driveitem-follow) |
+| Permanent delete | **Implemented** | **`word permanent-delete`** | Irreversible where policy allows |
 | Full Word product (mail merge, macros, compare) | — | — | **Out of scope** — not Graph |
 
 ### Word Graph API watchlist
@@ -96,7 +101,7 @@ Expect **few or no** drive-scoped Word processing paths today; **`workbook`** hi
 
 ## PowerPoint (.pptx) drive-hosted Graph — coverage matrix
 
-**Definition of done (Graph “feature complete” for PowerPoint here):** every **documented** Microsoft Graph operation that applies to a **drive-hosted `.pptx` as an Office file** (not generic file CRUD) is **Implemented** via **`powerpoint`** or **`files`**, or is explicitly **Gap** because Graph does not publish a comparable surface (no `…/presentation/slides/…` tree in the OpenAPI catalog today). **`powerpoint`** is intentionally thin — same pattern as **`word`**: avoid duplicating every **`files`** subcommand.
+**Definition of done (Graph “feature complete” for PowerPoint here):** same as Word: **`powerpoint`** mirrors the per-item **`files`** verbs below; folder/root ops use **`files`**. Graph does not publish a `…/presentation/slides/…` tree on drive items today.
 
 | Graph area (drive item) | `files` | `powerpoint` | `graph invoke` / other |
 | --- | --- | --- | --- |
@@ -104,16 +109,17 @@ Expect **few or no** drive-scoped Word processing paths today; **`workbook`** hi
 | Metadata (`GET …/items/{id}`) | **Implemented** | **`powerpoint meta`** | — |
 | Download content | **Implemented** | **`powerpoint download`** | — |
 | Thumbnails (`GET …/items/{id}/thumbnails`) | **`files thumbnails`** | **`powerpoint thumbnails`** | — |
-| Upload / large upload / delete | **Implemented** | — | — |
-| Copy / move | **Implemented** | — | — |
-| Share link / collab / checkout / checkin | **Implemented** | — | — |
-| Invite / permissions / PATCH permission | **Implemented** | — | — |
-| Versions / restore | **Implemented** | — | — |
-| Convert format | **Implemented** | — | — |
-| Analytics | **Implemented** | — | — |
-| Preview session (`POST …/preview`) | — | **`powerpoint preview`** (also **`word preview`**, **`files preview`**) | **`graph invoke`** if you need non-CLI automation only |
-| In-deck slides / shapes / slide comments | — | — | **Gap** — no **`…/presentation/…`** path in OpenAPI index; round-trip edit → **`powerpoint download`** → local / OOXML → **`files upload`** ([`AGENT_WORKFLOWS.md`](./AGENT_WORKFLOWS.md)) |
-| Sensitivity / MIP labels (item) | Partial | — | Often **`graph invoke`** beta; confirm per tenant docs |
+| Upload / large upload / delete | **Implemented** | **`powerpoint upload`**, **`powerpoint upload-large`**, **`powerpoint delete`** | — |
+| Copy / move | **Implemented** | **`powerpoint copy`**, **`powerpoint move`** | — |
+| Share link / collab / checkout / checkin | **Implemented** | **`powerpoint share`**, **`powerpoint checkout`**, **`powerpoint checkin`** | — |
+| Invite / permissions / PATCH permission | **Implemented** | **`powerpoint invite`**, **`powerpoint permissions`**, **`powerpoint permission-remove`**, **`powerpoint permission-update`** | — |
+| Versions / restore | **Implemented** | **`powerpoint versions`**, **`powerpoint restore`** | — |
+| Convert format | **Implemented** | **`powerpoint convert`** | — |
+| Analytics | **Implemented** | **`powerpoint analytics`** | — |
+| Per-item activity feed | **Implemented** | **`powerpoint activities`** | — |
+| Preview session (`POST …/preview`) | — | **`powerpoint preview`** (also **`word preview`**, **`files preview`**) | — |
+| In-deck slides / shapes / slide comments | — | — | **Gap** — no **`…/presentation/…`** path in OpenAPI index; round-trip edit → **`powerpoint download`** → local / OOXML → **`powerpoint upload`** ([`AGENT_WORKFLOWS.md`](./AGENT_WORKFLOWS.md)) |
+| Sensitivity / MIP, retention, listItem, follow, permanent-delete | **Implemented** | Same **`word`** subcommand names on **`powerpoint`** | See Word matrix rows above |
 | Full PowerPoint product (designer, presenter view) | — | — | **Out of scope** — not Graph |
 
 ## PowerPoint Graph API watchlist
@@ -138,7 +144,9 @@ Compare: **`workbook`** paths should return many hits; **`presentation`** on **d
 | Preview session | **Implemented** | **`word preview`**, **`powerpoint preview`** — POST …/drive/items/{id}/preview (same Graph API; format support is service-dependent); same **`--user`** / **`--drive-id`** / **`--site-id`** / **`--library-drive-id`** as **`files`**. |
 | Item metadata + download | **Implemented** | **`word meta`**, **`word download`**, **`powerpoint meta`**, **`powerpoint download`** — GET …/drive/items/{id}; download aligns with **`files download`**. |
 | Thumbnails | **Implemented** | **`files thumbnails`**, **`word thumbnails`**, **`powerpoint thumbnails`** — GET …/drive/items/{id}/thumbnails (sizes preauthenticated per Graph). |
-| In-document review / slide comments (non-Excel) | **Gap** | Local OpenAPI index does not expose a **`…/presentation/…/comments`** (or Word) drive-item surface comparable to Excel **`…/workbook/comments`**. Use **`graph invoke`** against beta docs if your scenario is supported, or Office client / OOXML automation outside this CLI. |
+| Upload / share / permissions / versions / convert / analytics / activities / checkout | **Implemented** | Same Graph requests as **`files`** — use **`word …`** or **`powerpoint …`** subcommands (see matrices above). |
+| listItem / follow / MIP sensitivity / retention / permanentDelete | **Implemented** | **`files …`** and **`word`/`powerpoint` …`** — see Word matrix (**`list-item`**, **`follow`**, **`sensitivity-assign`**, **`retention-label`**, …). |
+| In-document review / slide comments (non-Excel) | **Gap** | No **`…/presentation/…/comments`** (or Word equivalent to Excel **`…/workbook/comments`**) in Graph for drive items. Use **`graph invoke`** if Microsoft documents a path, Office client, or OOXML tooling outside this CLI. |
 
 
 ## OneNote
@@ -157,19 +165,21 @@ Compare: **`workbook`** paths should return many hits; **`presentation`** on **d
 
 | Graph area | CLI | Notes |
 | --- | --- | --- |
-| Drive / SharePoint (subset) | **Partial** | **`files`** — list/search/**`delta`**/**`shared-with-me`**/**`thumbnails`**/upload/download/**`copy`**/**`move`**/delete/share/**`invite`**/**`permissions`**/**`permission-remove`**/**`permission-update`**/versions/restore/checkin/convert/analytics; targets **`/me/drive`**, **`/users/{id}/drive`**, **`/drives/{id}`**, **`/sites/{id}/drive`** (+ **`--library-drive-id`**); **`sharepoint`** lists/items/**`get-item`**/**`delete-item`**/**`items-delta`**/**`resolve-site`**; **`site-pages`** |
+| Drive / SharePoint (subset) | **Implemented** | **`files`** — list/search/**`delta`**/**`shared-with-me`**/**`thumbnails`**/**`list-item`**/**`follow`**/**`unfollow`**/**`sensitivity-assign`**/**`sensitivity-extract`**/**`retention-label`**/**`retention-label-remove`**/**`permanent-delete`**/upload/download/**`copy`**/**`move`**/delete/share/**`invite`**/**`permissions`**/**`permission-remove`**/**`permission-update`**/versions/restore/**`checkout`**/**`checkin`**/convert/analytics/**`activities`**/**`preview`**; **`word`/`powerpoint`** mirror per-item **`files`** verbs; targets **`/me/drive`**, **`/users/{id}/drive`**, **`/drives/{id}`**, **`/sites/{id}/drive`** (+ **`--library-drive-id`**); **`sharepoint`** **`resolve-site`**/**`get-site`**/**`drives`**/**`lists`**/**`get-list`**/**`columns`**/**`items`** (default all pages; **`--filter`**/**`--orderby`**/**`--top`**/**`--url`**/**`--all-pages`**), **`get-item`**/**`delete-item`**/**`items-delta`**; **`site-pages`** |
 | Excel workbook (worksheets, range, tables, pivots, charts, application, comments) | **Implemented** | **`excel`** — worksheet CRUD; range read/**patch**/**range-clear**; **used-range**; **tables** CRUD + rows add/**patch**/**delete** + **columns** list/get/patch; **pivot-tables** + **pivot-table-*** + **pivot-tables-refresh-all**; **names** + **name-get** + **worksheet-names** / **worksheet-name-get**; **charts** + create/patch/delete; **workbook-get**; **application-calculate**; **session-create** / **session-refresh** / **session-close**; optional **`--session-id`** on mutating calls; **`excel comments-*`** (Graph **beta**). Images/shapes/deep range methods → **`graph invoke`** ([`CLI_REFERENCE.md`](./CLI_REFERENCE.md)) |
-| Teams (joined teams, channels, messages, tabs, chats) | **Partial** | **`teams`** — **`list --user`**; **`channel-files-folder`**; message send/patch/soft-delete/hard-delete/undo-soft; **`activity-notify`**; **`chat-create`**, **`chat-member-add`**; **`team-member-add`**, **`channel-member-add`**; **tabs** list + **tab-*** CRUD; reactions; **`teams chats`** list **`/me`** only; meeting lifecycle / RSC / admin → **`graph invoke`** |
-| Manager / direct reports | **Implemented** | **`org manager`**, **`org direct-reports`** — optional **`--user`** for another user’s hierarchy (**`User.Read`** / **`User.Read.All`** per scenario); see **[`PERSONAL_ASSISTANT_DELEGATION.md`](./PERSONAL_ASSISTANT_DELEGATION.md)** |
-| Bookings | **Partial** | **`bookings`** — full CRUD + **staff-availability** (POST; **app-only** token) + **appointment-cancel** |
+| Teams (joined teams, channels, messages, tabs, chats, apps) | **Implemented** | **`teams`** — **`list --user`**; **`channel-files-folder`**; messages/replies/patch/delete/reactions; **`activity-notify`**; **`chat-create`**, **`chat-member-add`**; **`team-member-add`**, **`channel-member-add`**; **tabs** list + **tab-***; **app-catalog** / **app-catalog-get**, **apps** / **app-*** on team, **chat-app-***, **user-app-***; **`teams chats`** = **`/me/chats`** only; meeting lifecycle / RSC / admin → **`graph invoke`** |
+| Manager / direct reports / profile / subtree | **Implemented** | **`org manager`**, **`org direct-reports`**, **`org user`**, **`org transitive-reports`** — optional **`--user`** for another user (**`User.Read`** / **`User.Read.All`** per scenario); see **[`PERSONAL_ASSISTANT_DELEGATION.md`](./PERSONAL_ASSISTANT_DELEGATION.md)** |
+| **People** (`/me/people`, `/users/{id}/people`) | **Implemented** | **`people list`** (optional **`--search`**, **`--top`**, **`--user`**), **`people get`** |
+| **Places** (room lists, rooms, GET place) | **Implemented** | **`rooms`** (**lists**, **rooms**, **find** + **`--query`**, **get**), **`find --rooms`** |
+| Bookings | **Implemented** | **`bookings`** — business create/delete/publish/unpublish, currencies list+get, full appointment/customer/service/staff/custom-question CRUD + **calendar-view**, **appointment-cancel**, **staff-availability** (POST; **app-only** token) |
 | Bookings **getStaffAvailability** | **Partial (app-only)** | Microsoft documents **no delegated** access — **`bookings staff-availability`** accepts **`--token`** with an application token; delegated **`graph invoke`** will fail |
-| Presence | **Partial** | **`presence`** — **me**, **user**, **bulk**, **set-me** / **set-user** (prints `sessionId`), **clear-me** / **clear-user** |
+| Presence | **Implemented** | **`presence`** — **me**, **user**, **bulk**, **set-me** / **set-user**, **clear-me** / **clear-user**, **status-message-set**, **preferred-set** / **preferred-clear**, **clear-location** |
 | Raw REST + JSON `$batch` | **Partial** | **`graph invoke`**, **`graph batch`** — escape hatch for any JSON Graph API |
 | Online meetings | **Implemented** | `meeting` |
 | To Do | **Implemented** | **`todo`** — task CRUD + **`todo delta`** + **`todo lists-delta`** (`lists/delta()`); long tail → **`graph invoke`** |
 | Contacts + delta / photo | **Implemented** | `contacts` |
 | Planner | **Implemented** | **`planner`** incl. beta **`plan-archive`** / **`plan-unarchive`**; **`planner delta`** |
-| Search (query) | **Partial** | **`graph-search`** — **`--preset extended`** or **`connectors`** (connector-heavy **entityTypes**) or **`--types`**; **`find`** — exotic connectors may still need **`graph invoke`** |
+| Search (query) | **Implemented** | **`graph-search`** — presets / **`--types`**, **`--merge-json-file`**, **`--body-file`**, and flags for **`fields`**, **`contentSources`**, **`region`**, **`aggregationFilters`**, **`sortProperties`** (via **`--sort-json-file`**), **`enableTopResults`**, **`trimDuplicates`**; **`find`** stays directory/people |
 | Cloud communications (calls, PSTN, etc.) | **Gap** | Use **`graph invoke`** or dedicated apps; not wrapped |
 
 ---
@@ -256,8 +266,8 @@ Scope: delegated **`TeamsActivity.Send`**.
 1. **Delta + long-running sync** — **`contacts delta`**, **`todo delta`**, **`planner delta`**, **`outlook-graph messages-delta`**, **`graph-calendar events-delta`** support **`--state-file`** where listed; else **`--next`** / **`--url`**.
 2. **Microsoft Search** — **`graph-search`** with **`--preset default`**, **`extended`**, **`connectors`**, or explicit **`--types`**; exotic verticals may need **`graph invoke`**.
 3. **OneNote** — advanced ink scenarios beyond multipart HTML + binary parts may need Graph directly.
-4. **PowerPoint (and Word) deck/body APIs** — if OpenAPI gains **`…/items/{id}/presentation/…`** (or similar) with stable contracts, add **`graph-*-client`** modules and **`powerpoint`** / **`word`** subcommands; until then **`powerpoint`** stays preview/meta/download/thumbnails + **`files`** — see **PowerPoint Graph API watchlist** above.
+4. **PowerPoint (and Word) deck/body APIs** — if OpenAPI gains **`…/items/{id}/presentation/…`** (or similar) with stable contracts, add **`graph-*-client`** modules and **`powerpoint`** / **`word`** subcommands; until then **`word`**/**`powerpoint`** wrap preview/meta/download/thumbnails **and** mirror **`files`** per-item lifecycle — see **PowerPoint Graph API watchlist** above.
 
 ---
 
-*Last updated: 2026-05-05 — **Excel** closure: **`excel`** pivots, table CRUD, columns, row patch/delete, **range-clear**, **workbook-get**, **application-calculate**, **session-refresh**, names / worksheet names, **`--session-id`** on mutating calls. PowerPoint / Word **Graph-complete** closure; PowerPoint matrix + watchlist script; Phase 1–3 closures; scopes in [`GRAPH_SCOPES.md`](./GRAPH_SCOPES.md).*
+*Last updated: 2026-05-05 — **Teams** app catalog + installs; **Presence** extended APIs. **Drive** **`files`** list-item / follow / MIP sensitivity / retention / permanent-delete (+ **`word`/`powerpoint`** mirrors). **Directory / people / rooms**, **Word**/**PowerPoint**, **Excel** closure as documented. Scopes in [`GRAPH_SCOPES.md`](./GRAPH_SCOPES.md).*

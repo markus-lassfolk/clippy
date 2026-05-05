@@ -1,0 +1,4922 @@
+{
+  "version": 1,
+  "description": "Graph path patterns from static analysis of callGraph*, graphInvoke*, fetchAllPages, fetchGraphRaw, graphPostBatch. Regenerate: npm run graph:inventory",
+  "generatedAt": "2026-05-05T10:05:14.830Z",
+  "entryCount": 702,
+  "entries": [
+    {
+      "file": "src/commands/files.ts",
+      "line": 1398,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/recent{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/commands/findtime.ts",
+      "line": 208,
+      "callee": "callGraph",
+      "pattern": "/me?$select=mail,userPrincipalName",
+      "kind": "literal"
+    },
+    {
+      "file": "src/commands/findtime.ts",
+      "line": 232,
+      "callee": "callGraph",
+      "pattern": "/me?$select=mail,userPrincipalName",
+      "kind": "literal"
+    },
+    {
+      "file": "src/commands/graph.ts",
+      "line": 89,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/commands/graph.ts",
+      "line": 133,
+      "callee": "graphPostBatch",
+      "pattern": "/$batch",
+      "kind": "literal"
+    },
+    {
+      "file": "src/commands/whoami.ts",
+      "line": 16,
+      "callee": "callGraph",
+      "pattern": "/me",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/calendar-graph-helpers.ts",
+      "line": 12,
+      "callee": "callGraph",
+      "pattern": "/me?$select=mail,userPrincipalName",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 79,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/retrieval",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 149,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/search",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 154,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 164,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 174,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 189,
+      "callee": "graphInvokeText",
+      "pattern": "/copilot/conversations/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 204,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 218,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 233,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 245,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 256,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 267,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 280,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 292,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 301,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 312,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 317,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 326,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 331,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}/block",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 336,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}/unblock",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 345,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}/reassign",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 358,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 373,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 389,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 405,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 418,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/microsoft.graph.copilot.deleteByThreadId",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 433,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 449,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 463,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}/messages",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 481,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 499,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/conversations/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 512,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 526,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 538,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 550,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 558,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 570,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings/people",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 578,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 590,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings/people/enhancedPersonalization",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 603,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 611,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings/people",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 619,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/settings/people/enhancedPersonalization",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 632,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 644,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/reports",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 652,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/reports",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 659,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 670,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/settings",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 677,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 688,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/settings/limitedMode",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 700,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 709,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 789,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 801,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 813,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 828,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 843,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 859,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 872,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 884,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/multiActivitySubscriptions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 899,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 914,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/multiActivitySubscriptions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 930,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/multiActivitySubscriptions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 945,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/multiActivitySubscriptions/{dynamic}/getArtifacts",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 960,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 974,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings/{dynamic}/transcripts",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 991,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1008,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings/{dynamic}/transcripts/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1026,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}/meetings/{dynamic}/transcripts/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1040,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1048,
+      "callee": "graphInvoke",
+      "pattern": "/copilot",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1055,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1066,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1073,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1080,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1091,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1098,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1105,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1118,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/catalog/packages/{dynamic}/zipFile",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1130,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/settings",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1137,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/admin/settings/limitedMode",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1150,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1162,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1170,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1179,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1193,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1201,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1215,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1227,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1239,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1253,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1265,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1277,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1289,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/interactionHistory",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1297,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/interactionHistory",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1305,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1313,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1325,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1335,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1350,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1360,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1370,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1384,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users/{dynamic}/interactionHistory",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1399,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users/{dynamic}/interactionHistory",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1414,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1428,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1442,
+      "callee": "graphInvoke",
+      "pattern": "/copilot/users/{dynamic}/onlineMeetings",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1453,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1465,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/copilot-graph-client.ts",
+      "line": 1476,
+      "callee": "graphInvoke",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-advanced-client.ts",
+      "line": 95,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-advanced-client.ts",
+      "line": 125,
+      "callee": "callGraphAtText",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-advanced-client.ts",
+      "line": 165,
+      "callee": "callGraphAt",
+      "pattern": "/$batch",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-approvals-client.ts",
+      "line": 53,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-approvals-client.ts",
+      "line": 69,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-approvals-client.ts",
+      "line": 83,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-approvals-client.ts",
+      "line": 102,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-attachment-upload-session.ts",
+      "line": 89,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-attachment-upload-session.ts",
+      "line": 126,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 48,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 61,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 77,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 93,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 114,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/appointments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 130,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/services",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 152,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/services/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 168,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/staffMembers",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 190,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/staffMembers/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 210,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/calendarView{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 229,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/customers",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 249,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/customers/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 269,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/appointments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 288,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/customQuestions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 310,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingBusinesses/{dynamic}/customQuestions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 332,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingCurrencies",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 348,
+      "callee": "callGraph",
+      "pattern": "/solutions/bookingCurrencies/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 372,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/appointments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 394,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 415,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 434,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 451,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/customers",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 473,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 494,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 511,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/services",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 533,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 554,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 571,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/staffMembers",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 593,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 614,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 631,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/customQuestions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 653,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 674,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 691,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 712,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/getStaffAvailability",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 733,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/publish",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-bookings-client.ts",
+      "line": 754,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/unpublish",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 156,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 165,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 185,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 214,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 242,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 267,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 280,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 289,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 321,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 337,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 359,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 380,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 401,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 439,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 454,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 487,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 512,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 546,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 578,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 612,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 628,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 655,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 714,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 747,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 803,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-calendar-client.ts",
+      "line": 817,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 359,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 540,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 610,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/children",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 619,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 634,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 677,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}{dynamic}:/content",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 739,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}{dynamic}:/createUploadSession",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1016,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1035,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/createLink",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1062,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/checkout",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1086,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/checkin",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1129,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/listItem",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1148,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/follow",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1168,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/unfollow",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1190,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/assignSensitivityLabel",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1209,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/extractSensitivityLabels",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1228,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/permanentDelete",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1253,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/restore",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1272,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/retentionLabel",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1294,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/retentionLabel",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1368,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/versions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1384,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/versions/{dynamic}/restoreVersion",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1424,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/analytics/allTime",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1425,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/analytics/lastSevenDays",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1479,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1566,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/invite",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1584,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/permissions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1600,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/permissions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1638,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/thumbnails",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1674,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1676,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1703,
+      "callee": "callGraphAt",
+      "pattern": "/me/drive/sharedWithMe",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1726,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}/copy",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1810,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-client.ts",
+      "line": 1831,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/permissions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 47,
+      "callee": "callGraph",
+      "pattern": "/me/people?$search={dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 88,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 97,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 109,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 125,
+      "callee": "callGraph",
+      "pattern": "/users?$filter={dynamic}&$count=true",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 147,
+      "callee": "callGraph",
+      "pattern": "/groups?$filter={dynamic}&$count=true",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-directory.ts",
+      "line": 165,
+      "callee": "fetchAllPages",
+      "pattern": "/groups/{dynamic}/members?$top=100",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-event.ts",
+      "line": 29,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-event.ts",
+      "line": 67,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-event.ts",
+      "line": 119,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 82,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 105,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 128,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 149,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 168,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 189,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 220,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 250,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 273,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 306,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 339,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 360,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 390,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 410,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 430,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 451,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 470,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 493,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 524,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 554,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 573,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 593,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 615,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 647,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 669,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 702,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 733,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 752,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 774,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 812,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 844,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 867,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 887,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 908,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 940,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 971,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 992,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 1024,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 1056,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 1079,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-client.ts",
+      "line": 1111,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-comments-client.ts",
+      "line": 32,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-comments-client.ts",
+      "line": 47,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-comments-client.ts",
+      "line": 61,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-comments-client.ts",
+      "line": 80,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-excel-comments-client.ts",
+      "line": 98,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-groups-client.ts",
+      "line": 35,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-groups-client.ts",
+      "line": 67,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-groups-client.ts",
+      "line": 99,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-groups-client.ts",
+      "line": 134,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-groups-client.ts",
+      "line": 162,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 66,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 96,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 127,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 160,
+      "callee": "callGraphAt",
+      "pattern": "/me/followedSites",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 178,
+      "callee": "callGraphAt",
+      "pattern": "/me/followedSites/add",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-insights-client.ts",
+      "line": 199,
+      "callee": "callGraphAt",
+      "pattern": "/me/followedSites/remove",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 64,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 79,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 111,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 123,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 139,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 151,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 217,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 255,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 263,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 278,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/graph-meeting-recordings-client.ts",
+      "line": 286,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-microsoft-search.ts",
+      "line": 118,
+      "callee": "callGraph",
+      "pattern": "/search/query",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-office-client.ts",
+      "line": 33,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-org-client.ts",
+      "line": 47,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-org-client.ts",
+      "line": 63,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-org-client.ts",
+      "line": 74,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-org-client.ts",
+      "line": 87,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-places-helpers.ts",
+      "line": 21,
+      "callee": "fetchAllPages",
+      "pattern": "/places/microsoft.graph.room",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 13,
+      "callee": "callGraph",
+      "pattern": "/me/presence",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 27,
+      "callee": "callGraph",
+      "pattern": "/users/{dynamic}/presence",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 48,
+      "callee": "callGraph",
+      "pattern": "/communications/getPresencesByUserId",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 79,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 100,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 124,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 149,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 163,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-presence-client.ts",
+      "line": 178,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-schedule.ts",
+      "line": 63,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-schedule.ts",
+      "line": 151,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-subscriptions.ts",
+      "line": 44,
+      "callee": "callGraph",
+      "pattern": "/subscriptions",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-subscriptions.ts",
+      "line": 56,
+      "callee": "callGraph",
+      "pattern": "/subscriptions",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-subscriptions.ts",
+      "line": 69,
+      "callee": "callGraph",
+      "pattern": "/subscriptions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-subscriptions.ts",
+      "line": 85,
+      "callee": "callGraph",
+      "pattern": "/subscriptions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 98,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 111,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 125,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/primaryChannel",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 153,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/filesFolder",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 166,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 185,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/allChannels{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 202,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/incomingChannels",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 225,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 251,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/members{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 274,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages/{dynamic}/replies",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 298,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 319,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 341,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 368,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages/{dynamic}/replies{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 393,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 413,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 435,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}/replies{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 456,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}/replies",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 478,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/members{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 497,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 512,
+      "callee": "callGraph",
+      "pattern": "/me/chats{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 531,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 554,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/pinnedMessages{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 567,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 585,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 606,
+      "callee": "callGraph",
+      "pattern": "/appCatalogs/teamsApps{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 625,
+      "callee": "callGraph",
+      "pattern": "/appCatalogs/teamsApps/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 644,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/installedApps/{dynamic}?$expand=teamsAppDefinition",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 662,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/installedApps",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 690,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/installedApps/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 715,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/installedApps/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 734,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/installedApps/{dynamic}/upgrade",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 756,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps?$expand=teamsAppDefinition",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 778,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps/{dynamic}?$expand=teamsAppDefinition",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 796,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 824,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 849,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 868,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/installedApps/{dynamic}/upgrade",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 891,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 910,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 928,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 950,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 971,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 998,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1029,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1054,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}/setReaction",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1079,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}/unsetReaction",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1101,
+      "callee": "callGraph",
+      "pattern": "/me/teamwork/sendActivityNotification",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1128,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/sendActivityNotification",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1166,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1170,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1201,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1205,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1233,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1265,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/messages/{dynamic}/replies/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1295,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1296,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1320,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1321,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1347,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1348,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1374,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1375,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1398,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1402,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1430,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1434,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1459,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1483,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/messages/{dynamic}/replies/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1510,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1511,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1533,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1534,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1558,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1559,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1583,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1584,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1605,
+      "callee": "callGraph",
+      "pattern": "/chats",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1627,
+      "callee": "callGraph",
+      "pattern": "/chats/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1649,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1673,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1698,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/tabs/{dynamic}?$expand=teamsApp",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1718,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/tabs",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1743,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/tabs/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-teams-client.ts",
+      "line": 1767,
+      "callee": "callGraph",
+      "pattern": "/teams/{dynamic}/channels/{dynamic}/tabs/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 80,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 93,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 112,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 128,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 138,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 147,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 160,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 179,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 198,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 208,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 221,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 240,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 259,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 276,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 290,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 310,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 330,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 345,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 363,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 378,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 399,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 439,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 453,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 472,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 496,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 510,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 525,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 540,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 551,
+      "callee": "callGraphAt",
+      "pattern": "/admin/people/itemInsights",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 560,
+      "callee": "callGraphAt",
+      "pattern": "/admin/people/itemInsights",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 575,
+      "callee": "callGraphAt",
+      "pattern": "/admin/people/itemInsights",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 597,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 610,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 629,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 652,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 665,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 682,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/occurrences{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 697,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 715,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 730,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 751,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 768,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 781,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/recurrences{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 796,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 811,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 832,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 848,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 861,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 878,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 892,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 912,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 925,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/messages{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-client.ts",
+      "line": 940,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 24,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 33,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 53,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 68,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 121,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/reactions{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 183,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/replies{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-meeting-engage-deep.ts",
+      "line": 246,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/reactions{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 26,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 35,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 48,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 63,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 76,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/graph-viva-tenant-client.ts",
+      "line": 285,
+      "callee": "callGraphAtText",
+      "pattern": "{dynamic}/goals/exportJobs/{dynamic}/content",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/mailbox-settings-client.ts",
+      "line": 32,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/mailbox-settings-client.ts",
+      "line": 55,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 113,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 128,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 138,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 159,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 185,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 211,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 233,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 251,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/sectionGroups",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 265,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 291,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/sectionGroups",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 318,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 344,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 362,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/sections",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 375,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/sections",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 389,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 411,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/sections",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 434,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/sections",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 457,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 479,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 497,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/pages",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 511,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 529,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/preview",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 559,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 591,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 628,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 759,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 783,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/content",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 806,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 840,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 883,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 926,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/onenote-graph-client.ts",
+      "line": 958,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/online-meetings-graph-client.ts",
+      "line": 41,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/online-meetings-graph-client.ts",
+      "line": 67,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/online-meetings-graph-client.ts",
+      "line": 93,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/online-meetings-graph-client.ts",
+      "line": 111,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/oof-client.ts",
+      "line": 38,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/oof-client.ts",
+      "line": 92,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 103,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 112,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/childFolders",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 125,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 148,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 173,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 197,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 330,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 341,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 359,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 370,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 382,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 436,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 459,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 518,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 547,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 569,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 588,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/move",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 613,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/copy",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 638,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 653,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/send",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 670,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 684,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 706,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 733,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/createReply",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 761,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/createReplyAll",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 794,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/createForward",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 815,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 877,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 888,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 907,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 948,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 973,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 994,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1010,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1033,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1058,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1090,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1118,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1150,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1172,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1202,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1227,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1252,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1269,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/childFolders",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1287,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1305,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1319,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1347,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1361,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1385,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1412,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1434,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/photo",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1453,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1473,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1501,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1528,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1549,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}/attachments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/outlook-graph-client.ts",
+      "line": 1569,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-master-categories.ts",
+      "line": 53,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-master-categories.ts",
+      "line": 78,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-master-categories.ts",
+      "line": 107,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/outlook-master-categories.ts",
+      "line": 132,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/places-client.ts",
+      "line": 63,
+      "callee": "fetchAllPages",
+      "pattern": "/places/microsoft.graph.roomList",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/places-client.ts",
+      "line": 76,
+      "callee": "fetchAllPages",
+      "pattern": "/places/{dynamic}/microsoft.graph.roomlist/rooms",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/places-client.ts",
+      "line": 117,
+      "callee": "fetchAllPages",
+      "pattern": "/places/microsoft.graph.room",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/places-client.ts",
+      "line": 154,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/places-client.ts",
+      "line": 173,
+      "callee": "callGraph",
+      "pattern": "/users/{dynamic}/calendar/calendarView?startDateTime={dynamic}&endDateTime={dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 162,
+      "callee": "fetchAllPages",
+      "pattern": "/me/planner/tasks",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 166,
+      "callee": "fetchAllPages",
+      "pattern": "/me/planner/plans",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 174,
+      "callee": "fetchAllPages",
+      "pattern": "/users/{dynamic}/planner/tasks",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 186,
+      "callee": "fetchAllPages",
+      "pattern": "/users/{dynamic}/planner/plans",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 194,
+      "callee": "fetchAllPages",
+      "pattern": "/groups/{dynamic}/planner/plans",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 202,
+      "callee": "fetchAllPages",
+      "pattern": "/planner/plans/{dynamic}/buckets",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 210,
+      "callee": "fetchAllPages",
+      "pattern": "/planner/plans/{dynamic}/tasks",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 219,
+      "callee": "callGraph",
+      "pattern": "/planner/plans/{dynamic}/details",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 236,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 272,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 310,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 348,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 367,
+      "callee": "callGraph",
+      "pattern": "/planner/plans/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 385,
+      "callee": "callGraph",
+      "pattern": "/planner/plans",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 414,
+      "callee": "callGraph",
+      "pattern": "/me?$select=id",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 438,
+      "callee": "callGraphAt",
+      "pattern": "/me/planner/plans",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 464,
+      "callee": "callGraph",
+      "pattern": "/planner/plans/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 481,
+      "callee": "callGraph",
+      "pattern": "/planner/plans/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 508,
+      "callee": "callGraphAt",
+      "pattern": "/planner/plans/{dynamic}/archive",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 537,
+      "callee": "callGraphAt",
+      "pattern": "/planner/plans/{dynamic}/unarchive",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 560,
+      "callee": "callGraph",
+      "pattern": "/planner/buckets/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 577,
+      "callee": "callGraph",
+      "pattern": "/planner/buckets",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 604,
+      "callee": "callGraph",
+      "pattern": "/planner/buckets/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 621,
+      "callee": "callGraph",
+      "pattern": "/planner/buckets/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 642,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 663,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/details",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 692,
+      "callee": "callGraph",
+      "pattern": "/planner/taskDetails/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 724,
+      "callee": "callGraph",
+      "pattern": "/planner/plans/{dynamic}/details",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 750,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 760,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 770,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 780,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 801,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 803,
+      "callee": "callGraphAt",
+      "pattern": "/me/planner/all/delta",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 944,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/assignedToTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 969,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/assignedToTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 998,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/bucketTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1023,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/bucketTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1052,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/progressTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1077,
+      "callee": "callGraph",
+      "pattern": "/planner/tasks/{dynamic}/progressTaskBoardFormat",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1112,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1135,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1224,
+      "callee": "callGraphAt",
+      "pattern": "/planner/rosters",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1241,
+      "callee": "callGraphAt",
+      "pattern": "/planner/rosters/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1261,
+      "callee": "fetchAllPages",
+      "pattern": "/planner/rosters/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1283,
+      "callee": "callGraphAt",
+      "pattern": "/planner/rosters/{dynamic}/members",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1313,
+      "callee": "callGraphAt",
+      "pattern": "/planner/rosters/{dynamic}/members/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1345,
+      "callee": "callGraphAt",
+      "pattern": "/planner/plans",
+      "kind": "literal"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1379,
+      "callee": "callGraphAt",
+      "pattern": "/planner/plans/{dynamic}/moveToContainer",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/planner-client.ts",
+      "line": 1402,
+      "callee": "callGraphAt",
+      "pattern": "/planner/plans/{dynamic}/getUsageRights()",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/rules-client.ts",
+      "line": 91,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/rules-client.ts",
+      "line": 115,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/rules-client.ts",
+      "line": 131,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/rules-client.ts",
+      "line": 151,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/rules-client.ts",
+      "line": 166,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 26,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 34,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/drive",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 62,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 88,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 104,
+      "callee": "fetchAllPages",
+      "pattern": "/sites/{dynamic}/drives",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 121,
+      "callee": "fetchAllPages",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/columns",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 136,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 155,
+      "callee": "fetchAllPages",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/items?$expand=fields",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 176,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 186,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 232,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/items",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 261,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/items/{dynamic}/fields",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 289,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/items/{dynamic}?$expand=fields",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 310,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/lists/{dynamic}/items/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 340,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 343,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 360,
+      "callee": "fetchAllPages",
+      "pattern": "/sites/{dynamic}/permissions",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/sharepoint-client.ts",
+      "line": 376,
+      "callee": "callGraphAt",
+      "pattern": "/sites/{dynamic}/permissions/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/site-pages-client.ts",
+      "line": 32,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/pages/microsoft.graph.sitePage",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/site-pages-client.ts",
+      "line": 47,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/site-pages-client.ts",
+      "line": 68,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/site-pages-client.ts",
+      "line": 92,
+      "callee": "callGraphAt",
+      "pattern": "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage/publish",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 107,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 131,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 149,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 198,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 211,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 230,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 249,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 309,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 325,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 337,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 405,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 491,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 515,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 538,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/checklistItems",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 567,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/checklistItems/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 591,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/checklistItems/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 618,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 642,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 667,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 689,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 719,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 788,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 804,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 832,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 867,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 896,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 916,
+      "callee": "fetchAllPages",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/checklistItems",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 932,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/checklistItems/{dynamic}",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 963,
+      "callee": "fetchGraphRaw",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 992,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1017,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1046,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1074,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1106,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1134,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1136,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/delta",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1160,
+      "callee": "callGraphAbsolute",
+      "pattern": "{dynamic}",
+      "kind": "absolute-url"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1162,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/delta()",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1184,
+      "callee": "callGraph",
+      "pattern": "{dynamic}/lists/{dynamic}/tasks/{dynamic}/attachments/createUploadSession",
+      "kind": "template"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1291,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1313,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1339,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1364,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    },
+    {
+      "file": "src/lib/todo-client.ts",
+      "line": 1397,
+      "callee": "callGraph",
+      "pattern": "{dynamic}",
+      "kind": "dynamic"
+    }
+  ]
+}

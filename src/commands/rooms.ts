@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   findRooms,
+  getPlace,
   isRoomFree,
   listPlaceRoomLists,
   listRoomsInRoomList,
@@ -29,20 +30,21 @@ function parseEquipmentFilter(value: string | undefined): string[] | undefined {
 
 export const roomsCommand = new Command('rooms')
   .description('Discover rooms and room lists via Microsoft Graph Places API')
-  .argument('[action]', 'Action: lists, rooms, or find')
-  .argument('[roomListEmail]', 'Room list email address (required for rooms action)')
+  .argument('[action]', 'Action: lists, rooms, find, or get')
+  .argument('[idOrEmail]', 'Room list SMTP (for rooms) or place id (for get)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--building <name>', 'Filter by building name (for find action)')
   .option('--capacity <num>', 'Minimum room capacity (for find action)')
   .option('--equipment <items>', 'Required equipment tags, comma-separated (for find action)')
+  .option('--query <text>', 'Substring filter on name, email, building, floor, tags (for find)')
   .option('--start <iso>', 'Start time ISO string (for find action)')
   .option('--end <iso>', 'End time ISO string (for find action)')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
     async (
       action: string,
-      roomListEmail: string | undefined,
+      idOrEmail: string | undefined,
       options: {
         json?: boolean;
         token?: string;
@@ -50,6 +52,7 @@ export const roomsCommand = new Command('rooms')
         building?: string;
         capacity?: string;
         equipment?: string;
+        query?: string;
         start?: string;
         end?: string;
       }
@@ -90,13 +93,13 @@ export const roomsCommand = new Command('rooms')
       }
 
       if (action === 'rooms') {
-        if (!roomListEmail) {
+        if (!idOrEmail) {
           console.error('Error: rooms action requires a room list email address.');
           console.error('Use "m365-agent-cli rooms lists" to see available room lists.');
           process.exit(1);
         }
-        console.log(`Fetching rooms from list: ${roomListEmail}...`);
-        const result = await listRoomsInRoomList(roomListEmail, {
+        console.log(`Fetching rooms from list: ${idOrEmail}...`);
+        const result = await listRoomsInRoomList(idOrEmail, {
           token: authResult.token,
           identity: options.identity
         });
@@ -130,13 +133,40 @@ export const roomsCommand = new Command('rooms')
         return;
       }
 
+      if (action === 'get') {
+        if (!idOrEmail) {
+          console.error('Error: get action requires a place id (from rooms lists or rooms rooms output).');
+          process.exit(1);
+        }
+        const result = await getPlace(authResult.token!, idOrEmail);
+        if (!result.ok || !result.data) {
+          console.error(`Error: ${result.error?.message || 'Failed to get place'}`);
+          process.exit(1);
+        }
+        const place = result.data;
+        if (options.json) {
+          console.log(JSON.stringify(place, null, 2));
+          return;
+        }
+        console.log(`${place.displayName || '(no name)'}`);
+        if (place.emailAddress) console.log(`  ${place.emailAddress}`);
+        if (place.capacity != null) console.log(`  Capacity: ${place.capacity}`);
+        if (place.bookingType) console.log(`  Booking: ${place.bookingType}`);
+        if (place.building) console.log(`  Building: ${place.building}`);
+        if (place.floorNumber !== undefined) console.log(`  Floor: ${place.floorNumber}`);
+        if (place.tags?.length) console.log(`  Tags: ${place.tags.join(', ')}`);
+        if (place.id) console.log(`  ID: ${place.id}`);
+        return;
+      }
+
       if (action === 'find') {
         let filters: RoomFilters;
         try {
           filters = {
             building: options.building,
             capacityMin: parseCapacityFilter(options.capacity),
-            equipment: parseEquipmentFilter(options.equipment)
+            equipment: parseEquipmentFilter(options.equipment),
+            query: options.query
           };
         } catch (err) {
           console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
@@ -145,10 +175,13 @@ export const roomsCommand = new Command('rooms')
         const hasFilters = !!(
           filters.building ||
           filters.capacityMin !== undefined ||
-          (filters.equipment && filters.equipment.length > 0)
+          (filters.equipment && filters.equipment.length > 0) ||
+          filters.query?.trim()
         );
-        if (!hasFilters) {
-          console.error('Error: find action requires at least one filter (--building, --capacity, or --equipment).');
+        if (!hasFilters && !(options.start && options.end)) {
+          console.error(
+            'Error: find needs at least one of --query, --building, --capacity, --equipment, or both --start and --end (availability pass).'
+          );
           process.exit(1);
         }
         console.log('Searching for rooms...');
@@ -203,7 +236,7 @@ export const roomsCommand = new Command('rooms')
       }
 
       if (action !== undefined) {
-        console.error(`Unknown action: "${action}". Use "lists", "rooms", or "find".`);
+        console.error(`Unknown action: "${action}". Use "lists", "rooms", "find", or "get".`);
         process.exit(1);
       }
     }

@@ -17,6 +17,7 @@ import {
   type CreatePlannerTaskExtras,
   createPlannerBucket,
   createPlannerPlan,
+  createPlannerPlanForSignedInUser,
   createPlannerPlanInRoster,
   createPlannerRoster,
   createTask,
@@ -29,6 +30,7 @@ import {
   getPlannerBucket,
   getPlannerDeltaPage,
   getPlannerPlan,
+  getPlannerPlanUsageRights,
   getPlannerRoster,
   getPlannerTaskDetails,
   getPlannerUser,
@@ -37,7 +39,9 @@ import {
   listFavoritePlans,
   listGroupPlans,
   listPlanBuckets,
+  listPlannerMyDayTasks,
   listPlannerPlansForUser,
+  listPlannerRecentPlans,
   listPlannerRosterMembers,
   listPlannerTasksForUser,
   listPlanTasks,
@@ -45,6 +49,7 @@ import {
   listUserPlans,
   listUserTasks,
   mergePlannerAssignments,
+  movePlannerPlanToContainer,
   normalizeAppliedCategories,
   type PlannerCategorySlot,
   type PlannerPlanDetails,
@@ -64,6 +69,7 @@ import {
   updatePlannerPlan,
   updatePlannerPlanDetails,
   updatePlannerTaskDetails,
+  updatePlannerUser,
   updateProgressTaskBoardFormat,
   updateTask
 } from '../lib/planner-client.js';
@@ -90,6 +96,20 @@ function formatTaskLabels(task: PlannerTask, descriptions?: PlannerPlanDetails['
   return parts.join(', ');
 }
 
+async function printPlannerTasksHuman(token: string, tasks: PlannerTask[]): Promise<void> {
+  const planDetailsCache = new Map<string, PlannerPlanDetails['categoryDescriptions']>();
+  for (const t of tasks) {
+    if (!planDetailsCache.has(t.planId)) {
+      const d = await getPlanDetails(token, t.planId);
+      planDetailsCache.set(t.planId, d.ok ? d.data?.categoryDescriptions : undefined);
+    }
+    const desc = planDetailsCache.get(t.planId);
+    const labels = formatTaskLabels(t, desc);
+    console.log(`- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})`);
+    console.log(`  Plan ID: ${t.planId} | Bucket ID: ${t.bucketId}${labels ? ` | Labels: ${labels}` : ''}`);
+  }
+}
+
 export const plannerCommand = new Command('planner').description('Manage Microsoft Planner tasks and plans');
 
 async function runPlannerListMyTasks(opts: { json?: boolean; token?: string; identity?: string }): Promise<void> {
@@ -106,17 +126,7 @@ async function runPlannerListMyTasks(opts: { json?: boolean; token?: string; ide
   if (opts.json) {
     console.log(JSON.stringify(result.data, null, 2));
   } else {
-    const planDetailsCache = new Map<string, PlannerPlanDetails['categoryDescriptions']>();
-    for (const t of result.data) {
-      if (!planDetailsCache.has(t.planId)) {
-        const d = await getPlanDetails(auth.token!, t.planId);
-        planDetailsCache.set(t.planId, d.ok ? d.data?.categoryDescriptions : undefined);
-      }
-      const desc = planDetailsCache.get(t.planId);
-      const labels = formatTaskLabels(t, desc);
-      console.log(`- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})`);
-      console.log(`  Plan ID: ${t.planId} | Bucket ID: ${t.bucketId}${labels ? ` | Labels: ${labels}` : ''}`);
-    }
+    await printPlannerTasksHuman(auth.token!, result.data);
   }
 }
 
@@ -135,6 +145,33 @@ plannerCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(runPlannerListMyTasks);
+
+plannerCommand
+  .command('list-my-day-tasks')
+  .description(
+    'List tasks in My Day (beta GET …/planner/myDayTasks; tasks you added to My Day or due today per Microsoft)'
+  )
+  .option('--json', 'Output JSON')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(async (opts: { json?: boolean; user?: string; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const result = await listPlannerMyDayTasks(auth.token!, opts.user);
+    if (!result.ok || !result.data) {
+      console.error(`Error listing My Day tasks: ${result.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(result.data, null, 2));
+    } else {
+      await printPlannerTasksHuman(auth.token!, result.data);
+    }
+  });
 
 plannerCommand
   .command('list-plans')
@@ -184,17 +221,7 @@ plannerCommand
     if (opts.json) {
       console.log(JSON.stringify(result.data, null, 2));
     } else {
-      const planDetailsCache = new Map<string, PlannerPlanDetails['categoryDescriptions']>();
-      for (const t of result.data) {
-        if (!planDetailsCache.has(t.planId)) {
-          const d = await getPlanDetails(auth.token!, t.planId);
-          planDetailsCache.set(t.planId, d.ok ? d.data?.categoryDescriptions : undefined);
-        }
-        const desc = planDetailsCache.get(t.planId);
-        const labels = formatTaskLabels(t, desc);
-        console.log(`- [${t.percentComplete === 100 ? 'x' : ' '}] ${t.title} (ID: ${t.id})`);
-        console.log(`  Plan ID: ${t.planId} | Bucket ID: ${t.bucketId}${labels ? ` | Labels: ${labels}` : ''}`);
-      }
+      await printPlannerTasksHuman(auth.token!, result.data);
     }
   });
 
@@ -742,23 +769,36 @@ plannerCommand
 
 plannerCommand
   .command('create-plan')
-  .description('Create a Planner plan in a group (v1) or in a roster (beta; use --roster)')
+  .description(
+    'Create a Planner plan: group (v1), roster (beta), or personal / user container (beta: POST /me/planner/plans; use --me)'
+  )
   .option('-g, --group <groupId>', 'Microsoft 365 group that owns the plan')
-  .option('-r, --roster <rosterId>', 'Beta: planner roster id (container); mutually exclusive with --group')
+  .option('-r, --roster <rosterId>', 'Beta: planner roster id (container)')
+  .option('--me', 'Beta: create in the signed-in user Planner container (POST /me/planner/plans; container type user)')
   .requiredOption('-t, --title <title>', 'Plan title')
   .option('--json', 'Output JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
     async (
-      opts: { group?: string; roster?: string; title: string; json?: boolean; token?: string; identity?: string },
+      opts: {
+        group?: string;
+        roster?: string;
+        me?: boolean;
+        title: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
       cmd: any
     ) => {
       checkReadOnly(cmd);
       const hasGroup = Boolean(opts.group);
       const hasRoster = Boolean(opts.roster);
-      if (hasGroup === hasRoster) {
-        console.error('Error: specify exactly one of --group or --roster');
+      const hasMe = opts.me === true;
+      const n = (hasGroup ? 1 : 0) + (hasRoster ? 1 : 0) + (hasMe ? 1 : 0);
+      if (n !== 1) {
+        console.error('Error: specify exactly one of --group, --roster, or --me');
         process.exit(1);
       }
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
@@ -766,9 +806,11 @@ plannerCommand
         console.error(`Auth error: ${auth.error}`);
         process.exit(1);
       }
-      const r = hasRoster
-        ? await createPlannerPlanInRoster(auth.token!, opts.roster!, opts.title)
-        : await createPlannerPlan(auth.token!, opts.group!, opts.title);
+      const r = hasMe
+        ? await createPlannerPlanForSignedInUser(auth.token!, opts.title)
+        : hasRoster
+          ? await createPlannerPlanInRoster(auth.token!, opts.roster!, opts.title)
+          : await createPlannerPlan(auth.token!, opts.group!, opts.title);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -935,6 +977,61 @@ plannerCommand
       }
       if (opts.json) console.log(JSON.stringify({ unarchived: opts.plan }, null, 2));
       else console.log(`Unarchived plan: ${opts.plan}`);
+    }
+  );
+
+plannerCommand
+  .command('plan-usage-rights')
+  .description(
+    'Get usage rights for a plan (Graph **beta**: GET /planner/plans/{id}/getUsageRights()). Returns JSON from Graph.'
+  )
+  .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(async (opts: { plan: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await getPlannerPlanUsageRights(auth.token!, opts.plan);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log(JSON.stringify(r.data, null, 2));
+  });
+
+plannerCommand
+  .command('move-plan-to-container')
+  .description(
+    'Move a plan to another container (Graph **beta**: POST …/moveToContainer). Typically from a user/roster container to a group. Body is JSON (e.g. target `container`); requires plan ETag.'
+  )
+  .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .requiredOption('--etag <etag>', 'Plan @odata.etag (If-Match), from planner get-plan --json')
+  .requiredOption('--json-file <path>', 'JSON body per Graph (moveToContainer action parameters)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(
+    async (opts: { plan: string; etag: string; jsonFile: string; token?: string; identity?: string }, cmd: any) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const raw = await readFile(opts.jsonFile, 'utf-8');
+      const body = JSON.parse(raw) as Record<string, unknown>;
+      const r = await movePlannerPlanToContainer(auth.token!, opts.plan, opts.etag, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (r.data !== undefined && r.data !== null) {
+        console.log(JSON.stringify(r.data, null, 2));
+      } else {
+        console.log('Move completed.');
+      }
     }
   );
 
@@ -1245,15 +1342,16 @@ plannerCommand
   .command('list-favorite-plans')
   .description('List favorite plans (beta Graph API; see GRAPH_BETA_URL)')
   .option('--json', 'Output JSON')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string }) => {
+  .action(async (opts: { json?: boolean; user?: string; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await listFavoritePlans(auth.token!);
+    const r = await listFavoritePlans(auth.token!, opts.user);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -1266,15 +1364,38 @@ plannerCommand
   .command('list-roster-plans')
   .description('List plans from rosters you belong to (beta Graph API)')
   .option('--json', 'Output JSON')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string }) => {
+  .action(async (opts: { json?: boolean; user?: string; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await listRosterPlans(auth.token!);
+    const r = await listRosterPlans(auth.token!, opts.user);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+    else for (const p of r.data) console.log(`- ${p.title} (${p.id})`);
+  });
+
+plannerCommand
+  .command('list-recent-plans')
+  .description('List recently viewed plans (beta GET …/planner/recentPlans)')
+  .option('--json', 'Output JSON')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(async (opts: { json?: boolean; user?: string; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listPlannerRecentPlans(auth.token!, opts.user);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -1601,15 +1722,16 @@ plannerCommand
   .command('get-me')
   .description('Get current user Planner settings (beta: favorites, recents; see GRAPH_BETA_URL)')
   .option('--json', 'Output JSON')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string }) => {
+  .action(async (opts: { json?: boolean; user?: string; token?: string; identity?: string }) => {
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await getPlannerUser(auth.token!);
+    const r = await getPlannerUser(auth.token!, opts.user);
     if (!r.ok || !r.data) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -1619,20 +1741,67 @@ plannerCommand
   });
 
 plannerCommand
+  .command('update-me')
+  .description(
+    'PATCH plannerUser with a merge body (beta; use @odata.etag from planner get-me --json as --etag If-Match)'
+  )
+  .requiredOption('--etag <etag>', 'If-Match value from planner get-me')
+  .requiredOption('--json-file <path>', 'JSON merge body (e.g. recentPlanReferences per Graph docs)')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
+  .option('--json', 'Print updated plannerUser as JSON when Graph returns representation')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(
+    async (
+      opts: {
+        etag: string;
+        jsonFile: string;
+        user?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      try {
+        body = JSON.parse(await readFile(opts.jsonFile, 'utf-8')) as Record<string, unknown>;
+      } catch (e) {
+        console.error(`Error reading json-file: ${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+      const r = await updatePlannerUser(auth.token!, opts.user, opts.etag, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json && r.data) console.log(JSON.stringify(r.data, null, 2));
+      else console.log('OK: planner user updated');
+    }
+  );
+
+plannerCommand
   .command('add-favorite')
   .description('Add a plan to your favorites (beta PATCH /me/planner)')
   .requiredOption('-p, --plan <planId>', 'Plan ID')
   .requiredOption('-t, --title <text>', 'Plan title (shown in favorites)')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { plan: string; title: string; token?: string; identity?: string }, cmd: any) => {
+  .action(async (opts: { plan: string; title: string; user?: string; token?: string; identity?: string }, cmd: any) => {
     checkReadOnly(cmd);
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await addPlannerFavoritePlan(auth.token!, opts.plan, opts.title);
+    const r = await addPlannerFavoritePlan(auth.token!, opts.plan, opts.title, opts.user);
     if (!r.ok) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
@@ -1644,16 +1813,17 @@ plannerCommand
   .command('remove-favorite')
   .description('Remove a plan from your favorites (beta)')
   .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .option('--user <email>', 'Target user (Graph delegation; may 403)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { plan: string; token?: string; identity?: string }, cmd: any) => {
+  .action(async (opts: { plan: string; user?: string; token?: string; identity?: string }, cmd: any) => {
     checkReadOnly(cmd);
     const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
     if (!auth.success) {
       console.error(`Auth error: ${auth.error}`);
       process.exit(1);
     }
-    const r = await removePlannerFavoritePlan(auth.token!, opts.plan);
+    const r = await removePlannerFavoritePlan(auth.token!, opts.plan, opts.user);
     if (!r.ok) {
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);

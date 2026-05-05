@@ -6,7 +6,8 @@ const DRIVE_CLI_OPTION_SPECS: readonly [string, string][] = [
   ['--user <upn>', "Target user's default OneDrive (not with --drive-id or --site-id)"],
   ['--drive-id <id>', 'Explicit drive id (e.g. SharePoint document library)'],
   ['--site-id <id>', 'SharePoint site id (default site document library)'],
-  ['--library-drive-id <id>', 'Library drive id (only with --site-id)']
+  ['--library-drive-id <id>', 'Library drive id (only with --site-id)'],
+  ['--beta', 'Use Microsoft Graph beta API root for this subcommand (beta-only or preview endpoints)']
 ];
 
 export function registerDriveLocationCliOptions(cmd: Command): Command {

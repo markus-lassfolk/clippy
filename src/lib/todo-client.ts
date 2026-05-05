@@ -11,6 +11,7 @@ import {
   graphErrorFromApiError,
   graphResult
 } from './graph-client.js';
+import { GRAPH_BASE_URL } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 
 function todoRoot(user?: string): string {
@@ -159,20 +160,88 @@ export async function deleteTodoList(token: string, listId: string, user?: strin
   }
 }
 
-export async function getTodoLists(token: string, user?: string): Promise<GraphResponse<TodoList[]>> {
-  let result: GraphResponse<{ value: TodoList[] }>;
+export interface TodoListsQueryOptions {
+  orderby?: string;
+  select?: string;
+  expand?: string;
+  top?: number;
+  skip?: number;
+  /** Sets `$count=true` (sends `ConsistencyLevel: eventual`). */
+  count?: boolean;
+}
+
+function todoListsPath(user: string | undefined, options?: TodoListsQueryOptions): string {
+  const params = new URLSearchParams();
+  if (options?.orderby?.trim()) params.set('$orderby', options.orderby.trim());
+  if (options?.select?.trim()) params.set('$select', options.select.trim());
+  if (options?.expand?.trim()) params.set('$expand', options.expand.trim());
+  if (options?.top !== undefined) params.set('$top', String(options.top));
+  if (options?.skip !== undefined) params.set('$skip', String(options.skip));
+  if (options?.count === true) params.set('$count', 'true');
+  const qs = params.toString();
+  return `${todoRoot(user)}/lists${qs ? `?${qs}` : ''}`;
+}
+
+export async function getTodoLists(
+  token: string,
+  user?: string,
+  options?: TodoListsQueryOptions
+): Promise<GraphResponse<TodoList[]>> {
+  const path = todoListsPath(user, options);
+  const singlePage = options?.top !== undefined || options?.skip !== undefined || options?.count === true;
+  const init: RequestInit | undefined =
+    options?.count === true ? { headers: { ConsistencyLevel: 'eventual' } } : undefined;
+
+  if (singlePage) {
+    let result: GraphResponse<{ value: TodoList[] }>;
+    try {
+      result = await callGraph<{ value: TodoList[] }>(token, path, init ?? {});
+    } catch (err) {
+      if (err instanceof GraphApiError) {
+        return graphError(err.message, err.code, err.status);
+      }
+      return graphError(err instanceof Error ? err.message : 'Failed to get todo lists');
+    }
+    if (!result.ok || !result.data) {
+      return graphError(result.error?.message || 'Failed to get todo lists', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data.value || []);
+  }
+
+  return fetchAllPages<TodoList>(token, path, 'Failed to get todo lists', GRAPH_BASE_URL, init);
+}
+
+/** Single GET (for `$top` / `$skip` / `$count`); includes `@odata.count` when requested. */
+export async function getTodoListsPage(
+  token: string,
+  user?: string,
+  options?: TodoListsQueryOptions
+): Promise<
+  GraphResponse<{
+    value: TodoList[];
+    '@odata.count'?: number;
+    '@odata.nextLink'?: string;
+  }>
+> {
+  const path = todoListsPath(user, options);
+  const init: RequestInit | undefined =
+    options?.count === true ? { headers: { ConsistencyLevel: 'eventual' } } : undefined;
   try {
-    result = await callGraph<{ value: TodoList[] }>(token, `${todoRoot(user)}/lists`);
+    const result = await callGraph<{
+      value: TodoList[];
+      '@odata.count'?: number;
+      '@odata.nextLink'?: string;
+    }>(token, path, init ?? {});
+    if (!result.ok || !result.data) {
+      return graphError(result.error?.message || 'Failed to get todo lists', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data);
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphError(err.message, err.code, err.status);
     }
     return graphError(err instanceof Error ? err.message : 'Failed to get todo lists');
   }
-  if (!result.ok || !result.data) {
-    return graphError(result.error?.message || 'Failed to get todo lists', result.error?.code, result.error?.status);
-  }
-  return graphResult(result.data.value);
 }
 
 export async function getTodoList(token: string, listId: string, user?: string): Promise<GraphResponse<TodoList>> {

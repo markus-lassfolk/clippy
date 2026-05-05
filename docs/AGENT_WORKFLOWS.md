@@ -67,6 +67,19 @@ m365-agent-cli graph batch -f ./mail-batch.json
 
 Keep each `url` **relative to the Graph host** (v1.0 or beta per command flags). Respect the **20 requests per batch** limit. For one-off steps, prefer **`outlook-graph patch-message`** and **`outlook-graph move-message`** instead of batching.
 
+### 5b. Personal assistant: weekly planning → approval → calendar commit
+
+For **approval-gated** scheduling (read mail/todos → propose a week → user confirms → write calendar), align orchestration with this CLI’s **actual** verbs:
+
+1. **Read existing calendar** (machine-friendly): `m365-agent-cli calendar nextweek --json` or **`calendar list nextweek --json`** (equivalent; see [CLI_REFERENCE.md](./CLI_REFERENCE.md) § Calendar). For **Graph** `calendarView` / stable REST ids: `m365-agent-cli graph-calendar list-view --start <iso> --end <iso> [--calendar <id>] [--user <upn>]`. For **incremental** sync: `graph-calendar events-delta --state-file …` (§4).
+2. **Find gaps / overload:** `findtime`, `schedule`, `suggest` (see [CLI_REFERENCE.md](./CLI_REFERENCE.md)).
+3. **After explicit user approval only:** create blocks with **`create-event`** or **`calendar create`** (same flags; one invocation per event is fine), **or** a single **`graph batch -f batch.json`** where each request is `POST` …`/me/events` with a Graph [event](https://learn.microsoft.com/en-us/graph/api/resources/event) JSON body (same **20-request** limit as §5a).
+4. **Help:** `m365-agent-cli calendar --help` lists subcommands; list-specific flags are on **`calendar list --help`**.
+
+**Local behavioral tracking** (daily check-ins, CSV/JSON in the PA workspace) does not use this CLI; agents can read that file before step 1 to bias suggestions.
+
+Bundled skill for copy-paste guidance: [skills/m365-agent-cli/SKILL.md](../skills/m365-agent-cli/SKILL.md) § “Weekly planning and approval-gated calendar writes”.
+
 ## 6. Teams + files: cross-product collaboration
 
 Graph has no single “notify channel about this file” API. Typical flow:
@@ -80,13 +93,39 @@ Graph has no single “notify channel about this file” API. Typical flow:
 
 ## 7. Word / PowerPoint: edit and review
 
-- **Preview (embed):** `word preview <itemId>` / `powerpoint preview <itemId>` — returns a session URL when the service supports it.
-- **Metadata:** `word meta` / `powerpoint meta`.
-- **Download bytes:** `word download` / `powerpoint download` (same as `files download` for that item).
-- **Thumbnails:** `word thumbnails` / `powerpoint thumbnails` (same as `files thumbnails <itemId>`).
-- **All other drive operations** (share, versions, delta, copy, permissions, …): use **`files`** with the same **`--user`** / **`--drive-id`** / **`--site-id`** / **`--library-drive-id`** — see [GRAPH_API_GAPS.md](./GRAPH_API_GAPS.md) Word matrix and [CLI_REFERENCE.md](./CLI_REFERENCE.md).
-- **Agent-friendly edit loop:** download → modify locally → **`files upload`** (or large upload) to a folder → optional **`files share`** / **invite** → notify in Teams (§ 6).
-- **In-document threaded comments** on Word/PowerPoint are **not** wrapped like **`excel comments-*`**; Graph coverage is limited vs Excel workbooks. See [GRAPH_API_GAPS.md](./GRAPH_API_GAPS.md) and [GRAPH_INVOKE_BOUNDARIES.md](./GRAPH_INVOKE_BOUNDARIES.md) for **beta `graph invoke`** experiments.
+Graph supports **file lifecycle** and **compliance** on drive items, not a full **in-document** editing API (no Word comment threads or PowerPoint slide/shape REST model like Excel **`workbook/…`**). Use this section to pick a workflow. For a longer guide (checkout, versions, convert, OOXML round-trip), see **[`WORD_POWERPOINT_EDITING.md`](./WORD_POWERPOINT_EDITING.md)**.
+
+### A. Human or browser editing (Office Online)
+
+1. **`word preview` / `powerpoint preview`** or **`word share <id> --collab`** (optionally **`--lock`** with checkout) → open **`webUrl`** / collaboration URL in a browser.
+2. **`word checkin <id> --comment "…"`** when using checkout/checkin discipline.
+
+### B. Agent / automation: binary round-trip
+
+1. **`word download` / `powerpoint download`** → edit bytes locally (any tool that writes valid `.docx`/`.pptx`).
+2. **`word upload` / `powerpoint upload`** (or **`upload-large`**) back to the same or another folder.
+3. Optional **`word convert`** for PDF/HTML export without opening Office.
+
+### C. SharePoint library metadata & compliance
+
+- **`word list-item` / `powerpoint list-item`** — **`GET …/listItem`** (columns, content type); often **404** on personal OneDrive.
+- **`word sensitivity-assign`** (`--json-file` per Microsoft Graph) / **`sensitivity-extract`** — Microsoft Purview / MIP; tenant-dependent.
+- **`word retention-label`** / **`retention-label-remove`** — retention label on the item.
+- **`word follow` / `unfollow`** — pin a file in OneDrive for Business.
+- **`word permanent-delete`** — bypass recycle bin where policy allows (destructive).
+
+All of the above exist on **`files`** under the same subcommand names; **`word`/`powerpoint`** are aliases for the same Graph calls.
+
+### D. Discovery & folder context
+
+- **List / delta / search:** **`files list`**, **`files delta`**, **`files search`** (not duplicated under **`word`**).
+
+### E. What Graph does *not* provide here
+
+- **In-document threaded comments** and **slide-level** REST for `.pptx` — see [GRAPH_API_GAPS.md](./GRAPH_API_GAPS.md); **`graph invoke`** only if Microsoft publishes a path for your tenant.
+- **Live co-authoring control** — the CLI prepares links and file state; Office Online performs editing.
+
+**Thumbnails:** `word thumbnails` / `powerpoint thumbnails` (same as `files thumbnails <itemId>`).
 
 ## 8. To Do vs Planner vs Outlook
 
@@ -101,7 +140,7 @@ Graph has no single “notify channel about this file” API. Typical flow:
 
 ## 10. Cursor / OpenClaw
 
-- Install the bundled skill under **`skills/m365-agent-cli/`** (see repo README / postinstall **`OPENCLAW_SKILLS_DIR`**).
+- Install the bundled skill under **`skills/m365-agent-cli/`** (see repo README / postinstall **`OPENCLAW_SKILLS_DIR`**). The skill includes **weekly planning / approval-gated calendar** command vocabulary (§ “Weekly planning…” in that file); workflow steps live in **§5b** above.
 - Optional: **`packages/m365-agent-cli-mcp`** — thin MCP server over stdio that shells to this CLI for a small read-only tool surface ([packages/m365-agent-cli-mcp/README.md](../packages/m365-agent-cli-mcp/README.md)).
 
 ## 11. Delegation

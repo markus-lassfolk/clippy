@@ -1,5 +1,13 @@
 import { resolveGraphAuth } from './graph-auth.js';
-import { callGraph, fetchAllPages, graphError, graphResult } from './graph-client.js';
+import {
+  callGraph,
+  fetchAllPages,
+  GraphApiError,
+  graphError,
+  graphErrorFromApiError,
+  graphResult,
+  type GraphResponse
+} from './graph-client.js';
 
 export interface Place {
   id?: string;
@@ -77,11 +85,29 @@ export interface RoomFilters {
   building?: string;
   capacityMin?: number;
   equipment?: string[];
+  /** Substring filter on display name, email, building, floor, tags. */
+  query?: string;
+}
+
+/** Substring match on name, email, building, tags (client-side). */
+export function filterPlacesByQuery(places: Place[], query: string): Place[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return places;
+  return places.filter((r) => {
+    const name = r.displayName?.toLowerCase() ?? '';
+    const email = r.emailAddress?.toLowerCase() ?? '';
+    const building = r.building?.toLowerCase() ?? '';
+    const floor = String(r.floorNumber ?? '').toLowerCase();
+    const tags = (r.tags ?? []).join(' ').toLowerCase();
+    return (
+      name.includes(q) || email.includes(q) || building.includes(q) || floor.includes(q) || tags.includes(q)
+    );
+  });
 }
 
 export async function findRooms(
   filters?: RoomFilters,
-  options?: { token?: string; identity?: string }
+  options?: { token?: string; identity?: string; query?: string }
 ): Promise<{
   ok: boolean;
   data?: Place[];
@@ -94,6 +120,10 @@ export async function findRooms(
     }
 
     let rooms = result.data;
+
+    if (filters?.query?.trim()) {
+      rooms = filterPlacesByQuery(rooms, filters.query);
+    }
 
     if (filters?.building) {
       const buildingLower = filters.building.toLowerCase();
@@ -115,6 +145,21 @@ export async function findRooms(
 
     return graphResult(rooms);
   }, options);
+}
+
+/** GET /places/{place-id} — rich room/place payload. */
+export async function getPlace(token: string, placeId: string): Promise<GraphResponse<Place>> {
+  const path = `/places/${encodeURIComponent(placeId)}`;
+  try {
+    const r = await callGraph<Place>(token, path);
+    if (!r.ok || !r.data) {
+      return graphError(r.error?.message || 'Failed to get place', r.error?.code, r.error?.status);
+    }
+    return graphResult(r.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to get place');
+  }
 }
 
 export async function isRoomFree(

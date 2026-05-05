@@ -4,26 +4,38 @@ import { resolveGraphAuth } from '../lib/graph-auth.js';
 import type { GraphResponse } from '../lib/graph-client.js';
 import {
   addChannelMember,
+  addChatInstalledApp,
   addChatMember,
+  addTeamInstalledApp,
   addTeamMember,
+  addUserTeamworkInstalledApp,
+  buildAddTeamsAppInstallationBody,
   createChannelTab,
   createChat,
   deleteChannelMessageHard,
   deleteChannelMessageReplyHard,
   deleteChannelTab,
+  deleteChatInstalledApp,
   deleteChatMessageHard,
   deleteChatMessageReplyHard,
+  deleteTeamInstalledApp,
+  deleteUserTeamworkInstalledApp,
   getChannelMessage,
   getChannelTab,
   getChat,
+  getChatInstalledApp,
   getChatMessage,
   getTeam,
   getTeamChannel,
   getTeamChannelFilesFolder,
+  getTeamInstalledApp,
   getTeamPrimaryChannel,
+  getTeamsAppCatalogEntry,
+  getUserTeamworkInstalledApp,
   listChannelMessageReplies,
   listChannelMessages,
   listChannelTabs,
+  listChatInstalledApps,
   listChatMembers,
   listChatMessageReplies,
   listChatMessages,
@@ -36,6 +48,10 @@ import {
   listTeamIncomingChannels,
   listTeamInstalledApps,
   listTeamMembers,
+  listTeamsAppCatalog,
+  listUserTeamworkInstalledApps,
+  patchChatInstalledApp,
+  patchTeamInstalledApp,
   sendChannelMessage,
   sendChannelMessageReply,
   sendChatActivityNotification,
@@ -58,7 +74,9 @@ import {
   updateChannelMessageReply,
   updateChannelTab,
   updateChatMessage,
-  updateChatMessageReply
+  updateChatMessageReply,
+  upgradeChatInstalledApp,
+  upgradeTeamInstalledApp
 } from '../lib/graph-teams-client.js';
 import { buildTeamsHtmlBodyWithMentions, parseAtSpecs } from '../lib/teams-message-compose.js';
 import { checkReadOnly } from '../lib/utils.js';
@@ -68,7 +86,7 @@ function collectAtSpec(value: string, previous: string[]): string[] {
 }
 
 export const teamsCommand = new Command('teams').description(
-  'Microsoft Teams (Graph): teams, channels, channel-files-folder (Files tab), tabs (list/get/create/patch/delete), messages (read, send, patch, delete/soft-delete, reactions), activity feed (`activity-notify`), chats (create, add member), members (team/channel add), apps (delegated; see GRAPH_SCOPES.md). Use teams list --user for another user’s joined teams; chat list is /me/chats only (Graph has no /users/{id}/chats). Channel/chat **send**/**reply** support `--at userId:displayName` with `--text` containing @displayName for each mention.'
+  'Microsoft Teams (Graph): teams, channels, channel-files-folder, tabs, messages, reactions, activity feed, chats, members, **app catalog** + **team/chat/personal** app install lifecycle (see GRAPH_SCOPES.md). `teams list --user` for joined teams; `teams chats` is `/me/chats` only. Channel/chat **send**/**reply**: `--at userId:displayName` with `--text` containing @displayName per mention.'
 );
 
 teamsCommand
@@ -1064,6 +1082,515 @@ teamsCommand
       console.log(`${name}\t${ver}\t${appId}\t${a.id ?? ''}`);
     }
   });
+
+teamsCommand
+  .command('app-catalog')
+  .description(
+    "List Teams apps in the tenant/store catalog (`GET /appCatalogs/teamsApps`; `AppCatalog.Read.All` or related). Use --filter e.g. distributionMethod eq 'organization'"
+  )
+  .option('--filter <odata>', 'OData $filter')
+  .option('--expand <segments>', 'e.g. appDefinitions')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (opts: { filter?: string; expand?: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listTeamsAppCatalog(auth.token, opts.filter, opts.expand);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      console.log(`${a.displayName ?? '(app)'}\t${a.distributionMethod ?? ''}\t${a.externalId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('app-catalog-get')
+  .description('Get one catalog app by id (`GET /appCatalogs/teamsApps/{id}`)')
+  .argument('<catalogTeamsAppId>', 'teamsApp id from app-catalog')
+  .option('--expand <segments>', 'e.g. appDefinitions')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (catalogTeamsAppId: string, opts: { expand?: string; json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getTeamsAppCatalogEntry(auth.token, catalogTeamsAppId, opts.expand);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('app-get')
+  .description('Get one app installation on a team (`GET …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'teamsAppInstallation id (from **teams apps**)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (teamId: string, installationId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getTeamInstalledApp(auth.token, teamId, installationId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(r.data, null, 2));
+        return;
+      }
+      const name = r.data.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${r.data.id ?? ''}`);
+    }
+  );
+
+teamsCommand
+  .command('app-add')
+  .description(
+    'Install an app on a team (`POST …/installedApps`). Use `--teams-app-id` (catalog id) or full `--json-file` (e.g. teamsApp@odata.bind + consentedPermissionSet).'
+  )
+  .argument('<teamId>', 'Team id')
+  .option('--teams-app-id <id>', 'teamsApp id from **teams app-catalog**')
+  .option('--json-file <path>', 'Full JSON body (overrides --teams-app-id)')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      opts: { teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addTeamInstalledApp(auth.token, teamId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('app-patch')
+  .description('PATCH a team app installation (`PATCH …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      installationId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await patchTeamInstalledApp(auth.token, teamId, installationId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? 'ok'}`);
+    }
+  );
+
+teamsCommand
+  .command('app-upgrade')
+  .description('Upgrade a team app installation to the latest catalog version (`POST …/upgrade`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (teamId: string, installationId: string, opts: { token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await upgradeTeamInstalledApp(auth.token, teamId, installationId);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Upgrade started (204).');
+  });
+
+teamsCommand
+  .command('app-delete')
+  .description('Remove an app from a team (`DELETE …/installedApps/{id}`)')
+  .argument('<teamId>', 'Team id')
+  .argument('<installationId>', 'Installation id')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      teamId: string,
+      installationId: string,
+      opts: { ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteTeamInstalledApp(auth.token, teamId, installationId, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
+
+teamsCommand
+  .command('chat-apps')
+  .description('List apps installed in a chat (`GET /chats/{id}/installedApps`)')
+  .argument('<chatId>', 'Chat id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (chatId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listChatInstalledApps(auth.token, chatId);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      const name = a.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${a.teamsAppDefinition?.teamsAppId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('chat-app-get')
+  .description('Get one chat app installation')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (chatId: string, installationId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getChatInstalledApp(auth.token, chatId, installationId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(
+        opts.json
+          ? JSON.stringify(r.data, null, 2)
+          : `${r.data.teamsAppDefinition?.displayName ?? ''}\t${r.data.id ?? ''}`
+      );
+    }
+  );
+
+teamsCommand
+  .command('chat-app-add')
+  .description('Install an app in a chat (`POST /chats/{id}/installedApps`)')
+  .argument('<chatId>', 'Chat id')
+  .option('--teams-app-id <id>', 'Catalog teamsApp id')
+  .option('--json-file <path>', 'Full JSON body')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      opts: { teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addChatInstalledApp(auth.token, chatId, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('chat-app-patch')
+  .description('PATCH a chat app installation')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .requiredOption('--json-file <path>', 'JSON PATCH body')
+  .option('--json', 'Print response JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      installationId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await patchChatInstalledApp(auth.token, chatId, installationId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? 'ok'}`);
+    }
+  );
+
+teamsCommand
+  .command('chat-app-upgrade')
+  .description('Upgrade a chat app installation (`POST …/upgrade`)')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (chatId: string, installationId: string, opts: { token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await upgradeChatInstalledApp(auth.token, chatId, installationId);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Upgrade started (204).');
+  });
+
+teamsCommand
+  .command('chat-app-delete')
+  .description('Remove an app from a chat')
+  .argument('<chatId>', 'Chat id')
+  .argument('<installationId>', 'Installation id')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      chatId: string,
+      installationId: string,
+      opts: { ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteChatInstalledApp(auth.token, chatId, installationId, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
+
+teamsCommand
+  .command('user-apps')
+  .description(
+    'Apps in the user’s personal Teams scope (`GET …/teamwork/installedApps`). Default: signed-in user; `--user` for `/users/{id}/…` (needs appropriate Teams app permissions).'
+  )
+  .option('--user <upn-or-id>', 'Another user (admin / delegated scenario)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(async (opts: { user?: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await listUserTeamworkInstalledApps(auth.token, opts.user);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    for (const a of r.data) {
+      const name = a.teamsAppDefinition?.displayName ?? '(app)';
+      console.log(`${name}\t${a.teamsAppDefinition?.teamsAppId ?? ''}\t${a.id ?? ''}`);
+    }
+  });
+
+teamsCommand
+  .command('user-app-get')
+  .description('Get one personal-scope app installation')
+  .argument('<installationId>', 'Installation id')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (installationId: string, opts: { user?: string; json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getUserTeamworkInstalledApp(auth.token, installationId, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(
+        opts.json
+          ? JSON.stringify(r.data, null, 2)
+          : `${r.data.teamsAppDefinition?.displayName ?? ''}\t${r.data.id ?? ''}`
+      );
+    }
+  );
+
+teamsCommand
+  .command('user-app-add')
+  .description('Install an app in the user’s personal scope (`POST …/teamwork/installedApps`)')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--teams-app-id <id>', 'Catalog teamsApp id')
+  .option('--json-file <path>', 'Full JSON body (RSC consent, etc.)')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      opts: { user?: string; teamsAppId?: string; jsonFile?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      let body: Record<string, unknown>;
+      if (opts.jsonFile?.trim()) {
+        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      } else if (opts.teamsAppId?.trim()) {
+        body = buildAddTeamsAppInstallationBody(opts.teamsAppId.trim());
+      } else {
+        console.error('Error: provide --teams-app-id or --json-file');
+        process.exit(1);
+      }
+      const r = await addUserTeamworkInstalledApp(auth.token, body, opts.user);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App install requested (201).');
+    }
+  );
+
+teamsCommand
+  .command('user-app-delete')
+  .description('Remove an app from the user’s personal scope')
+  .argument('<installationId>', 'Installation id')
+  .option('--user <upn-or-id>', 'Target user (omit for /me)')
+  .option('--if-match <etag>', 'If-Match header')
+  .option('--token <token>', 'Graph access token')
+  .option('--identity <name>', 'Graph token cache identity')
+  .action(
+    async (
+      installationId: string,
+      opts: { user?: string; ifMatch?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteUserTeamworkInstalledApp(auth.token, installationId, opts.user, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('App removed.');
+    }
+  );
 
 teamsCommand
   .command('activity-notify')

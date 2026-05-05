@@ -37,7 +37,10 @@ describe('graph-oauth-scopes', () => {
       'OnlineMeetingAiInsight.Read.All',
       'OnlineMeetingTranscript.Read.All',
       'People.Read.All',
-      'AiEnterpriseInteraction.Read'
+      'AiEnterpriseInteraction.Read',
+      'LearningAssignedCourse.Read.All',
+      'EngagementRole.Read.All',
+      'EngagementRole.ReadWrite.All'
     ]) {
       expect(GRAPH_DEVICE_CODE_LOGIN_SCOPES).toContain(s);
     }

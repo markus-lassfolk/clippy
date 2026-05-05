@@ -28,11 +28,13 @@
 | `mail` | `src/commands/mail.ts` | yes | yes |
 | `mailbox-settings` | `src/commands/mailbox-settings.ts` | yes | yes |
 | `meeting` | `src/commands/meeting.ts` | yes | yes |
+| `office-docs-drive-mirror` | `src/commands/office-docs-drive-mirror.ts` | yes | yes |
 | `onenote` | `src/commands/onenote.ts` | yes | yes |
 | `oof` | `src/commands/oof.ts` | yes | yes |
 | `org` | `src/commands/org.ts` | yes | no |
 | `outlook-categories` | `src/commands/outlook-categories.ts` | yes | yes |
 | `outlook-graph` | `src/commands/outlook-graph.ts` | yes | yes |
+| `people` | `src/commands/people.ts` | yes | no |
 | `planner` | `src/commands/planner.ts` | yes | yes |
 | `powerpoint` | `src/commands/powerpoint.ts` | yes | no |
 | `presence` | `src/commands/presence.ts` | yes | yes |
@@ -52,6 +54,9 @@
 | `update-event` | `src/commands/update-event.ts` | yes | yes |
 | `update` | `src/commands/update.ts` | no | no |
 | `verify-token` | `src/commands/verify-token.ts` | yes | no |
+| `viva-extra-subcommands` | `src/commands/viva-extra-subcommands.ts` | yes | yes |
+| `viva-tenant-subcommands` | `src/commands/viva-tenant-subcommands.ts` | yes | yes |
+| `viva` | `src/commands/viva.ts` | yes | yes |
 | `whoami` | `src/commands/whoami.ts` | yes | no |
 | `word` | `src/commands/word.ts` | yes | no |
 

@@ -58,6 +58,12 @@ jobs:
       - name: Biome (lint + format + assist)
         run: bun run biome:check
 
+      - name: Graph path inventory (drift check)
+        run: bun run graph:inventory:check
+
+      - name: Graph permission feature matrix (drift check)
+        run: bun run docs:graph-permission-matrix:check
+
       - name: Tests + coverage floor
         env:
           COVERAGE_MIN_LINES: '32'

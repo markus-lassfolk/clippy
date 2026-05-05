@@ -815,28 +815,126 @@ export async function listContactFolders(token: string, user?: string): Promise<
   return fetchAllPages<OutlookContactFolder>(token, contactFoldersRoot(user), 'Failed to list contact folders');
 }
 
-/** Optional OData query (without leading `?`), e.g. `$filter=...` or `$orderby=displayName`. */
+/** Structured OData for contact collections, or a raw query string (without leading `?`), e.g. `$filter=...`. */
+export interface ContactListQueryOptions {
+  filter?: string;
+  orderby?: string;
+  select?: string;
+  top?: number;
+  skip?: number;
+  /** Sets `$count=true` (sends `ConsistencyLevel: eventual`). */
+  count?: boolean;
+}
+
+export type ContactListQuery = string | ContactListQueryOptions;
+
+function contactsCollectionPath(user: string | undefined, folderId: string | undefined): string {
+  return folderId?.trim()
+    ? `${contactFoldersRoot(user)}/${encodeURIComponent(folderId.trim())}/contacts`
+    : contactsRoot(user);
+}
+
+function encodeContactListQuery(query?: ContactListQuery): {
+  suffix: string;
+  singlePage: boolean;
+  headers: Record<string, string> | undefined;
+} {
+  if (query === undefined) {
+    return { suffix: '', singlePage: false, headers: undefined };
+  }
+  if (typeof query === 'string') {
+    const t = query.trim();
+    if (!t) return { suffix: '', singlePage: false, headers: undefined };
+    const suffix = t.startsWith('?') ? t : `?${t}`;
+    return { suffix, singlePage: false, headers: undefined };
+  }
+  const params = new URLSearchParams();
+  if (query.filter?.trim()) params.set('$filter', query.filter.trim());
+  if (query.orderby?.trim()) params.set('$orderby', query.orderby.trim());
+  if (query.select?.trim()) params.set('$select', query.select.trim());
+  if (query.top !== undefined) params.set('$top', String(query.top));
+  if (query.skip !== undefined) params.set('$skip', String(query.skip));
+  if (query.count === true) params.set('$count', 'true');
+  const qs = params.toString();
+  const suffix = qs ? `?${qs}` : '';
+  const singlePage = query.top !== undefined || query.skip !== undefined || query.count === true;
+  const headers = query.count === true ? { ConsistencyLevel: 'eventual' } : undefined;
+  return { suffix, singlePage, headers };
+}
+
+async function fetchContactList(
+  token: string,
+  collectionPath: string,
+  query: ContactListQuery | undefined,
+  errorMessage: string
+): Promise<GraphResponse<OutlookContact[]>> {
+  const { suffix, singlePage, headers } = encodeContactListQuery(query);
+  const path = `${collectionPath}${suffix}`;
+  const init: RequestInit | undefined = headers ? { headers } : undefined;
+
+  if (singlePage) {
+    try {
+      const result = await callGraph<{ value: OutlookContact[] }>(token, path, init ?? {});
+      if (!result.ok || !result.data) {
+        return graphError(result.error?.message || errorMessage, result.error?.code, result.error?.status);
+      }
+      return graphResult(result.data.value || []);
+    } catch (err) {
+      if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+      return graphError(err instanceof Error ? err.message : errorMessage);
+    }
+  }
+
+  return fetchAllPages<OutlookContact>(token, path, errorMessage, undefined, init);
+}
+
+/** One GET for `$top` / `$skip` / `$count` queries; returns the raw first page (including `@odata.count` when requested). */
+export async function listContactsRawPage(
+  token: string,
+  options: { user?: string; folderId?: string; query: ContactListQuery }
+): Promise<
+  GraphResponse<{
+    value: OutlookContact[];
+    '@odata.count'?: number;
+    '@odata.nextLink'?: string;
+  }>
+> {
+  const collectionPath = contactsCollectionPath(options.user, options.folderId);
+  const { suffix, headers } = encodeContactListQuery(options.query);
+  const path = `${collectionPath}${suffix}`;
+  const init: RequestInit | undefined = headers ? { headers } : undefined;
+  try {
+    const result = await callGraph<{
+      value: OutlookContact[];
+      '@odata.count'?: number;
+      '@odata.nextLink'?: string;
+    }>(token, path, init ?? {});
+    if (!result.ok || !result.data) {
+      return graphError(result.error?.message || 'Failed to list contacts', result.error?.code, result.error?.status);
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list contacts');
+  }
+}
+
+/** Optional OData: raw string, or structured options. Default follows `@odata.nextLink` until the collection is exhausted. */
 export async function listContacts(
   token: string,
   user?: string,
-  odataQuery?: string
+  query?: ContactListQuery
 ): Promise<GraphResponse<OutlookContact[]>> {
-  const q = odataQuery?.trim() ? (odataQuery.startsWith('?') ? odataQuery : `?${odataQuery}`) : '';
-  return fetchAllPages<OutlookContact>(token, `${contactsRoot(user)}${q}`, 'Failed to list contacts');
+  return fetchContactList(token, contactsCollectionPath(user, undefined), query, 'Failed to list contacts');
 }
 
 export async function listContactsInFolder(
   token: string,
   folderId: string,
   user?: string,
-  odataQuery?: string
+  query?: ContactListQuery
 ): Promise<GraphResponse<OutlookContact[]>> {
-  const q = odataQuery?.trim() ? (odataQuery.startsWith('?') ? odataQuery : `?${odataQuery}`) : '';
-  return fetchAllPages<OutlookContact>(
-    token,
-    `${contactFoldersRoot(user)}/${encodeURIComponent(folderId)}/contacts${q}`,
-    'Failed to list contacts in folder'
-  );
+  return fetchContactList(token, contactsCollectionPath(user, folderId), query, 'Failed to list contacts in folder');
 }
 
 export async function getContact(
@@ -918,6 +1016,148 @@ export async function deleteContact(token: string, contactId: string, user?: str
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to delete contact');
+  }
+}
+
+function contactExtensionsPath(contactId: string, user: string | undefined, extensionName?: string): string {
+  const base = `${contactsRoot(user)}/${encodeURIComponent(contactId)}/extensions`;
+  return extensionName ? `${base}/${encodeURIComponent(extensionName)}` : base;
+}
+
+export async function listContactOpenExtensions(
+  token: string,
+  contactId: string,
+  user?: string
+): Promise<GraphResponse<Array<Record<string, unknown>>>> {
+  try {
+    const result = await callGraph<{ value: Array<Record<string, unknown>> }>(
+      token,
+      contactExtensionsPath(contactId, user)
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to list contact extensions',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data.value || []);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to list contact extensions');
+  }
+}
+
+export async function getContactOpenExtension(
+  token: string,
+  contactId: string,
+  extensionName: string,
+  user?: string
+): Promise<GraphResponse<Record<string, unknown>>> {
+  try {
+    const result = await callGraph<Record<string, unknown>>(
+      token,
+      contactExtensionsPath(contactId, user, extensionName)
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to get contact extension',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get contact extension');
+  }
+}
+
+export async function setContactOpenExtension(
+  token: string,
+  contactId: string,
+  extensionName: string,
+  extensionData: Record<string, unknown>,
+  user?: string
+): Promise<GraphResponse<Record<string, unknown>>> {
+  const body = {
+    '@odata.type': 'microsoft.graph.openTypeExtension',
+    extensionName,
+    ...extensionData
+  };
+  let result: GraphResponse<Record<string, unknown>>;
+  try {
+    result = await callGraph<Record<string, unknown>>(token, contactExtensionsPath(contactId, user), {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to set contact extension');
+  }
+  if (!result.ok || !result.data) {
+    return graphError(
+      result.error?.message || 'Failed to set contact extension',
+      result.error?.code,
+      result.error?.status
+    );
+  }
+  return graphResult(result.data);
+}
+
+export async function updateContactOpenExtension(
+  token: string,
+  contactId: string,
+  extensionName: string,
+  patch: Record<string, unknown>,
+  user?: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraph<void>(
+      token,
+      contactExtensionsPath(contactId, user, extensionName),
+      {
+        method: 'PATCH',
+        body: JSON.stringify(patch)
+      },
+      false
+    );
+    if (!result.ok) {
+      return graphError(
+        result.error?.message || 'Failed to update contact extension',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to update contact extension');
+  }
+}
+
+export async function deleteContactOpenExtension(
+  token: string,
+  contactId: string,
+  extensionName: string,
+  user?: string
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraph<void>(
+      token,
+      contactExtensionsPath(contactId, user, extensionName),
+      { method: 'DELETE' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      return graphError(err.message, err.code, err.status);
+    }
+    return graphError(err instanceof Error ? err.message : 'Failed to delete contact extension');
   }
 }
 

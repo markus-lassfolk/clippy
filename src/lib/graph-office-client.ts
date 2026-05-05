@@ -1,9 +1,10 @@
 import type { DriveLocation } from './drive-location.js';
 import { DEFAULT_DRIVE_LOCATION } from './drive-location.js';
 import {
-  callGraph,
+  callGraphAt,
   driveItemPath,
   GraphApiError,
+  GRAPH_BASE_URL,
   type GraphResponse,
   graphError,
   graphResult
@@ -24,11 +25,12 @@ export async function createDriveItemPreview(
   token: string,
   itemId: string,
   body: Record<string, unknown>,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemPreviewResponse>> {
   try {
-    const base = `${driveItemPath(location, itemId)}/preview`;
-    const r = await callGraph<DriveItemPreviewResponse>(token, base, {
+    const path = `${driveItemPath(location, itemId)}/preview`;
+    const r = await callGraphAt<DriveItemPreviewResponse>(graphBaseUrl, token, path, {
       method: 'POST',
       body: JSON.stringify(body)
     });

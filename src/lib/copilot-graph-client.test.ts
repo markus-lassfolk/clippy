@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  appendCopilotODataQuery,
   assertCopilotReportPeriod,
   buildCopilotRetrievalBody,
   buildCopilotSearchBody,
+  COPILOT_CONVERSATION_CHAT_PATH_SUFFIX,
   copilotReportPath,
   copilotUserSegment
 } from './copilot-graph-client.js';
@@ -62,6 +64,26 @@ describe('buildCopilotSearchBody', () => {
 describe('copilotUserSegment', () => {
   test('encodes UPN', () => {
     expect(copilotUserSegment('user@contoso.com')).toBe(encodeURIComponent('user@contoso.com'));
+  });
+});
+
+describe('appendCopilotODataQuery', () => {
+  test('appends query without leading ?', () => {
+    expect(appendCopilotODataQuery('/copilot/conversations', '$top=1')).toBe('/copilot/conversations?$top=1');
+  });
+  test('strips leading ? on fragment', () => {
+    expect(appendCopilotODataQuery('/copilot/conversations', '?$top=2')).toBe('/copilot/conversations?$top=2');
+  });
+  test('merges when path already has query', () => {
+    expect(appendCopilotODataQuery('/copilot/conversations?$skip=1', '$top=3')).toBe(
+      '/copilot/conversations?$skip=1&$top=3'
+    );
+  });
+});
+
+describe('Copilot chat OData paths', () => {
+  test('chat suffix matches Graph OpenAPI action segment', () => {
+    expect(COPILOT_CONVERSATION_CHAT_PATH_SUFFIX).toBe('/microsoft.graph.copilot.chat');
   });
 });
 

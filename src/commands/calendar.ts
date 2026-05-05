@@ -33,6 +33,7 @@ import {
 } from '../lib/graph-calendar-client.js';
 import { normalizeGraphDateTimeForParsing } from '../lib/graph-datetime.js';
 import { safeAttachmentFileName, writeInternetShortcutUtf8File } from '../lib/safe-filename.js';
+import { buildCreateEventCommand } from './create-event.js';
 
 async function pathExists(p: string): Promise<boolean> {
   try {
@@ -442,607 +443,622 @@ function displayEvent(event: CalendarEvent, verbose: boolean): void {
   }
 }
 
-export const calendarCommand = new Command('calendar')
-  .description('View calendar events')
-  .argument(
-    '[start]',
-    'Start day: today, yesterday, tomorrow, monday-sunday, week, lastweek, nextweek, or YYYY-MM-DD',
-    'today'
-  )
-  .argument('[end]', 'End day for range (optional)')
-  .option('-v, --verbose', 'Show attendees and more details')
-  .option('--list-attachments <eventId>', 'List file and link attachments on an event by id')
-  .option('--download-attachments <eventId>', 'Download file attachments; links saved as .url shortcuts')
-  .option('-o, --output <dir>', 'Output directory for --download-attachments', '.')
-  .option('--force', 'Overwrite existing files when downloading calendar attachments')
-  .option('--json', 'Output as JSON')
-  .option('--token <token>', 'Use a specific token')
-  .option('--identity <name>', 'Use a specific authentication identity (default: default)')
-  .option('--mailbox <email>', 'Delegated or shared mailbox calendar')
-  .option(
-    '-c, --calendar <id>',
-    'Graph calendar id for a non-default calendar (see: graph-calendar list-calendars); Graph listing only'
-  )
-  .option(
-    '--days <n>',
-    'Show N consecutive calendar days forward from start (includes start day; not for use with week keywords)'
-  )
-  .option('--previous-days <n>', 'Show N consecutive calendar days ending on start day')
-  .option(
-    '--business-days <n>',
-    'Show N weekdays (Mon–Fri) forward from start (skip weekend; use for “next N working days”)'
-  )
-  .option('--next-business-days <n>', 'Same as --business-days (alias)')
-  .option('--busness-days <n>', 'Same as --business-days (common typo)')
-  .option('--previous-business-days <n>', 'Show N weekdays backward ending on the last weekday on or before start')
-  .option(
-    '--now',
-    'After the range is computed, start the API window at the current time (hide events that already ended today)'
-  )
-  .action(
-    async (
-      startDay: string,
-      endDay: string | undefined,
-      options: {
-        json?: boolean;
-        token?: string;
-        identity?: string;
-        verbose?: boolean;
-        mailbox?: string;
-        calendar?: string;
-        listAttachments?: string;
-        downloadAttachments?: string;
-        output: string;
-        force?: boolean;
-        days?: string;
-        previousDays?: string;
-        businessDays?: string;
-        busnessDays?: string;
-        nextBusinessDays?: string;
-        previousBusinessDays?: string;
-        now?: boolean;
-      }
-    ) => {
-      const backend = getExchangeBackend();
-      const mailbox = options.mailbox;
-      const graphCalendarId = options.calendar?.trim();
+function buildCalendarListCommand(): Command {
+  return new Command('list')
+    .description('List calendar events for a day or range (default when no subcommand is given)')
+    .argument(
+      '[start]',
+      'Start day: today, yesterday, tomorrow, monday-sunday, week, lastweek, nextweek, or YYYY-MM-DD',
+      'today'
+    )
+    .argument('[end]', 'End day for range (optional)')
+    .option('-v, --verbose', 'Show attendees and more details')
+    .option('--list-attachments <eventId>', 'List file and link attachments on an event by id')
+    .option('--download-attachments <eventId>', 'Download file attachments; links saved as .url shortcuts')
+    .option('-o, --output <dir>', 'Output directory for --download-attachments', '.')
+    .option('--force', 'Overwrite existing files when downloading calendar attachments')
+    .option('--json', 'Output as JSON')
+    .option('--token <token>', 'Use a specific token')
+    .option('--identity <name>', 'Use a specific authentication identity (default: default)')
+    .option('--mailbox <email>', 'Delegated or shared mailbox calendar')
+    .option(
+      '-c, --calendar <id>',
+      'Graph calendar id for a non-default calendar (see: graph-calendar list-calendars); Graph listing only'
+    )
+    .option(
+      '--days <n>',
+      'Show N consecutive calendar days forward from start (includes start day; not for use with week keywords)'
+    )
+    .option('--previous-days <n>', 'Show N consecutive calendar days ending on start day')
+    .option(
+      '--business-days <n>',
+      'Show N weekdays (Mon–Fri) forward from start (skip weekend; use for “next N working days”)'
+    )
+    .option('--next-business-days <n>', 'Same as --business-days (alias)')
+    .option('--busness-days <n>', 'Same as --business-days (common typo)')
+    .option('--previous-business-days <n>', 'Show N weekdays backward ending on the last weekday on or before start')
+    .option(
+      '--now',
+      'After the range is computed, start the API window at the current time (hide events that already ended today)'
+    )
+    .action(
+      async (
+        startDay: string,
+        endDay: string | undefined,
+        options: {
+          json?: boolean;
+          token?: string;
+          identity?: string;
+          verbose?: boolean;
+          mailbox?: string;
+          calendar?: string;
+          listAttachments?: string;
+          downloadAttachments?: string;
+          output: string;
+          force?: boolean;
+          days?: string;
+          previousDays?: string;
+          businessDays?: string;
+          busnessDays?: string;
+          nextBusinessDays?: string;
+          previousBusinessDays?: string;
+          now?: boolean;
+        }
+      ) => {
+        const backend = getExchangeBackend();
+        const mailbox = options.mailbox;
+        const graphCalendarId = options.calendar?.trim();
 
-      if (graphCalendarId && backend === 'ews') {
-        const msg =
-          'Option --calendar is only supported with Microsoft Graph. Set M365_EXCHANGE_BACKEND=graph or auto, or omit --calendar.';
-        if (options.json) {
-          console.log(JSON.stringify({ error: msg }, null, 2));
-        } else {
-          console.error(`Error: ${msg}`);
-        }
-        process.exit(1);
-      }
-
-      function graphAttachmentKind(a: GraphEventAttachment): 'file' | 'reference' | 'other' {
-        const t = a['@odata.type'] || '';
-        if (t.includes('fileAttachment')) return 'file';
-        if (t.includes('referenceAttachment')) return 'reference';
-        return 'other';
-      }
-
-      async function graphListAttachmentsWithToken(graphToken: string): Promise<void> {
-        const eventId = options.listAttachments!.trim();
-        const eventRes = await getEvent(graphToken, eventId, mailbox);
-        if (!eventRes.ok || !eventRes.data) {
-          if (options.json) {
-            console.log(JSON.stringify({ error: eventRes.error?.message || 'Event not found' }, null, 2));
-          } else {
-            console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
-          }
-          process.exit(1);
-        }
-        const attsRes = await listEventAttachments(graphToken, eventId, mailbox);
-        if (!attsRes.ok || !attsRes.data) {
-          if (options.json) {
-            console.log(JSON.stringify({ error: attsRes.error?.message || 'Failed to list attachments' }, null, 2));
-          } else {
-            console.error(`Error: ${attsRes.error?.message || 'Failed to list attachments'}`);
-          }
-          process.exit(1);
-        }
-        const atts = attsRes.data.filter((a) => !a.isInline);
-        const subject = eventRes.data.subject || '(no subject)';
-        if (options.json) {
-          console.log(
-            JSON.stringify(
-              {
-                backend: 'graph',
-                eventId,
-                subject,
-                attachments: atts
-              },
-              null,
-              2
-            )
-          );
-          return;
-        }
-        console.log(`\nAttachments (Graph) — ${subject}`);
-        console.log('─'.repeat(40));
-        if (atts.length === 0) {
-          console.log('  (none)');
-        } else {
-          for (const a of atts) {
-            const k = graphAttachmentKind(a);
-            if (k === 'reference' && a.sourceUrl) {
-              console.log(`  🔗 ${a.name || a.id}`);
-              console.log(`     ${a.sourceUrl}`);
-            } else if (k === 'file') {
-              const sizeKB = Math.round((a.size || 0) / 1024);
-              console.log(`  📄 ${a.name || 'file'} (${sizeKB} KB)`);
-            } else {
-              console.log(`  📎 ${a.name || a.id} (${a['@odata.type'] || 'attachment'})`);
-            }
-          }
-        }
-        console.log();
-      }
-
-      if (options.listAttachments) {
-        if (backend === 'graph' || backend === 'auto') {
-          const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
-          if (ga.success && ga.token) {
-            await graphListAttachmentsWithToken(ga.token);
-            return;
-          }
-          if (backend === 'graph') {
-            if (options.json) {
-              console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
-            } else {
-              console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
-            }
-            process.exit(1);
-          }
-          warnAutoGraphToEwsFallback('calendar', {
-            json: options.json,
-            graphError: ga.error,
-            reason: 'auth',
-            verbose: options.verbose
-          });
-        }
-
-        const authResult = await resolveAuth({
-          token: options.token,
-          identity: options.identity
-        });
-
-        if (!authResult.success) {
-          if (options.json) {
-            console.log(JSON.stringify({ error: authResult.error }, null, 2));
-          } else {
-            console.error(`Error: ${authResult.error}`);
-            console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
-          }
-          process.exit(1);
-        }
-
-        const token = authResult.token!;
-
-        const eventId = options.listAttachments.trim();
-        const eventRes = await getCalendarEvent(token, eventId, mailbox);
-        if (!eventRes.ok || !eventRes.data) {
-          console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
-          process.exit(1);
-        }
-        const attsRes = await getAttachments(token, eventId, mailbox);
-        if (!attsRes.ok || !attsRes.data) {
-          console.error(`Error: ${attsRes.error?.message || 'Failed to list attachments'}`);
-          process.exit(1);
-        }
-        const atts = attsRes.data.value.filter((a) => !a.IsInline);
-        if (options.json) {
-          console.log(JSON.stringify({ eventId, subject: eventRes.data.Subject, attachments: atts }, null, 2));
-          return;
-        }
-        console.log(`\nAttachments — ${eventRes.data.Subject}`);
-        console.log('─'.repeat(40));
-        if (atts.length === 0) {
-          console.log('  (none)');
-        } else {
-          for (const a of atts) {
-            if (a.Kind === 'reference' && a.AttachLongPathName) {
-              console.log(`  🔗 ${a.Name}`);
-              console.log(`     ${a.AttachLongPathName}`);
-            } else {
-              const sizeKB = Math.round(a.Size / 1024);
-              console.log(`  📄 ${a.Name} (${sizeKB} KB)`);
-            }
-          }
-        }
-        console.log();
-        return;
-      }
-
-      if (options.downloadAttachments) {
-        if (backend === 'graph' || backend === 'auto') {
-          const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
-          if (ga.success && ga.token) {
-            const eventId = options.downloadAttachments.trim();
-            const eventRes = await getEvent(ga.token, eventId, mailbox);
-            if (!eventRes.ok || !eventRes.data) {
-              console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
-              process.exit(1);
-            }
-            if (!eventRes.data.hasAttachments) {
-              console.log('This event has no attachments.');
-              return;
-            }
-            const attsRes = await listEventAttachments(ga.token, eventId, mailbox);
-            if (!attsRes.ok || !attsRes.data) {
-              console.error(`Error: ${attsRes.error?.message || 'Failed to fetch attachments'}`);
-              process.exit(1);
-            }
-            const attachments = attsRes.data.filter((a) => !a.isInline);
-            if (attachments.length === 0) {
-              console.log('No downloadable attachments (inline-only).');
-              return;
-            }
-            await mkdir(options.output, { recursive: true });
-            const usedPaths = new Set<string>();
-            console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/ (Graph)\n`);
-            for (const att of attachments) {
-              const kind = graphAttachmentKind(att);
-              if (kind === 'reference') {
-                let url = att.sourceUrl;
-                if (!url && att.id) {
-                  const full = await getEventAttachment(ga.token, eventId, att.id, mailbox);
-                  if (
-                    full.ok &&
-                    full.data &&
-                    'sourceUrl' in full.data &&
-                    (full.data as { sourceUrl?: string }).sourceUrl
-                  ) {
-                    url = (full.data as { sourceUrl?: string }).sourceUrl;
-                  }
-                }
-                if (!url) {
-                  console.error(`  Failed to resolve link: ${att.name || att.id}`);
-                  continue;
-                }
-                const filePath = await writeLinkFile(
-                  options.output,
-                  att.name || 'link',
-                  url,
-                  usedPaths,
-                  options.force ?? false
-                );
-                if (!filePath) {
-                  continue;
-                }
-                console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (link)`);
-                continue;
-              }
-              if (kind !== 'file') {
-                console.warn(`  Skipping non-file attachment: ${att.name || att.id}`);
-                continue;
-              }
-              const dl = await downloadEventAttachmentBytes(ga.token, eventId, att.id, mailbox);
-              if (!dl.ok || !dl.data) {
-                console.error(`  Failed to download: ${att.name || att.id} (${dl.error?.message})`);
-                continue;
-              }
-              const content = Buffer.from(dl.data);
-              const safeName = safeAttachmentFileName(att.name || `attachment-${att.id}`, 'attachment');
-              const filePath = await resolveUniqueFilePath(options.output, safeName, usedPaths, options.force ?? false);
-              usedPaths.add(filePath);
-              await writeFile(filePath, content);
-              const sizeKB = Math.round(content.length / 1024);
-              console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (${sizeKB} KB)`);
-            }
-            console.log('\nDone.\n');
-            return;
-          }
-          if (backend === 'graph') {
-            if (options.json) {
-              console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
-            } else {
-              console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
-            }
-            process.exit(1);
-          }
-          warnAutoGraphToEwsFallback('calendar', {
-            json: options.json,
-            graphError: ga.error,
-            reason: 'auth',
-            verbose: options.verbose
-          });
-        }
-
-        const authResult = await resolveAuth({
-          token: options.token,
-          identity: options.identity
-        });
-
-        if (!authResult.success) {
-          if (options.json) {
-            console.log(JSON.stringify({ error: authResult.error }, null, 2));
-          } else {
-            console.error(`Error: ${authResult.error}`);
-            console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
-          }
-          process.exit(1);
-        }
-
-        const token = authResult.token!;
-        const eventId = options.downloadAttachments.trim();
-        const eventRes = await getCalendarEvent(token, eventId, mailbox);
-        if (!eventRes.ok || !eventRes.data) {
-          console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
-          process.exit(1);
-        }
-        if (!eventRes.data.HasAttachments) {
-          console.log('This event has no attachments.');
-          return;
-        }
-        const attsRes = await getAttachments(token, eventId, mailbox);
-        if (!attsRes.ok || !attsRes.data) {
-          console.error(`Error: ${attsRes.error?.message || 'Failed to fetch attachments'}`);
-          process.exit(1);
-        }
-        const attachments = attsRes.data.value.filter((a) => !a.IsInline);
-        if (attachments.length === 0) {
-          console.log('No downloadable attachments (inline-only).');
-          return;
-        }
-        await mkdir(options.output, { recursive: true });
-        const usedPaths = new Set<string>();
-        console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/\n`);
-        for (const att of attachments) {
-          if (att.Kind === 'reference' || att.AttachLongPathName) {
-            let url = att.AttachLongPathName;
-            if (!url) {
-              const full = await getAttachment(token, eventId, att.Id, mailbox);
-              if (full.ok && full.data?.AttachLongPathName) {
-                url = full.data.AttachLongPathName;
-              }
-            }
-            if (!url) {
-              console.error(`  Failed to resolve link: ${att.Name}`);
-              continue;
-            }
-            const filePath = await writeLinkFile(
-              options.output,
-              att.Name || 'link',
-              url,
-              usedPaths,
-              options.force ?? false
-            );
-            if (!filePath) {
-              continue;
-            }
-            console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (link)`);
-            continue;
-          }
-
-          const fullAtt = await getAttachment(token, eventId, att.Id, mailbox);
-          if (!fullAtt.ok || !fullAtt.data?.ContentBytes) {
-            console.error(`  Failed to download: ${att.Name}`);
-            continue;
-          }
-          const content = Buffer.from(fullAtt.data.ContentBytes, 'base64');
-          const filePath = await resolveUniqueFilePath(options.output, att.Name, usedPaths, options.force ?? false);
-          usedPaths.add(filePath);
-          await writeFile(filePath, content);
-          const sizeKB = Math.round(content.length / 1024);
-          console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (${sizeKB} KB)`);
-        }
-        console.log('\nDone.\n');
-        return;
-      }
-
-      let start: string;
-      let end: string;
-      let label: string;
-      try {
-        const previousDays = parseCalendarRangeInt(options.previousDays, '--previous-days');
-        const previousBusinessDays = parseCalendarRangeInt(options.previousBusinessDays, '--previous-business-days');
-        if (options.now && (previousDays !== undefined || previousBusinessDays !== undefined)) {
-          throw new Error('Cannot use --now with --previous-days or --previous-business-days');
-        }
-        const resolved = resolveCalendarQueryRange(startDay, endDay, {
-          days: parseCalendarRangeInt(options.days, '--days'),
-          previousDays,
-          businessDays: parseBusinessDaysOption(options),
-          previousBusinessDays
-        });
-        const clipped = options.now ? clipCalendarRangeStartToNow(resolved) : resolved;
-        start = clipped.start;
-        end = clipped.end;
-        label = clipped.label;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (options.json) {
-          console.log(JSON.stringify({ error: message }, null, 2));
-        } else {
-          console.error(`Error: ${message}`);
-        }
-        process.exit(1);
-      }
-
-      if (backend === 'graph' || backend === 'auto') {
-        const ga = await resolveGraphAuth({
-          token: options.token,
-          identity: options.identity
-        });
-        if (ga.success && ga.token) {
-          const graphResult = await listCalendarView(ga.token, start, end, {
-            user: mailbox,
-            calendarId: graphCalendarId || undefined
-          });
-          if (graphResult.ok && graphResult.data) {
-            const graphEvents = graphResult.data.filter((e) => !e.isCancelled);
-
-            if (options.json) {
-              console.log(
-                JSON.stringify(
-                  {
-                    backend: 'graph',
-                    label,
-                    ...(graphCalendarId ? { calendarId: graphCalendarId } : {}),
-                    events: graphEvents
-                  },
-                  null,
-                  2
-                )
-              );
-              return;
-            }
-
-            console.log(
-              `\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''}${graphCalendarId ? ` — calendar ${graphCalendarId}` : ''} (Graph)`
-            );
-            console.log('─'.repeat(40));
-
-            if (graphEvents.length === 0) {
-              console.log('  No events scheduled.');
-            } else {
-              const eventsByDate = new Map<string, GraphCalendarEvent[]>();
-              for (const event of graphEvents) {
-                const startDt = normalizeGraphDateTimeForParsing(event.start?.dateTime, event.start?.timeZone);
-                if (!startDt) continue;
-                const localDate = parseLocalDate(startDt);
-                const dateKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-                if (!eventsByDate.has(dateKey)) {
-                  eventsByDate.set(dateKey, []);
-                }
-                eventsByDate.get(dateKey)?.push(event);
-              }
-
-              if (eventsByDate.size > 1) {
-                for (const [dateKey, dayEvents] of eventsByDate) {
-                  const dayLabel = formatDate(dateKey);
-                  console.log(`\n  ${dayLabel}`);
-                  for (const event of dayEvents) {
-                    displayGraphCalendarEvent(event, options.verbose ?? false);
-                  }
-                }
-              } else {
-                for (const event of graphEvents) {
-                  displayGraphCalendarEvent(event, options.verbose ?? false);
-                }
-              }
-            }
-            console.log();
-            return;
-          }
-          if (backend === 'graph') {
-            if (options.json) {
-              console.log(
-                JSON.stringify({ error: graphResult.error?.message || 'Failed to fetch calendar (Graph)' }, null, 2)
-              );
-            } else {
-              console.error(`Error: ${graphResult.error?.message || 'Failed to fetch calendar (Graph)'}`);
-            }
-            process.exit(1);
-          }
-          if (graphCalendarId) {
-            const msg = `${graphResult.error?.message || 'Failed to fetch calendar (Graph)'}. Option --calendar requires Microsoft Graph; cannot fall back to EWS.`;
-            if (options.json) {
-              console.log(JSON.stringify({ error: msg }, null, 2));
-            } else {
-              console.error(`Error: ${msg}`);
-            }
-            process.exit(1);
-          }
-          warnAutoGraphToEwsFallback('calendar', {
-            json: options.json,
-            graphError: graphResult.error?.message,
-            reason: 'api',
-            verbose: options.verbose
-          });
-        } else if (backend === 'graph') {
-          if (options.json) {
-            console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
-          } else {
-            console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
-          }
-          process.exit(1);
-        } else if (graphCalendarId) {
-          const msg = `Graph authentication failed (${ga.error || 'unknown'}). Option --calendar requires Microsoft Graph.`;
+        if (graphCalendarId && backend === 'ews') {
+          const msg =
+            'Option --calendar is only supported with Microsoft Graph. Set M365_EXCHANGE_BACKEND=graph or auto, or omit --calendar.';
           if (options.json) {
             console.log(JSON.stringify({ error: msg }, null, 2));
           } else {
             console.error(`Error: ${msg}`);
           }
           process.exit(1);
-        } else if (backend === 'auto') {
-          warnAutoGraphToEwsFallback('calendar', {
-            json: options.json,
-            graphError: ga.error,
-            reason: 'auth',
-            verbose: options.verbose
-          });
         }
-      }
 
-      const authResult = await resolveAuth({
-        token: options.token,
-        identity: options.identity
-      });
-
-      if (!authResult.success) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: authResult.error }, null, 2));
-        } else {
-          console.error(`Error: ${authResult.error}`);
-          console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+        function graphAttachmentKind(a: GraphEventAttachment): 'file' | 'reference' | 'other' {
+          const t = a['@odata.type'] || '';
+          if (t.includes('fileAttachment')) return 'file';
+          if (t.includes('referenceAttachment')) return 'reference';
+          return 'other';
         }
-        process.exit(1);
-      }
 
-      const result = await getCalendarEvents(authResult.token!, start, end, mailbox);
-
-      if (!result.ok || !result.data) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
-        } else {
-          console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
-        }
-        process.exit(1);
-      }
-
-      const events = result.data.filter((e) => !e.IsCancelled);
-
-      if (options.json) {
-        console.log(JSON.stringify(events, null, 2));
-        return;
-      }
-
-      console.log(`\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''}`);
-      console.log('─'.repeat(40));
-
-      if (events.length === 0) {
-        console.log('  No events scheduled.');
-      } else {
-        const eventsByDate = new Map<string, CalendarEvent[]>();
-        for (const event of events) {
-          const localDate = parseLocalDate(event.Start.DateTime);
-          const dateKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-          if (!eventsByDate.has(dateKey)) {
-            eventsByDate.set(dateKey, []);
+        async function graphListAttachmentsWithToken(graphToken: string): Promise<void> {
+          const eventId = options.listAttachments!.trim();
+          const eventRes = await getEvent(graphToken, eventId, mailbox);
+          if (!eventRes.ok || !eventRes.data) {
+            if (options.json) {
+              console.log(JSON.stringify({ error: eventRes.error?.message || 'Event not found' }, null, 2));
+            } else {
+              console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+            }
+            process.exit(1);
           }
-          eventsByDate.get(dateKey)?.push(event);
+          const attsRes = await listEventAttachments(graphToken, eventId, mailbox);
+          if (!attsRes.ok || !attsRes.data) {
+            if (options.json) {
+              console.log(JSON.stringify({ error: attsRes.error?.message || 'Failed to list attachments' }, null, 2));
+            } else {
+              console.error(`Error: ${attsRes.error?.message || 'Failed to list attachments'}`);
+            }
+            process.exit(1);
+          }
+          const atts = attsRes.data.filter((a) => !a.isInline);
+          const subject = eventRes.data.subject || '(no subject)';
+          if (options.json) {
+            console.log(
+              JSON.stringify(
+                {
+                  backend: 'graph',
+                  eventId,
+                  subject,
+                  attachments: atts
+                },
+                null,
+                2
+              )
+            );
+            return;
+          }
+          console.log(`\nAttachments (Graph) — ${subject}`);
+          console.log('─'.repeat(40));
+          if (atts.length === 0) {
+            console.log('  (none)');
+          } else {
+            for (const a of atts) {
+              const k = graphAttachmentKind(a);
+              if (k === 'reference' && a.sourceUrl) {
+                console.log(`  🔗 ${a.name || a.id}`);
+                console.log(`     ${a.sourceUrl}`);
+              } else if (k === 'file') {
+                const sizeKB = Math.round((a.size || 0) / 1024);
+                console.log(`  📄 ${a.name || 'file'} (${sizeKB} KB)`);
+              } else {
+                console.log(`  📎 ${a.name || a.id} (${a['@odata.type'] || 'attachment'})`);
+              }
+            }
+          }
+          console.log();
         }
 
-        if (eventsByDate.size > 1) {
-          for (const [dateKey, dayEvents] of eventsByDate) {
-            const dayLabel = formatDate(dateKey);
-            console.log(`\n  ${dayLabel}`);
-            for (const event of dayEvents) {
+        if (options.listAttachments) {
+          if (backend === 'graph' || backend === 'auto') {
+            const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
+            if (ga.success && ga.token) {
+              await graphListAttachmentsWithToken(ga.token);
+              return;
+            }
+            if (backend === 'graph') {
+              if (options.json) {
+                console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
+              } else {
+                console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
+              }
+              process.exit(1);
+            }
+            warnAutoGraphToEwsFallback('calendar', {
+              json: options.json,
+              graphError: ga.error,
+              reason: 'auth',
+              verbose: options.verbose
+            });
+          }
+
+          const authResult = await resolveAuth({
+            token: options.token,
+            identity: options.identity
+          });
+
+          if (!authResult.success) {
+            if (options.json) {
+              console.log(JSON.stringify({ error: authResult.error }, null, 2));
+            } else {
+              console.error(`Error: ${authResult.error}`);
+              console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+            }
+            process.exit(1);
+          }
+
+          const token = authResult.token!;
+
+          const eventId = options.listAttachments.trim();
+          const eventRes = await getCalendarEvent(token, eventId, mailbox);
+          if (!eventRes.ok || !eventRes.data) {
+            console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+            process.exit(1);
+          }
+          const attsRes = await getAttachments(token, eventId, mailbox);
+          if (!attsRes.ok || !attsRes.data) {
+            console.error(`Error: ${attsRes.error?.message || 'Failed to list attachments'}`);
+            process.exit(1);
+          }
+          const atts = attsRes.data.value.filter((a) => !a.IsInline);
+          if (options.json) {
+            console.log(JSON.stringify({ eventId, subject: eventRes.data.Subject, attachments: atts }, null, 2));
+            return;
+          }
+          console.log(`\nAttachments — ${eventRes.data.Subject}`);
+          console.log('─'.repeat(40));
+          if (atts.length === 0) {
+            console.log('  (none)');
+          } else {
+            for (const a of atts) {
+              if (a.Kind === 'reference' && a.AttachLongPathName) {
+                console.log(`  🔗 ${a.Name}`);
+                console.log(`     ${a.AttachLongPathName}`);
+              } else {
+                const sizeKB = Math.round(a.Size / 1024);
+                console.log(`  📄 ${a.Name} (${sizeKB} KB)`);
+              }
+            }
+          }
+          console.log();
+          return;
+        }
+
+        if (options.downloadAttachments) {
+          if (backend === 'graph' || backend === 'auto') {
+            const ga = await resolveGraphAuth({ token: options.token, identity: options.identity });
+            if (ga.success && ga.token) {
+              const eventId = options.downloadAttachments.trim();
+              const eventRes = await getEvent(ga.token, eventId, mailbox);
+              if (!eventRes.ok || !eventRes.data) {
+                console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+                process.exit(1);
+              }
+              if (!eventRes.data.hasAttachments) {
+                console.log('This event has no attachments.');
+                return;
+              }
+              const attsRes = await listEventAttachments(ga.token, eventId, mailbox);
+              if (!attsRes.ok || !attsRes.data) {
+                console.error(`Error: ${attsRes.error?.message || 'Failed to fetch attachments'}`);
+                process.exit(1);
+              }
+              const attachments = attsRes.data.filter((a) => !a.isInline);
+              if (attachments.length === 0) {
+                console.log('No downloadable attachments (inline-only).');
+                return;
+              }
+              await mkdir(options.output, { recursive: true });
+              const usedPaths = new Set<string>();
+              console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/ (Graph)\n`);
+              for (const att of attachments) {
+                const kind = graphAttachmentKind(att);
+                if (kind === 'reference') {
+                  let url = att.sourceUrl;
+                  if (!url && att.id) {
+                    const full = await getEventAttachment(ga.token, eventId, att.id, mailbox);
+                    if (
+                      full.ok &&
+                      full.data &&
+                      'sourceUrl' in full.data &&
+                      (full.data as { sourceUrl?: string }).sourceUrl
+                    ) {
+                      url = (full.data as { sourceUrl?: string }).sourceUrl;
+                    }
+                  }
+                  if (!url) {
+                    console.error(`  Failed to resolve link: ${att.name || att.id}`);
+                    continue;
+                  }
+                  const filePath = await writeLinkFile(
+                    options.output,
+                    att.name || 'link',
+                    url,
+                    usedPaths,
+                    options.force ?? false
+                  );
+                  if (!filePath) {
+                    continue;
+                  }
+                  console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (link)`);
+                  continue;
+                }
+                if (kind !== 'file') {
+                  console.warn(`  Skipping non-file attachment: ${att.name || att.id}`);
+                  continue;
+                }
+                const dl = await downloadEventAttachmentBytes(ga.token, eventId, att.id, mailbox);
+                if (!dl.ok || !dl.data) {
+                  console.error(`  Failed to download: ${att.name || att.id} (${dl.error?.message})`);
+                  continue;
+                }
+                const content = Buffer.from(dl.data);
+                const safeName = safeAttachmentFileName(att.name || `attachment-${att.id}`, 'attachment');
+                const filePath = await resolveUniqueFilePath(
+                  options.output,
+                  safeName,
+                  usedPaths,
+                  options.force ?? false
+                );
+                usedPaths.add(filePath);
+                await writeFile(filePath, content);
+                const sizeKB = Math.round(content.length / 1024);
+                console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (${sizeKB} KB)`);
+              }
+              console.log('\nDone.\n');
+              return;
+            }
+            if (backend === 'graph') {
+              if (options.json) {
+                console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
+              } else {
+                console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
+              }
+              process.exit(1);
+            }
+            warnAutoGraphToEwsFallback('calendar', {
+              json: options.json,
+              graphError: ga.error,
+              reason: 'auth',
+              verbose: options.verbose
+            });
+          }
+
+          const authResult = await resolveAuth({
+            token: options.token,
+            identity: options.identity
+          });
+
+          if (!authResult.success) {
+            if (options.json) {
+              console.log(JSON.stringify({ error: authResult.error }, null, 2));
+            } else {
+              console.error(`Error: ${authResult.error}`);
+              console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+            }
+            process.exit(1);
+          }
+
+          const token = authResult.token!;
+          const eventId = options.downloadAttachments.trim();
+          const eventRes = await getCalendarEvent(token, eventId, mailbox);
+          if (!eventRes.ok || !eventRes.data) {
+            console.error(`Error: ${eventRes.error?.message || 'Event not found'}`);
+            process.exit(1);
+          }
+          if (!eventRes.data.HasAttachments) {
+            console.log('This event has no attachments.');
+            return;
+          }
+          const attsRes = await getAttachments(token, eventId, mailbox);
+          if (!attsRes.ok || !attsRes.data) {
+            console.error(`Error: ${attsRes.error?.message || 'Failed to fetch attachments'}`);
+            process.exit(1);
+          }
+          const attachments = attsRes.data.value.filter((a) => !a.IsInline);
+          if (attachments.length === 0) {
+            console.log('No downloadable attachments (inline-only).');
+            return;
+          }
+          await mkdir(options.output, { recursive: true });
+          const usedPaths = new Set<string>();
+          console.log(`\nDownloading ${attachments.length} attachment(s) to ${options.output}/\n`);
+          for (const att of attachments) {
+            if (att.Kind === 'reference' || att.AttachLongPathName) {
+              let url = att.AttachLongPathName;
+              if (!url) {
+                const full = await getAttachment(token, eventId, att.Id, mailbox);
+                if (full.ok && full.data?.AttachLongPathName) {
+                  url = full.data.AttachLongPathName;
+                }
+              }
+              if (!url) {
+                console.error(`  Failed to resolve link: ${att.Name}`);
+                continue;
+              }
+              const filePath = await writeLinkFile(
+                options.output,
+                att.Name || 'link',
+                url,
+                usedPaths,
+                options.force ?? false
+              );
+              if (!filePath) {
+                continue;
+              }
+              console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (link)`);
+              continue;
+            }
+
+            const fullAtt = await getAttachment(token, eventId, att.Id, mailbox);
+            if (!fullAtt.ok || !fullAtt.data?.ContentBytes) {
+              console.error(`  Failed to download: ${att.Name}`);
+              continue;
+            }
+            const content = Buffer.from(fullAtt.data.ContentBytes, 'base64');
+            const filePath = await resolveUniqueFilePath(options.output, att.Name, usedPaths, options.force ?? false);
+            usedPaths.add(filePath);
+            await writeFile(filePath, content);
+            const sizeKB = Math.round(content.length / 1024);
+            console.log(`  ✓ ${filePath.split(/[\\/]/).pop()} (${sizeKB} KB)`);
+          }
+          console.log('\nDone.\n');
+          return;
+        }
+
+        let start: string;
+        let end: string;
+        let label: string;
+        try {
+          const previousDays = parseCalendarRangeInt(options.previousDays, '--previous-days');
+          const previousBusinessDays = parseCalendarRangeInt(options.previousBusinessDays, '--previous-business-days');
+          if (options.now && (previousDays !== undefined || previousBusinessDays !== undefined)) {
+            throw new Error('Cannot use --now with --previous-days or --previous-business-days');
+          }
+          const resolved = resolveCalendarQueryRange(startDay, endDay, {
+            days: parseCalendarRangeInt(options.days, '--days'),
+            previousDays,
+            businessDays: parseBusinessDaysOption(options),
+            previousBusinessDays
+          });
+          const clipped = options.now ? clipCalendarRangeStartToNow(resolved) : resolved;
+          start = clipped.start;
+          end = clipped.end;
+          label = clipped.label;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (options.json) {
+            console.log(JSON.stringify({ error: message }, null, 2));
+          } else {
+            console.error(`Error: ${message}`);
+          }
+          process.exit(1);
+        }
+
+        if (backend === 'graph' || backend === 'auto') {
+          const ga = await resolveGraphAuth({
+            token: options.token,
+            identity: options.identity
+          });
+          if (ga.success && ga.token) {
+            const graphResult = await listCalendarView(ga.token, start, end, {
+              user: mailbox,
+              calendarId: graphCalendarId || undefined
+            });
+            if (graphResult.ok && graphResult.data) {
+              const graphEvents = graphResult.data.filter((e) => !e.isCancelled);
+
+              if (options.json) {
+                console.log(
+                  JSON.stringify(
+                    {
+                      backend: 'graph',
+                      label,
+                      ...(graphCalendarId ? { calendarId: graphCalendarId } : {}),
+                      events: graphEvents
+                    },
+                    null,
+                    2
+                  )
+                );
+                return;
+              }
+
+              console.log(
+                `\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''}${graphCalendarId ? ` — calendar ${graphCalendarId}` : ''} (Graph)`
+              );
+              console.log('─'.repeat(40));
+
+              if (graphEvents.length === 0) {
+                console.log('  No events scheduled.');
+              } else {
+                const eventsByDate = new Map<string, GraphCalendarEvent[]>();
+                for (const event of graphEvents) {
+                  const startDt = normalizeGraphDateTimeForParsing(event.start?.dateTime, event.start?.timeZone);
+                  if (!startDt) continue;
+                  const localDate = parseLocalDate(startDt);
+                  const dateKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+                  if (!eventsByDate.has(dateKey)) {
+                    eventsByDate.set(dateKey, []);
+                  }
+                  eventsByDate.get(dateKey)?.push(event);
+                }
+
+                if (eventsByDate.size > 1) {
+                  for (const [dateKey, dayEvents] of eventsByDate) {
+                    const dayLabel = formatDate(dateKey);
+                    console.log(`\n  ${dayLabel}`);
+                    for (const event of dayEvents) {
+                      displayGraphCalendarEvent(event, options.verbose ?? false);
+                    }
+                  }
+                } else {
+                  for (const event of graphEvents) {
+                    displayGraphCalendarEvent(event, options.verbose ?? false);
+                  }
+                }
+              }
+              console.log();
+              return;
+            }
+            if (backend === 'graph') {
+              if (options.json) {
+                console.log(
+                  JSON.stringify({ error: graphResult.error?.message || 'Failed to fetch calendar (Graph)' }, null, 2)
+                );
+              } else {
+                console.error(`Error: ${graphResult.error?.message || 'Failed to fetch calendar (Graph)'}`);
+              }
+              process.exit(1);
+            }
+            if (graphCalendarId) {
+              const msg = `${graphResult.error?.message || 'Failed to fetch calendar (Graph)'}. Option --calendar requires Microsoft Graph; cannot fall back to EWS.`;
+              if (options.json) {
+                console.log(JSON.stringify({ error: msg }, null, 2));
+              } else {
+                console.error(`Error: ${msg}`);
+              }
+              process.exit(1);
+            }
+            warnAutoGraphToEwsFallback('calendar', {
+              json: options.json,
+              graphError: graphResult.error?.message,
+              reason: 'api',
+              verbose: options.verbose
+            });
+          } else if (backend === 'graph') {
+            if (options.json) {
+              console.log(JSON.stringify({ error: ga.error || 'Graph authentication failed' }, null, 2));
+            } else {
+              console.error(`Error: ${ga.error || 'Graph authentication failed'}`);
+            }
+            process.exit(1);
+          } else if (graphCalendarId) {
+            const msg = `Graph authentication failed (${ga.error || 'unknown'}). Option --calendar requires Microsoft Graph.`;
+            if (options.json) {
+              console.log(JSON.stringify({ error: msg }, null, 2));
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(1);
+          } else if (backend === 'auto') {
+            warnAutoGraphToEwsFallback('calendar', {
+              json: options.json,
+              graphError: ga.error,
+              reason: 'auth',
+              verbose: options.verbose
+            });
+          }
+        }
+
+        const authResult = await resolveAuth({
+          token: options.token,
+          identity: options.identity
+        });
+
+        if (!authResult.success) {
+          if (options.json) {
+            console.log(JSON.stringify({ error: authResult.error }, null, 2));
+          } else {
+            console.error(`Error: ${authResult.error}`);
+            console.error('\nCheck your .env file for EWS_CLIENT_ID and EWS_REFRESH_TOKEN.');
+          }
+          process.exit(1);
+        }
+
+        const result = await getCalendarEvents(authResult.token!, start, end, mailbox);
+
+        if (!result.ok || !result.data) {
+          if (options.json) {
+            console.log(JSON.stringify({ error: result.error?.message || 'Failed to fetch events' }, null, 2));
+          } else {
+            console.error(`Error: ${result.error?.message || 'Failed to fetch events'}`);
+          }
+          process.exit(1);
+        }
+
+        const events = result.data.filter((e) => !e.IsCancelled);
+
+        if (options.json) {
+          console.log(JSON.stringify(events, null, 2));
+          return;
+        }
+
+        console.log(`\n📆 Calendar for ${label}${mailbox ? ` — ${mailbox}` : ''}`);
+        console.log('─'.repeat(40));
+
+        if (events.length === 0) {
+          console.log('  No events scheduled.');
+        } else {
+          const eventsByDate = new Map<string, CalendarEvent[]>();
+          for (const event of events) {
+            const localDate = parseLocalDate(event.Start.DateTime);
+            const dateKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+            if (!eventsByDate.has(dateKey)) {
+              eventsByDate.set(dateKey, []);
+            }
+            eventsByDate.get(dateKey)?.push(event);
+          }
+
+          if (eventsByDate.size > 1) {
+            for (const [dateKey, dayEvents] of eventsByDate) {
+              const dayLabel = formatDate(dateKey);
+              console.log(`\n  ${dayLabel}`);
+              for (const event of dayEvents) {
+                displayEvent(event, options.verbose ?? false);
+              }
+            }
+          } else {
+            for (const event of events) {
               displayEvent(event, options.verbose ?? false);
             }
           }
-        } else {
-          for (const event of events) {
-            displayEvent(event, options.verbose ?? false);
-          }
         }
+        console.log();
       }
-      console.log();
-    }
-  );
+    );
+}
+
+export const calendarCommand = new Command('calendar').description(
+  'View or create calendar events (subcommands: list, create; default is list — same as before)'
+);
+calendarCommand.addCommand(buildCalendarListCommand(), { isDefault: true });
+calendarCommand.addCommand(
+  buildCreateEventCommand('create', 'Create a calendar event (alias for top-level create-event)')
+);

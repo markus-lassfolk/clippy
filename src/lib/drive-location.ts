@@ -65,6 +65,8 @@ export interface DriveLocationCliFlags {
   driveId?: string;
   siteId?: string;
   libraryDriveId?: string;
+  /** Use Microsoft Graph `beta` host for this request (`graph.microsoft.com/beta`). */
+  beta?: boolean;
 }
 
 export type DriveLocationParseResult = DriveLocation | { error: string };

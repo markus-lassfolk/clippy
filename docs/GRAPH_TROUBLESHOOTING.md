@@ -21,3 +21,9 @@ People relevance search (`GET /me/people` with **`$search=`**) can return **tena
 3. Prefer higher-level commands (**`find`**, **`contacts`**) when they already model the headers and paths you need.
 
 Do **not** add **`ConsistencyLevel: eventual`** to shared client code for `searchPeople` unless product docs confirm it is broadly required; start with documentation and scoped **`graph invoke`** experiments.
+
+## Path inventory and OpenAPI compliance (optional)
+
+The repo keeps a machine-readable list of Graph-relative paths used by **`callGraph`**, **`graphInvoke`**, **`fetchAllPages`**, **`fetchGraphRaw`**, and **`graphPostBatch`** in [`docs/GRAPH_PATH_INVENTORY.json`](./GRAPH_PATH_INVENTORY.json). Regenerate after changing those call sites: **`npm run graph:inventory`**. CI runs **`npm run graph:inventory:check`** so the file cannot drift silently.
+
+With the [msgraph Cursor skill](https://github.com/merill/msgraph) installed locally (`~/.cursor/skills/msgraph/scripts/run.sh`), run **`npm run verify:graph-openapi:strict`** to cross-check unique patterns against the skill’s OpenAPI index (no live Graph calls). Override the launcher with **`MSGRAPH_SKILL_RUN_SH`**, or set **`GRAPH_OPENAPI_VERIFY=0`** to skip. Patterns that the index cannot match but are still valid are listed in [`scripts/graph-openapi-allowlist.json`](../scripts/graph-openapi-allowlist.json).

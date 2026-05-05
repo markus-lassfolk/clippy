@@ -14,6 +14,8 @@ import {
 } from './drive-location.js';
 import { GRAPH_BASE_URL } from './graph-constants.js';
 
+export { GRAPH_BETA_URL, graphApiRoot } from './graph-constants.js';
+
 export type { DriveLocation } from './drive-location.js';
 export {
   buildDriveFolderOrRootPath,
@@ -380,7 +382,12 @@ export async function fetchAllPages<T>(
   return graphResult(items);
 }
 
-export async function fetchGraphRaw(token: string, path: string, options: RequestInit = {}): Promise<Response> {
+export async function fetchGraphRaw(
+  token: string,
+  path: string,
+  options: RequestInit = {},
+  baseUrl: string = GRAPH_BASE_URL
+): Promise<Response> {
   // codeql[js/file-access-to-http]: Bearer token may come from the local OAuth cache; path is a Graph API path string.
   const { headers: optHeaders, ...rest } = options;
   const headers = new Headers();
@@ -390,7 +397,8 @@ export async function fetchGraphRaw(token: string, path: string, options: Reques
       headers.set(key, value);
     });
   }
-  return fetch(`${GRAPH_BASE_URL}${path}`, {
+  const root = baseUrl.replace(/\/$/, '');
+  return fetch(`${root}${path}`, {
     ...rest,
     headers
   });
@@ -595,31 +603,35 @@ function encodeGraphSearchQuery(query: string): string {
 export async function listFiles(
   token: string,
   folder?: DriveItemReference,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItem[]>> {
   const basePath = buildDriveFolderOrRootPath(location, folder);
-  return fetchAllPages<DriveItem>(token, `${basePath}/children`, 'Failed to list files');
+  return fetchAllPages<DriveItem>(token, `${basePath}/children`, 'Failed to list files', graphBaseUrl);
 }
 
 export async function searchFiles(
   token: string,
   query: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItem[]>> {
   return fetchAllPages<DriveItem>(
     token,
     driveRootSearchPath(location, encodeGraphSearchQuery(query)),
-    'Failed to search files'
+    'Failed to search files',
+    graphBaseUrl
   );
 }
 
 export async function getFileMetadata(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItem>> {
   try {
-    return await callGraph<DriveItem>(token, driveItemPath(location, itemId));
+    return await callGraphAt<DriveItem>(graphBaseUrl, token, driveItemPath(location, itemId));
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -638,7 +650,8 @@ export async function uploadFile(
   token: string,
   localPath: string,
   folder?: DriveItemReference,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItem>> {
   try {
     const absolutePath = resolve(localPath);
@@ -661,13 +674,18 @@ export async function uploadFile(
     const stream = createReadStream(resolvedPath);
     try {
       // codeql[js/file-access-to-http]: intentional upload of a user-selected local file to Microsoft Graph after resolve+stat+isFile.
-      return await callGraph<DriveItem>(token, `${folderPath}${encodeURIComponent(fileName)}:/content`, {
-        method: 'PUT',
-        body: Readable.toWeb(stream) as unknown as BodyInit,
-        headers: {
-          'Content-Type': 'application/octet-stream'
+      return await callGraphAt<DriveItem>(
+        graphBaseUrl,
+        token,
+        `${folderPath}${encodeURIComponent(fileName)}:/content`,
+        {
+          method: 'PUT',
+          body: Readable.toWeb(stream) as unknown as BodyInit,
+          headers: {
+            'Content-Type': 'application/octet-stream'
+          }
         }
-      });
+      );
     } catch (err) {
       if (err instanceof GraphApiError) {
         return graphErrorFromApiError(err);
@@ -685,7 +703,8 @@ export async function uploadLargeFile(
   token: string,
   localPath: string,
   folder?: DriveItemReference,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<UploadLargeResult>> {
   try {
     const absolutePath = resolve(localPath);
@@ -717,7 +736,8 @@ export async function uploadLargeFile(
       // Step 1: Create the upload session
       let sessionResult: GraphResponse<UploadLargeResult>;
       try {
-        sessionResult = await callGraph<UploadLargeResult>(
+        sessionResult = await callGraphAt<UploadLargeResult>(
+          graphBaseUrl,
           token,
           `${folderPath}${encodeURIComponent(fileName)}:/createUploadSession`,
           {
@@ -851,7 +871,8 @@ export async function downloadFile(
   itemId: string,
   outputPath?: string,
   item?: DriveItem,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<{ path: string; item: DriveItem }>> {
   let resolvedItem = item;
   let targetPath: string | undefined;
@@ -859,7 +880,7 @@ export async function downloadFile(
 
   // Step 1: resolve item metadata
   if (!resolvedItem) {
-    const metadata = await getFileMetadata(token, itemId, location);
+    const metadata = await getFileMetadata(token, itemId, location, graphBaseUrl);
     if (!metadata.ok || !metadata.data) {
       return graphError(
         metadata.error?.message || 'Failed to fetch file metadata before download',
@@ -988,10 +1009,11 @@ export async function downloadFile(
 export async function deleteFile(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(token, driveItemPath(location, itemId), { method: 'DELETE' }, false);
+    return await callGraphAt<void>(graphBaseUrl, token, driveItemPath(location, itemId), { method: 'DELETE' }, false);
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1005,14 +1027,20 @@ export async function shareFile(
   itemId: string,
   type: 'view' | 'edit' = 'view',
   scope: 'anonymous' | 'organization' = 'organization',
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<SharingLinkResult>> {
   let result: GraphResponse<{ link?: SharingLinkResult }>;
   try {
-    result = await callGraph<{ link?: SharingLinkResult }>(token, `${driveItemPath(location, itemId)}/createLink`, {
-      method: 'POST',
-      body: JSON.stringify({ type, scope })
-    });
+    result = await callGraphAt<{ link?: SharingLinkResult }>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/createLink`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ type, scope })
+      }
+    );
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1027,10 +1055,17 @@ export async function shareFile(
 export async function checkoutFile(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(token, `${driveItemPath(location, itemId)}/checkout`, { method: 'POST' }, false);
+    return await callGraphAt<void>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/checkout`,
+      { method: 'POST' },
+      false
+    );
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1043,11 +1078,13 @@ export async function checkinFile(
   token: string,
   itemId: string,
   comment?: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<CheckinResult>> {
   let result: GraphResponse<void>;
   try {
-    result = await callGraph<void>(
+    result = await callGraphAt<void>(
+      graphBaseUrl,
       token,
       `${driveItemPath(location, itemId)}/checkin`,
       {
@@ -1067,7 +1104,7 @@ export async function checkinFile(
     return graphError(result.error?.message || 'Check-in failed', result.error?.code, result.error?.status);
   }
 
-  const item = await getFileMetadata(token, itemId, location);
+  const item = await getFileMetadata(token, itemId, location, graphBaseUrl);
   if (!item.ok || !item.data) {
     return graphError(
       item.error?.message || 'Checked in, but failed to refresh file metadata',
@@ -1079,13 +1116,202 @@ export async function checkinFile(
   return graphResult({ item: item.data, checkedIn: true, comment });
 }
 
+/** SharePoint **listItem** for a file in a document library (`GET …/items/{id}/listItem`). Often empty on personal OneDrive. */
+export type DriveItemListItem = Record<string, unknown>;
+
+export async function getDriveItemListItem(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<DriveItemListItem>> {
+  try {
+    return await callGraphAt<DriveItemListItem>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/listItem`
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to get listItem');
+  }
+}
+
+/** OneDrive for Business: follow a file for easy access (`POST …/follow`). */
+export async function followDriveItem(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraphAt<void>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/follow`,
+      { method: 'POST' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to follow item');
+  }
+}
+
+export async function unfollowDriveItem(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraphAt<void>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/unfollow`,
+      { method: 'POST' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to unfollow item');
+  }
+}
+
+/** @see https://learn.microsoft.com/en-us/graph/api/driveitem-assignsensitivitylabel */
+export async function assignDriveItemSensitivityLabel(
+  token: string,
+  itemId: string,
+  body: Record<string, unknown>,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<unknown>> {
+  try {
+    return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/assignSensitivityLabel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'assignSensitivityLabel failed');
+  }
+}
+
+/** @see https://learn.microsoft.com/en-us/graph/api/driveitem-extractsensitivitylabels */
+export async function extractDriveItemSensitivityLabels(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<unknown>> {
+  try {
+    return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/extractSensitivityLabels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'extractSensitivityLabels failed');
+  }
+}
+
+/** Permanently delete a drive item (`POST …/permanentDelete`). Irreversible; tenant policies apply. */
+export async function permanentDeleteDriveItem(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
+  try {
+    return await callGraphAt<void>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/permanentDelete`,
+      { method: 'POST' },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'permanentDelete failed');
+  }
+}
+
+/**
+ * Restore a deleted drive item from the recycle bin (`POST …/restore`).
+ * Optional JSON body (e.g. `parentReference`) per Graph docs; pass `{}` when omitted.
+ */
+export async function restoreDeletedDriveItem(
+  token: string,
+  itemId: string,
+  body: Record<string, unknown> | undefined,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<DriveItem>> {
+  try {
+    return await callGraphAt<DriveItem>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {})
+    });
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'restore failed');
+  }
+}
+
+/** @see https://learn.microsoft.com/en-us/graph/api/driveitem-getretentionlabel */
+export async function getDriveItemRetentionLabel(
+  token: string,
+  itemId: string,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<Record<string, unknown>>> {
+  try {
+    return await callGraphAt<Record<string, unknown>>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/retentionLabel`
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to get retentionLabel');
+  }
+}
+
+/** @see https://learn.microsoft.com/en-us/graph/api/driveitem-removeretentionlabel */
+export async function removeDriveItemRetentionLabel(
+  token: string,
+  itemId: string,
+  ifMatch: string | undefined,
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
+): Promise<GraphResponse<void>> {
+  try {
+    const headers: Record<string, string> = {};
+    if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+    return await callGraphAt<void>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/retentionLabel`,
+      { method: 'DELETE', headers },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'removeRetentionLabel failed');
+  }
+}
+
 export async function createOfficeCollaborationLink(
   token: string,
   itemId: string,
   options: { lock?: boolean } = {},
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<OfficeCollabLinkResult>> {
-  const item = await getFileMetadata(token, itemId, location);
+  const item = await getFileMetadata(token, itemId, location, graphBaseUrl);
   if (!item.ok || !item.data) {
     return graphError(item.error?.message || 'Failed to fetch file metadata', item.error?.code, item.error?.status);
   }
@@ -1099,7 +1325,7 @@ export async function createOfficeCollaborationLink(
   }
 
   if (options.lock) {
-    const lock = await checkoutFile(token, itemId, location);
+    const lock = await checkoutFile(token, itemId, location, graphBaseUrl);
     if (!lock.ok) {
       return graphError(
         lock.error?.message || 'Failed to checkout file before sharing',
@@ -1109,10 +1335,10 @@ export async function createOfficeCollaborationLink(
     }
   }
 
-  const link = await shareFile(token, itemId, 'edit', 'organization', location);
+  const link = await shareFile(token, itemId, 'edit', 'organization', location, graphBaseUrl);
   if (!link.ok || !link.data) {
     if (options.lock) {
-      await checkinFile(token, itemId, undefined, location);
+      await checkinFile(token, itemId, undefined, location, graphBaseUrl);
     }
     return graphError(
       link.error?.message || 'Failed to create collaboration link',
@@ -1136,12 +1362,14 @@ export function defaultDownloadPath(fileName: string): string {
 export async function listFileVersions(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemVersion[]>> {
   return fetchAllPages<DriveItemVersion>(
     token,
     `${driveItemPath(location, itemId)}/versions`,
-    'Failed to list versions'
+    'Failed to list versions',
+    graphBaseUrl
   );
 }
 
@@ -1149,10 +1377,12 @@ export async function restoreFileVersion(
   token: string,
   itemId: string,
   versionId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(
+    return await callGraphAt<void>(
+      graphBaseUrl,
       token,
       `${driveItemPath(location, itemId)}/versions/${encodeURIComponent(versionId)}/restoreVersion`,
       { method: 'POST' },
@@ -1186,12 +1416,13 @@ export interface FileAnalytics {
 export async function getFileAnalytics(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<FileAnalytics>> {
   const base = driveItemPath(location, itemId);
   const [allTimeResult, lastSevenDaysResult] = await Promise.allSettled([
-    callGraph<FileAnalytics['allTime']>(token, `${base}/analytics/allTime`),
-    callGraph<FileAnalytics['lastSevenDays']>(token, `${base}/analytics/lastSevenDays`)
+    callGraphAt<FileAnalytics['allTime']>(graphBaseUrl, token, `${base}/analytics/allTime`),
+    callGraphAt<FileAnalytics['lastSevenDays']>(graphBaseUrl, token, `${base}/analytics/lastSevenDays`)
   ]);
 
   const analytics: FileAnalytics = {};
@@ -1220,11 +1451,12 @@ export async function downloadConvertedFile(
   itemId: string,
   format: string = 'pdf',
   outputPath?: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<{ path: string }>> {
   let tmpPath: string | undefined;
   try {
-    const metadata = await getFileMetadata(token, itemId, location);
+    const metadata = await getFileMetadata(token, itemId, location, graphBaseUrl);
     if (!metadata.ok || !metadata.data) {
       return graphError(
         metadata.error?.message || 'Failed to fetch file metadata',
@@ -1244,7 +1476,7 @@ export async function downloadConvertedFile(
 
     const contentPath = `${driveItemPath(location, itemId)}/content?format=${encodeURIComponent(format)}`;
 
-    const redirectResponse = await fetchGraphRaw(token, contentPath, { redirect: 'manual' });
+    const redirectResponse = await fetchGraphRaw(token, contentPath, { redirect: 'manual' }, graphBaseUrl);
 
     if (redirectResponse.status < 300 || redirectResponse.status >= 400) {
       if (!redirectResponse.ok) {
@@ -1327,10 +1559,11 @@ export async function inviteDriveItem(
   token: string,
   itemId: string,
   body: Record<string, unknown>,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraph<unknown>(token, `${driveItemPath(location, itemId)}/invite`, {
+    return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/invite`, {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -1345,12 +1578,14 @@ export async function inviteDriveItem(
 export async function listDriveItemPermissions(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemPermission[]>> {
   return fetchAllPages<DriveItemPermission>(
     token,
     `${driveItemPath(location, itemId)}/permissions`,
-    'Failed to list permissions'
+    'Failed to list permissions',
+    graphBaseUrl
   );
 }
 
@@ -1358,10 +1593,12 @@ export async function deleteDriveItemPermission(
   token: string,
   itemId: string,
   permissionId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(
+    return await callGraphAt<void>(
+      graphBaseUrl,
       token,
       `${driveItemPath(location, itemId)}/permissions/${encodeURIComponent(permissionId)}`,
       { method: 'DELETE' },
@@ -1394,10 +1631,12 @@ export interface DriveItemThumbnailSet {
 export async function listDriveItemThumbnails(
   token: string,
   itemId: string,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemThumbnailSet[]>> {
   try {
-    const r = await callGraph<{ value?: DriveItemThumbnailSet[] }>(
+    const r = await callGraphAt<{ value?: DriveItemThumbnailSet[] }>(
+      graphBaseUrl,
       token,
       `${driveItemPath(location, itemId)}/thumbnails`
     );
@@ -1426,13 +1665,19 @@ export async function getDriveItemDeltaPage(
     location: DriveLocation;
     folderItemId?: string;
     nextOrDeltaLink?: string;
+    graphBaseUrl?: string;
   }
 ): Promise<GraphResponse<DriveDeltaPage>> {
+  const graphBaseUrl = options.graphBaseUrl ?? GRAPH_BASE_URL;
   try {
     if (options.nextOrDeltaLink?.trim()) {
       return await callGraphAbsolute<DriveDeltaPage>(token, options.nextOrDeltaLink.trim());
     }
-    return await callGraph<DriveDeltaPage>(token, driveDeltaStartPath(options.location, options.folderItemId));
+    return await callGraphAt<DriveDeltaPage>(
+      graphBaseUrl,
+      token,
+      driveDeltaStartPath(options.location, options.folderItemId)
+    );
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1451,10 +1696,11 @@ export interface SharedWithMeDriveItem {
 }
 
 export async function listDriveSharedWithMe(
-  token: string
+  token: string,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<{ value?: SharedWithMeDriveItem[] }>> {
   try {
-    return await callGraph<{ value?: SharedWithMeDriveItem[] }>(token, '/me/drive/sharedWithMe');
+    return await callGraphAt<{ value?: SharedWithMeDriveItem[] }>(graphBaseUrl, token, '/me/drive/sharedWithMe');
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1473,14 +1719,20 @@ export async function startCopyDriveItem(
   token: string,
   itemId: string,
   body: CopyDriveItemBody,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<{ monitorUrl?: string; status?: number }>> {
   try {
-    const res = await fetchGraphRaw(token, `${driveItemPath(location, itemId)}/copy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    const res = await fetchGraphRaw(
+      token,
+      `${driveItemPath(location, itemId)}/copy`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      },
+      graphBaseUrl
+    );
     if (res.status === 202) {
       const monitorUrl = res.headers.get('location') ?? undefined;
       return graphResult({ monitorUrl, status: 202 });
@@ -1551,10 +1803,11 @@ export async function moveDriveItem(
   token: string,
   itemId: string,
   parentReference: { id: string; driveId?: string },
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItem>> {
   try {
-    return await callGraph<DriveItem>(token, driveItemPath(location, itemId), {
+    return await callGraphAt<DriveItem>(graphBaseUrl, token, driveItemPath(location, itemId), {
       method: 'PATCH',
       body: JSON.stringify({ parentReference })
     });
@@ -1571,10 +1824,12 @@ export async function patchDriveItemPermission(
   itemId: string,
   permissionId: string,
   body: Record<string, unknown>,
-  location: DriveLocation = DEFAULT_DRIVE_LOCATION
+  location: DriveLocation = DEFAULT_DRIVE_LOCATION,
+  graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemPermission>> {
   try {
-    return await callGraph<DriveItemPermission>(
+    return await callGraphAt<DriveItemPermission>(
+      graphBaseUrl,
       token,
       `${driveItemPath(location, itemId)}/permissions/${encodeURIComponent(permissionId)}`,
       { method: 'PATCH', body: JSON.stringify(body) }

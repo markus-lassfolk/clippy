@@ -1,5 +1,43 @@
 import { describe, expect, test } from 'bun:test';
-import { flattenMicrosoftSearchHits, type MicrosoftSearchQueryResponse } from './graph-microsoft-search.js';
+import {
+  buildMicrosoftSearchRequest,
+  deepMergeSearchRequest,
+  flattenMicrosoftSearchHits,
+  type MicrosoftSearchQueryResponse
+} from './graph-microsoft-search.js';
+
+describe('deepMergeSearchRequest', () => {
+  test('merges nested query object', () => {
+    const base = { query: { queryString: 'a' }, from: 0 };
+    const merged = deepMergeSearchRequest(base, { query: { queryTemplate: '{searchTerms}' } });
+    expect(merged).toEqual({
+      query: { queryString: 'a', queryTemplate: '{searchTerms}' },
+      from: 0
+    });
+  });
+
+  test('overlay replaces arrays', () => {
+    const merged = deepMergeSearchRequest({ fields: ['a'] }, { fields: ['b', 'c'] });
+    expect(merged.fields).toEqual(['b', 'c']);
+  });
+});
+
+describe('buildMicrosoftSearchRequest', () => {
+  test('applies requestPatch', () => {
+    const r = buildMicrosoftSearchRequest({
+      entityTypes: ['message'],
+      queryString: 'x',
+      from: 1,
+      size: 10,
+      requestPatch: { region: 'US' }
+    });
+    expect(r.entityTypes).toEqual(['message']);
+    expect(r.query).toEqual({ queryString: 'x' });
+    expect(r.from).toBe(1);
+    expect(r.size).toBe(10);
+    expect(r.region).toBe('US');
+  });
+});
 
 describe('flattenMicrosoftSearchHits', () => {
   test('extracts hits from nested value', () => {

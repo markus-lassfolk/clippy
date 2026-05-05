@@ -36,6 +36,7 @@ import {
   getTodoListOpenExtension,
   getTodoLists,
   getTodoListsDeltaPage,
+  getTodoListsPage,
   getTodoTasksDeltaPage,
   listAttachments,
   listTaskChecklistItems,
@@ -159,40 +160,99 @@ export const todoCommand = new Command('todo').description('Manage Microsoft To-
 
 todoCommand
   .command('lists')
-  .description('List all To-Do task lists')
+  .description('List all To-Do task lists (follows OData paging unless --top / --skip / --count)')
   .option('--json', 'Output as JSON')
+  .option('--orderby <expr>', 'OData $orderby (e.g. displayName asc)')
+  .option('--select <fields>', 'OData $select (comma-separated)')
+  .option('--expand <expr>', 'OData $expand')
+  .option('--top <n>', 'OData $top (single page only)')
+  .option('--skip <n>', 'OData $skip (single page only)')
+  .option('--count', 'Include total count ($count=true; ConsistencyLevel: eventual)')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
-  .action(async (opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (opts: {
+      json?: boolean;
+      orderby?: string;
+      select?: string;
+      expand?: string;
+      top?: string;
+      skip?: string;
+      count?: boolean;
+      token?: string;
+      identity?: string;
+      user?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const q = {
+        orderby: opts.orderby,
+        select: opts.select,
+        expand: opts.expand,
+        top: opts.top !== undefined ? Number(opts.top) : undefined,
+        skip: opts.skip !== undefined ? Number(opts.skip) : undefined,
+        count: opts.count === true
+      };
+      const singlePage = q.top !== undefined || q.skip !== undefined || q.count === true;
+
+      if (singlePage) {
+        const page = await getTodoListsPage(auth.token!, opts.user, q);
+        if (!page.ok || !page.data) {
+          console.error(`Error: ${page.error?.message}`);
+          process.exit(1);
+        }
+        if (opts.json) {
+          console.log(JSON.stringify(page.data, null, 2));
+          return;
+        }
+        const lists = page.data.value || [];
+        if (lists.length === 0) {
+          console.log('No task lists found.');
+        } else {
+          console.log(`\nTo-Do Lists (${lists.length} on this page):\n`);
+          for (const l of lists) {
+            const tag = l.isShared ? ' [shared]' : l.isOwner === false ? ' [shared with me]' : '';
+            console.log(`  ${l.displayName}${tag}`);
+            console.log(`    ID: ${l.id}`);
+            if (l.wellknownListName) console.log(`    Well-known: ${l.wellknownListName}`);
+            console.log('');
+          }
+        }
+        if (page.data['@odata.count'] !== undefined) {
+          console.log(`Total count (@odata.count): ${page.data['@odata.count']}`);
+        }
+        return;
+      }
+
+      const result = await getTodoLists(auth.token!, opts.user, q);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
+
+      const lists: TodoList[] = result.data;
+      if (lists.length === 0) {
+        console.log('No task lists found.');
+        return;
+      }
+      console.log(`\nTo-Do Lists (${lists.length}):\n`);
+      for (const l of lists) {
+        const tag = l.isShared ? ' [shared]' : l.isOwner === false ? ' [shared with me]' : '';
+        console.log(`  ${l.displayName}${tag}`);
+        console.log(`    ID: ${l.id}`);
+        if (l.wellknownListName) console.log(`    Well-known: ${l.wellknownListName}`);
+        console.log('');
+      }
     }
-    const result = await getTodoLists(auth.token!, opts.user);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
-    const lists: TodoList[] = result.data;
-    if (lists.length === 0) {
-      console.log('No task lists found.');
-      return;
-    }
-    console.log(`\nTo-Do Lists (${lists.length}):\n`);
-    for (const l of lists) {
-      const tag = l.isShared ? ' [shared]' : l.isOwner === false ? ' [shared with me]' : '';
-      console.log(`  ${l.displayName}${tag}`);
-      console.log(`    ID: ${l.id}`);
-      if (l.wellknownListName) console.log(`    Well-known: ${l.wellknownListName}`);
-      console.log('');
-    }
-  });
+  );
 
 todoCommand
   .command('get')
