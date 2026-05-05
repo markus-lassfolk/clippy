@@ -28,7 +28,6 @@
 | `mail` | `src/commands/mail.ts` | yes | yes |
 | `mailbox-settings` | `src/commands/mailbox-settings.ts` | yes | yes |
 | `meeting` | `src/commands/meeting.ts` | yes | yes |
-| `office-docs-drive-mirror` | `src/commands/office-docs-drive-mirror.ts` | yes | yes |
 | `onenote` | `src/commands/onenote.ts` | yes | yes |
 | `oof` | `src/commands/oof.ts` | yes | yes |
 | `org` | `src/commands/org.ts` | yes | no |

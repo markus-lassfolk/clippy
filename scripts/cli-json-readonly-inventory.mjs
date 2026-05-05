@@ -12,6 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const commandsDir = join(root, 'src', 'commands');
 const skipFiles = new Set([
   'office-docs-shared.ts',
+  'office-docs-drive-mirror.ts',
   'mail-graph.ts',
   'drafts-graph.ts',
   'create-event-graph.ts',
