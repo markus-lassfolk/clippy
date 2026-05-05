@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **m365-agent-cli** are documented here. Release **2026.4.50** is the first stable line after **1.2.4** that ships the Graph-first stack, unified auth, and the expanded command surface described below.
+All notable changes to **m365-agent-cli** are documented here. Release **2026.4.50** was the first stable line after **1.2.4** with the Graph-first stack and unified auth. **2026.5.50** adds agent packaging (OpenClaw skill + MCP), Microsoft Copilot and Viva Graph command surfaces, deeper Teams / Excel / OneDrive / SharePoint coverage, meeting recordings & transcripts, and expanded docs and CI tooling—see that section below.
 
 For install and tagging, see [docs/RELEASE.md](docs/RELEASE.md).
 
@@ -8,25 +8,119 @@ For install and tagging, see [docs/RELEASE.md](docs/RELEASE.md).
 
 ## [Unreleased]
 
-### Packaging / OpenClaw
+_No user-facing changes logged yet._
 
-- The npm tarball now includes **`skills/m365-agent-cli/SKILL.md`**, **`skills/README.md`**, **`packaging/tools-md-snippet.md`**, and **`scripts/install-tools-md.mjs`** / **`scripts/install-openclaw-skill.mjs`** so installs from the registry carry the OpenClaw skill and installers.
-- **`npm run install-tools-md -- <path-to-TOOLS.md>`** (or **`node …/scripts/install-tools-md.mjs`**) updates a single HTML-comment–delimited block in **`TOOLS.md`** idempotently (no repeated appends).
-- **Opt-in postinstall:** when **`OPENCLAW_SKILLS_DIR`** is set, **`npm install`** copies the bundled skill into that directory; otherwise postinstall is a no-op.
+---
 
-### Tests / TypeScript
+## [2026.5.50] — 2026-05-05
 
-- **`graph-auth`:** Bun’s `mock.module` can leave **`loadM365TokenCache`** as the test mock even after `import()`; restore now re-registers the **original function references**, **`resolveGraphAuth` is imported per test**, and the former **`src/test/auth.test.ts`** disk cases live in the same file after the graph suite. Removed duplicate **`src/test/zzz-graph-auth.test.ts`**.
-- **`fetch` mocks:** use `as unknown as typeof fetch` where the DOM `fetch` type includes `preconnect` (e.g. **`src/lib/graph-client.test.ts`**, **`src/lib/graph-advanced-client.test.ts`**).
+This release ships everything from **PR #228** (“Packaging, Graph ergonomics, docs, and expanded CLI surface”): a much wider Microsoft Graph footprint, first-class support for **AI agents and automation** (OpenClaw skill in the npm package, optional MCP server, scripting inventories), and stronger tests and CI. If you are upgrading from **2026.4.50**, you usually only need `npm install -g m365-agent-cli@latest` (or your usual install path); use **`m365-agent-cli login`** again if you enable new Entra permissions for Copilot, Viva, recordings, or approvals.
 
-### Agent ergonomics
+### Highlights (what changed at a glance)
 
-- **`docs/AGENT_WORKFLOWS.md`** — auth, read-only, drive roots, delta **`--state-file`**, Teams + files, Word/PPT round-trip, search → drive item.
-- **`docs/CLI_SCRIPTING_APPENDIX.md`** + generated **`docs/CLI_SCRIPTING_INVENTORY.md`** — `npm run inventory:scripting` refreshes the command × **`--json`** × **`checkReadOnly`** table.
-- **`graph-search --json-hits`** — flattened Microsoft Search hits for scripts.
-- **`teams … channel-message-send` / `channel-message-reply` / `chat-message-send` / `chat-message-reply`** — **`--at userId:displayName`** (repeatable) with **`--text`** containing matching **`@displayName`** tokens (HTML + `mentions` body).
-- **`counter --json`** — machine-readable success payload.
-- **`packages/m365-agent-cli-mcp`** — optional MCP stdio server (`m365_whoami`, `m365_graph_search`, read-only **`m365_graph_invoke_get`**).
+| Area | What you get |
+|------|----------------|
+| **Agents & skills** | Bundled **OpenClaw / ClawHub** skill metadata in the npm tarball; optional **postinstall** copy into `OPENCLAW_SKILLS_DIR`; **`TOOLS.md` patcher** for agent tool lists. |
+| **MCP** | New **`packages/m365-agent-cli-mcp`**: stdio MCP server that shells to the CLI for **`whoami`**, **`graph-search`** (with **`--json-hits`**), and **read-only** **`graph invoke` GET**. |
+| **Copilot & Viva** | Large **`copilot`** command tree (Graph-backed Copilot APIs) and **`viva`** (employee experience, tenant/user surfaces, meeting Engage, learning, insights—many paths are **beta**; see **`--help`** and [docs/GRAPH_SCOPES.md](docs/GRAPH_SCOPES.md)). |
+| **Meetings & recordings** | **`meeting`** commands for online meetings, **tenant-style recordings/transcripts** (`getAllRecordings` / `getAllTranscripts`), downloads, and **delta sync** with **`--state-file`** (including **initial delta without a date window** when only the organizer is required, per Graph delta docs). |
+| **Files & SharePoint** | Richer **OneDrive / SharePoint** flows (including large-file **upload sessions**, **drive batch** helpers, **async copy** polling improvements, and more **`files` / `sharepoint` / `site-pages`** options). |
+| **Excel & Office** | Deeper **Excel** on drive items (tables, charts, names, sessions, comments) and **Word / PowerPoint** drive-backed editing via shared **office-docs** plumbing. |
+| **Teams & Planner** | Many new or expanded **Teams** subcommands (messages, reactions, notifications, compose helpers with **`@` mentions**), **Planner**, **To Do**, **presence**, **Bookings**, **groups**, **org**, **people**, **insights**, **mailbox settings**, **approvals**. |
+| **Contacts & mail** | Expanded **contacts** (folders, delta, merge suggestions, extensions) and ongoing Graph alignment for mail/calendar paths. |
+| **Docs & compliance** | New guides (**agent workflows**, **Graph invoke boundaries**, **troubleshooting**, **Word/PowerPoint editing**, **delegation**), **Graph path inventory**, **permission feature matrix** generation, and **OpenAPI compliance** scripting for maintainers. |
+
+---
+
+### Packaging and OpenClaw (for users who use skills / agents)
+
+- The **npm package** now ships **`skills/m365-agent-cli/SKILL.md`**, **`skills/README.md`**, **`packaging/tools-md-snippet.md`**, and the installer scripts **`scripts/install-tools-md.mjs`** and **`scripts/install-openclaw-skill.mjs`**, so a normal **`npm install -g m365-agent-cli`** includes the same skill metadata the repo uses.
+- **`npm run install-tools-md -- <path-to-TOOLS.md>`** (or **`node scripts/install-tools-md.mjs …`**) updates one **HTML-comment–delimited** block inside your **`TOOLS.md`** so you do not get duplicate snippets on re-run.
+- **Postinstall is opt-in:** if **`OPENCLAW_SKILLS_DIR`** is set, **`npm install`** copies the bundled skill into that directory; if it is unset, postinstall does nothing (safe for CI and minimal installs).
+
+---
+
+### MCP server (Model Context Protocol)
+
+- New workspace package **`packages/m365-agent-cli-mcp`** (see its **README**): run a small **Node** stdio server that exposes tools such as **`m365_whoami`**, **`m365_graph_search`**, and a read-only **`m365_graph_invoke_get`** wrapper around **`m365-agent-cli graph invoke`**.
+- Configure your MCP client with the **`M365_AGENT_CLI_BIN`** / config paths described in **`packages/m365-agent-cli-mcp/README.md`** so the server invokes **your** CLI binary and config directory.
+
+---
+
+### Microsoft Graph: new or substantially expanded commands
+
+Use **`m365-agent-cli <command> --help`** for exact flags; permissions are summarized in **[docs/GRAPH_SCOPES.md](docs/GRAPH_SCOPES.md)**.
+
+- **`approvals`** — Approval workflows (beta Graph), including steps and responses where exposed by the CLI.
+- **`copilot`** — Broad surface for **Microsoft 365 Copilot**-related Graph APIs (retrieval, search, chat, packages, meeting insights, interaction export, etc.); many operations need **beta** endpoints and explicit consent.
+- **`viva`** — **Microsoft Viva / employee experience**: user and tenant-oriented subcommands (learning, insights, roles, work hours/locations, meeting Engage, tenant admin paths). Subcommands are split across **`viva`**, **`viva-extra-subcommands`**, and **`viva-tenant-subcommands`** in the codebase; the root CLI presents them under **`viva`**.
+- **`meeting`** — Online meetings, **recordings** and **transcripts** (per-meeting and **getAllRecordings** / **getAllTranscripts** rollups), **content download**, and **delta** sync with **`--state-file`**.
+- **`groups`** — Group-oriented Graph operations exposed by the CLI.
+- **`insights`** — Item insights / followed sites–style operations (as implemented in this release).
+- **`org`** — Organization directory lookups (as implemented in this release).
+- **`people`** — People / profile-related Graph helpers.
+- **`mailbox-settings`** — Mailbox settings (automatic replies, regional options, etc., per implemented flags).
+- **`word`** / **`powerpoint`** — Entry points that register **drive-backed** document flows (see **[docs/WORD_POWERPOINT_EDITING.md](docs/WORD_POWERPOINT_EDITING.md)**).
+- **`excel`** — Expanded workbook/worksheet/table/chart/range/session/comments coverage on drive items.
+- **`teams`** — Expanded channel and chat messaging, replies, reactions, activity notifications, and **mention** ergonomics (**`--at userId:displayName`**) for **`--text`** bodies.
+- **`files`** — Upload sessions, batch operations, copy/move with monitoring, and related Graph client improvements.
+- **`sharepoint`** / **`site-pages`** — Deeper site, list, and page helpers.
+- **`planner`** / **`todo`** — More plans, buckets, tasks, and lists (including delta and open extensions where supported).
+- **`contacts`** — Folders, delta, photos, attachments, open extensions, merge suggestions.
+- **`graph-search`** — **`--json-hits`** for **flattened** search hits suitable for scripts and MCP.
+- **`graph`** / **`graph-calendar`** — Invoke, batch, and calendar helpers aligned with new **[docs/GRAPH_INVOKE_BOUNDARIES.md](docs/GRAPH_INVOKE_BOUNDARIES.md)** guidance (paths relative to **`GRAPH_BASE_URL`**, use **`-X` / `--method`** for HTTP method).
+
+Under the hood, large additions landed in **`src/lib/graph-client.ts`** (including async job polling and drive batch patterns), **`graph-teams-client.ts`**, **`graph-excel-client.ts`**, **`copilot-graph-client.ts`**, **`graph-viva-*.ts`**, **`graph-meeting-recordings-client.ts`**, **`graph-delta-state-file.ts`**, and many more libraries—see **[docs/GRAPH_PATH_INVENTORY.json](docs/GRAPH_PATH_INVENTORY.json)** for a generated index of Graph call sites.
+
+---
+
+### Agent-friendly scripting and safety
+
+- **[docs/AGENT_WORKFLOWS.md](docs/AGENT_WORKFLOWS.md)** — End-to-end patterns: auth, **`--read-only`**, default drive roots, **delta** with **`--state-file`**, Teams and files, Word/PowerPoint round-trips, search → drive item.
+- **[docs/CLI_SCRIPTING_APPENDIX.md](docs/CLI_SCRIPTING_APPENDIX.md)** and generated **[docs/CLI_SCRIPTING_INVENTORY.md](docs/CLI_SCRIPTING_INVENTORY.md)** — Refresh with **`npm run inventory:scripting`**: maps commands to **`--json`** support and **`checkReadOnly`** behavior so agents know what is safe to run.
+- **`counter --json`** — Stable JSON success payload for trivial automation checks.
+- **Teams mentions** — For **`channel-message-send`**, **`channel-message-reply`**, **`chat-message-send`**, and **`chat-message-reply`**, repeatable **`--at userId:displayName`** pairs with **`@displayName`** in **`--text`** produce compatible **`mentions`** payloads.
+
+---
+
+### Authentication, cache, and scopes
+
+- **Delegated scopes** in **`src/lib/graph-oauth-scopes.ts`** were extended for new areas (Copilot packages, meeting recordings/transcripts, approvals, app catalog, learning, engagement roles, etc.); duplicates were cleaned up where noted in review.
+- **Token cache** behavior and **`M365_AGENT_CLI_CONFIG_DIR`** handling were tightened (prefer predictable, absolute config dirs when overriding).
+- If you use **only a subset** of features, you can still **`login`** once; for **Copilot**, **Viva beta**, **recordings**, or **approvals**, expect to **add permissions in Entra** and **re-consent** as needed.
+
+---
+
+### Reliability, tests, and CI
+
+- **Tests** run with **`--isolate`** in **`npm run test:coverage`** to reduce **`mock.module`** and **`fetch`** leakage between files; many **`fetch`** mocks use **`as unknown as typeof fetch`** for TypeScript compatibility with DOM **`fetch`** typing.
+- **Graph auth tests** restore real module implementations after mocks; disk-cache cases remain in **`src/test/auth.test.ts`** without a duplicate **`zzz-*`** file.
+- **Lib-only coverage gate** (**`scripts/check-coverage-lib.mjs`**) measures **`src/lib/**`** (excluding **`ews-client.ts`**) with correct **LF / DA** merging for duplicate **`SF:`** records; **`scripts/report-lib-coverage-gaps.mjs`** lists the worst-covered files. CI **`COVERAGE_MIN_LINES_LIB`** is **50%** (see **`.github/workflows/ci.yml`** and **`.github/workflows/release.yml`**—they stay aligned).
+- Maintainer scripts: **`graph-call-inventory.mjs`**, **`graph-openapi-compliance.mjs`**, **`generate-graph-permission-feature-matrix.ts`**, **`run-bun-test.mjs`** improvements.
+
+---
+
+### Documentation added or expanded
+
+- **[docs/GRAPH_INVOKE_BOUNDARIES.md](docs/GRAPH_INVOKE_BOUNDARIES.md)** — What **`graph invoke`** is for, path rules, and beta caveats.
+- **[docs/GRAPH_TROUBLESHOOTING.md](docs/GRAPH_TROUBLESHOOTING.md)** — Common Graph errors and fixes.
+- **[docs/GRAPH_PRODUCT_PARITY_MATRIX.md](docs/GRAPH_PRODUCT_PARITY_MATRIX.md)**, **[docs/GRAPH_WRAPPER_GAP_AUDIT.md](docs/GRAPH_WRAPPER_GAP_AUDIT.md)** — Product and wrapper coverage views.
+- **[docs/GRAPH_PERMISSION_FEATURE_MATRIX.md](docs/GRAPH_PERMISSION_FEATURE_MATRIX.md)** — Generated permission × feature matrix (see **`npm run docs:graph-permission-matrix`**).
+- **[docs/PERSONAL_ASSISTANT_DELEGATION.md](docs/PERSONAL_ASSISTANT_DELEGATION.md)**, **[docs/PHASE6_EWS_REMOVAL.md](docs/PHASE6_EWS_REMOVAL.md)** — Roadmap and delegation notes.
+- **[docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md)**, **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**, **[README.md](README.md)** — Updated for the larger surface.
+
+---
+
+### Upgrading from 2026.4.50
+
+1. **Install:** `npm install -g m365-agent-cli@latest` (or `m365-agent-cli update` if you use the self-update path).
+2. **Scopes:** open **[docs/GRAPH_SCOPES.md](docs/GRAPH_SCOPES.md)** and your Entra app; add permissions for any new areas you need (Copilot, Viva beta, **OnlineMeetingRecording.Read.All**, **OnlineMeetingTranscript.Read.All**, approvals, etc.), then run **`m365-agent-cli login`** again.
+3. **Agents:** optionally set **`OPENCLAW_SKILLS_DIR`** so postinstall installs the bundled skill; configure **MCP** via **`packages/m365-agent-cli-mcp/README.md`** if you use Claude Desktop / Cursor / other MCP hosts.
+4. **Graph invoke in scripts:** use **`graph invoke -X GET "/me/..."`** (path without duplicating **`/v1.0`**); see **[docs/GRAPH_INVOKE_BOUNDARIES.md](docs/GRAPH_INVOKE_BOUNDARIES.md)**.
+
+### Compare on GitHub
+
+**`v2026.4.50...v2026.5.50`** — [compare on GitHub](https://github.com/markus-lassfolk/m365-agent-cli/compare/v2026.4.50...v2026.5.50) after the tag exists.
 
 ---
 
