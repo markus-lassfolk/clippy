@@ -56,10 +56,11 @@ server.registerTool(
     }
   },
   async ({ query, preset }) => {
-    const args = ['graph-search', query, '--json-hits'];
+    const args = ['graph-search', '--json-hits'];
     if (preset) {
       args.push('--preset', preset);
     }
+    args.push('--', query);
     const text = runM365(args);
     return { content: [{ type: 'text', text }] };
   }
