@@ -1,12 +1,30 @@
+import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { type AttendeeBase, type FindMeetingTimesRequest, findMeetingTimes } from '../lib/graph-schedule.js';
+import { buildFindMeetingTimesLocationConstraint } from '../lib/meeting-location-constraint.js';
 
 export const suggestCommand = new Command('suggest')
   .description('AI meeting time suggestions')
   .option('--attendees <emails>', 'Comma-separated email addresses to invite')
   .option('--duration <duration>', 'Duration (e.g., 30m, 1h)', '30m')
   .option('--days <days>', 'Number of days to check from now', '5')
+  .option('--suggest-locations', 'Ask findMeetingTimes to suggest locations (locationConstraint.suggestLocation)')
+  .option('--require-meeting-location', 'Require a resolved location (locationConstraint.isRequired)')
+  .option(
+    '--meeting-location <spec>',
+    'Location constraint entry: displayName, room@domain, or "Name|room@domain" (repeatable)',
+    (v: string, prev: string[]) => [...prev, v],
+    [] as string[]
+  )
+  .option(
+    '--resolve-location-availability',
+    'Set resolveAvailability on locationConstraint.locations entries (room mailbox resolution)'
+  )
+  .option(
+    '--find-meeting-json <path>',
+    'Merge JSON object into the findMeetingTimes request (overrides same top-level keys)'
+  )
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Graph access token (bypass interactive auth)')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -16,6 +34,11 @@ export const suggestCommand = new Command('suggest')
       attendees?: string;
       duration: string;
       days: string;
+      suggestLocations?: boolean;
+      requireMeetingLocation?: boolean;
+      meetingLocation?: string[];
+      resolveLocationAvailability?: boolean;
+      findMeetingJson?: string;
       json?: boolean;
       token?: string;
       identity?: string;
@@ -57,7 +80,6 @@ export const suggestCommand = new Command('suggest')
       const endDateTime = new Date(startDateTime);
       endDateTime.setDate(startDateTime.getDate() + days);
 
-      // dateTime should not include Z/offset - keep dateTime and timeZone separate
       const startDateTimeISO = startDateTime.toISOString().replace('Z', '');
       const endDateTimeISO = endDateTime.toISOString().replace('Z', '');
 
@@ -70,7 +92,7 @@ export const suggestCommand = new Command('suggest')
           }))
         : [];
 
-      const request: FindMeetingTimesRequest = {
+      let request: FindMeetingTimesRequest = {
         attendees: attendeesList.length > 0 ? attendeesList : undefined,
         meetingDuration: durationStr,
         timeConstraint: {
@@ -90,8 +112,29 @@ export const suggestCommand = new Command('suggest')
         },
         isOrganizerOptional: false,
         returnSuggestionReasons: true,
-        minimumAttendeePercentage: 100
+        minimumAttendeePercentage: 100,
+        locationConstraint: buildFindMeetingTimesLocationConstraint({
+          suggestLocations: options.suggestLocations,
+          locationRequired: options.requireMeetingLocation,
+          resolveLocationAvailability: options.resolveLocationAvailability,
+          meetingLocation: options.meetingLocation ?? []
+        })
       };
+
+      if (options.findMeetingJson?.trim()) {
+        try {
+          const extra = JSON.parse(await readFile(options.findMeetingJson.trim(), 'utf8')) as Record<string, unknown>;
+          request = { ...request, ...extra } as FindMeetingTimesRequest;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Invalid --find-meeting-json file';
+          if (options.json) {
+            console.log(JSON.stringify({ error: message }, null, 2));
+          } else {
+            console.error(`Error: ${message}`);
+          }
+          process.exit(1);
+        }
+      }
 
       const result = await findMeetingTimes(authResult.token, request, options.user);
 
@@ -147,6 +190,13 @@ export const suggestCommand = new Command('suggest')
             const email = attendee.attendee?.emailAddress?.address || 'Unknown';
             const status = attendee.availability || 'Unknown';
             console.log(`    - ${email}: ${status}`);
+          }
+        }
+        if (suggestion.locations && suggestion.locations.length > 0) {
+          console.log('  Suggested locations:');
+          for (const loc of suggestion.locations) {
+            const bits = [loc.displayName, loc.locationEmailAddress].filter(Boolean);
+            console.log(`    - ${bits.join(' · ') || '(unspecified)'}`);
           }
         }
         console.log();

@@ -72,6 +72,12 @@ These commonly require **admin consent** in tenant consent policies (especially 
 
 ---
 
+## `viva` command (Graph beta)
+
+Subcommands under **`m365-agent-cli viva`** call **`https://graph.microsoft.com/beta`** (`workingTimeSchedule`, `startWorkingTime` / `endWorkingTime`, `settings/itemInsights`, `employeeExperience/assignedRoles`). **Delegated permissions and availability vary by tenant and API version**; some Microsoft Learn pages describe **application-only** permissions for work-time APIs. If calls return **403** or **404**, confirm the endpoint is enabled for your tenant, use **`graph invoke --beta`** for one-off probes, and extend your app registration with any additional **beta** delegated permissions Graph documents for the specific operation.
+
+---
+
 ## Related docs
 
 - [`ENTRA_SETUP.md`](./ENTRA_SETUP.md) — portal steps and automated scripts  

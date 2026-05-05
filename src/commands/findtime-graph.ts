@@ -4,7 +4,12 @@
  */
 
 import { graphEventStartMs } from '../lib/graph-calendar-recurrence.js';
-import { type AttendeeBase, findMeetingTimes, getSchedule } from '../lib/graph-schedule.js';
+import {
+  type AttendeeBase,
+  type FindMeetingTimesRequest,
+  findMeetingTimes,
+  getSchedule
+} from '../lib/graph-schedule.js';
 
 /** Each char in availabilityView: 0=free, 1–5=busy/tentative/OOF/etc. */
 function padAvailabilityView(view: string, len: number): string {
@@ -43,6 +48,8 @@ export async function runFindTimeGraph(opts: {
   label: string;
   mailbox?: string;
   json?: boolean;
+  locationConstraint?: FindMeetingTimesRequest['locationConstraint'];
+  findMeetingMerge?: Partial<FindMeetingTimesRequest>;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const attendeePayload: AttendeeBase[] = opts.emails.map((address) => ({
     type: 'required' as const,
@@ -52,26 +59,28 @@ export async function runFindTimeGraph(opts: {
   const startDateTime = opts.start.toISOString().replace('Z', '');
   const endDateTime = opts.end.toISOString().replace('Z', '');
 
-  const result = await findMeetingTimes(
-    opts.token,
-    {
-      attendees: attendeePayload,
-      meetingDuration: `PT${opts.durationMinutes}M`,
-      timeConstraint: {
-        activityDomain: 'work',
-        timeSlots: [
-          {
-            start: { dateTime: startDateTime, timeZone: 'UTC' },
-            end: { dateTime: endDateTime, timeZone: 'UTC' }
-          }
-        ]
-      },
-      minimumAttendeePercentage: 100,
-      isOrganizerOptional: false,
-      returnSuggestionReasons: true
+  const baseRequest: FindMeetingTimesRequest = {
+    attendees: attendeePayload,
+    meetingDuration: `PT${opts.durationMinutes}M`,
+    timeConstraint: {
+      activityDomain: 'work',
+      timeSlots: [
+        {
+          start: { dateTime: startDateTime, timeZone: 'UTC' },
+          end: { dateTime: endDateTime, timeZone: 'UTC' }
+        }
+      ]
     },
-    opts.mailbox?.trim() || undefined
-  );
+    minimumAttendeePercentage: 100,
+    isOrganizerOptional: false,
+    returnSuggestionReasons: true,
+    ...(opts.locationConstraint ? { locationConstraint: opts.locationConstraint } : {})
+  };
+  const merged: FindMeetingTimesRequest = opts.findMeetingMerge
+    ? ({ ...baseRequest, ...opts.findMeetingMerge } as FindMeetingTimesRequest)
+    : baseRequest;
+
+  const result = await findMeetingTimes(opts.token, merged, opts.mailbox?.trim() || undefined);
 
   if (!result.ok || !result.data) {
     return { ok: false, error: result.error?.message || 'Failed to find meeting times' };
@@ -85,7 +94,8 @@ export async function runFindTimeGraph(opts: {
         start: s.meetingTimeSlot?.start?.dateTime,
         end: s.meetingTimeSlot?.end?.dateTime,
         confidence: s.confidence,
-        reason: s.suggestionReason
+        reason: s.suggestionReason,
+        locations: s.locations
       })) ?? [];
     console.log(
       JSON.stringify(
@@ -147,6 +157,12 @@ export async function runFindTimeGraph(opts: {
       const conf = s.confidence !== undefined ? ` (${s.confidence}% confidence)` : '';
       console.log(`    🟢 ${startLabel} – ${endLabel}${conf}`);
       if (s.suggestionReason) console.log(`       ${s.suggestionReason}`);
+      if (s.locations && s.locations.length > 0) {
+        const locBits = s.locations
+          .map((l) => [l.displayName, l.locationEmailAddress].filter(Boolean).join(' · '))
+          .filter(Boolean);
+        if (locBits.length > 0) console.log(`       Locations: ${locBits.join('; ')}`);
+      }
     }
   }
   console.log();
