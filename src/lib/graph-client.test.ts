@@ -286,4 +286,67 @@ describe('pollGraphAsyncJob', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('accepts onedrive.com and 1drv.com monitor hosts', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ status: 'completed' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as unknown as typeof fetch;
+
+      const a = await pollGraphAsyncJob(token, 'https://contoso-my.sharepoint.com/personal/x/_layouts/15/monitor', {
+        maxAttempts: 1
+      });
+      const b = await pollGraphAsyncJob(token, 'https://api.onedrive.com/v1.0/monitor/y', { maxAttempts: 1 });
+      const c = await pollGraphAsyncJob(token, 'https://x.1drv.com/monitor', { maxAttempts: 1 });
+      expect(a.ok && b.ok && c.ok).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('rejects non-HTTPS monitor URLs', async () => {
+    const r = await pollGraphAsyncJob(token, 'http://contoso.sharepoint.com/x');
+    expect(r.ok).toBe(false);
+    expect(r.error?.message).toContain('HTTPS');
+  });
+
+  it('returns error when async job reports failed', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ status: 'failed', error: { code: 'x' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as unknown as typeof fetch;
+
+      const r = await pollGraphAsyncJob(token, 'https://contoso.sharepoint.com/monitor', { maxAttempts: 1 });
+      expect(r.ok).toBe(false);
+      expect(r.error?.message).toContain('code');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('times out when status stays in progress', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ status: 'inProgress' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as unknown as typeof fetch;
+
+      const r = await pollGraphAsyncJob(token, 'https://contoso.sharepoint.com/monitor', {
+        maxAttempts: 2,
+        delayMs: 1
+      });
+      expect(r.ok).toBe(false);
+      expect(r.error?.message).toMatch(/timeout|timed out/i);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

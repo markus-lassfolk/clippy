@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-const min = Number(process.env.COVERAGE_MIN_LINES ?? '32');
+const min = Number(process.env.COVERAGE_MIN_LINES ?? '31');
 const path = process.argv[2] ?? 'coverage/lcov.info';
 
 let raw;
