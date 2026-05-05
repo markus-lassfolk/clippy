@@ -14,6 +14,9 @@ if (args.length === 0) {
 function run(cmd, cmdArgs) {
   const r = spawnSync(cmd, cmdArgs, { stdio: 'inherit' });
   if (r.error?.code === 'ENOENT') return 'missing';
+  if (r.error) {
+    console.error(`Error spawning ${cmd}:`, r.error.message);
+  }
   process.exit(r.status ?? 1);
 }
 
