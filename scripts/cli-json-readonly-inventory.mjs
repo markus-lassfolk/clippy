@@ -19,7 +19,9 @@ const skipFiles = new Set([
   'drafts-graph.ts',
   'create-event-graph.ts',
   'findtime-graph.ts',
-  'update-event-graph.ts'
+  'update-event-graph.ts',
+  'viva-extra-subcommands.ts',
+  'viva-tenant-subcommands.ts'
 ]);
 const files = readdirSync(commandsDir)
   .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !skipFiles.has(f))
