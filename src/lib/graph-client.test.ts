@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { mkdtemp, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { callGraphAt, GraphApiError, uploadLargeFile } from './graph-client.js';
+import { callGraphAt, GraphApiError, pollGraphAsyncJob, uploadLargeFile } from './graph-client.js';
 
 const token = 'test-token';
 const baseUrl = 'https://graph.microsoft.com/v1.0';
@@ -238,6 +238,50 @@ describe('callGraphAt throttling and errors', () => {
         expect(e).toBeInstanceOf(GraphApiError);
         expect((e as GraphApiError).requestId).toBe('req-abc-123');
       }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('pollGraphAsyncJob', () => {
+  it('rejects monitor URLs that are not Graph or SharePoint/OneDrive HTTPS hosts', async () => {
+    const r = await pollGraphAsyncJob(token, 'https://evil.example/status');
+    expect(r.ok).toBe(false);
+    expect(r.error?.message).toContain('not allowed');
+  });
+
+  it('polls a SharePoint-style async monitor URL until completed', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ status: 'completed', resourceId: 'rid-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as unknown as typeof fetch;
+
+      const r = await pollGraphAsyncJob(token, 'https://contoso.sharepoint.com/_api/v2.0/monitor/abc', {
+        maxAttempts: 2,
+        delayMs: 1
+      });
+      expect(r.ok).toBe(true);
+      expect(r.data?.resourceId).toBe('rid-1');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('accepts graph.microsoft.com monitor URLs', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ status: 'succeeded' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as unknown as typeof fetch;
+
+      const r = await pollGraphAsyncJob(token, 'https://graph.microsoft.com/v1.0/monitor/x', { maxAttempts: 1 });
+      expect(r.ok).toBe(true);
     } finally {
       globalThis.fetch = originalFetch;
     }
