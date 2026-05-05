@@ -26,6 +26,10 @@ function shouldNoopWhenNoTargetDir() {
   const cmd = process.env.npm_command;
   if (cmd === 'install' || cmd === 'ci') return true;
   if (process.env.CI) return true;
+  // Bun may omit both npm_lifecycle_event and npm_command; detect via user agent or executable name.
+  const agent = process.env.npm_config_user_agent || '';
+  if (agent.includes('bun')) return true;
+  if (process.versions.bun) return true;
   return false;
 }
 
