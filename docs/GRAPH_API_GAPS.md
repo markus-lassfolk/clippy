@@ -2,7 +2,7 @@
 
 **Purpose:** Track **Graph API areas** that are **implemented** in `m365-agent-cli`, **partially** covered, or **not** exposed, so we can prioritize work and set expectations.
 
-**Related:** [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md), [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md), [`GRAPH_SCOPES.md`](./GRAPH_SCOPES.md), [`GRAPH_PRODUCT_PARITY_MATRIX.md`](./GRAPH_PRODUCT_PARITY_MATRIX.md) (workloads ↔ commands), [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md) (invoke-only surfaces).
+**Related:** [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md), [`GRAPH_EWS_PARITY_MATRIX.md`](./GRAPH_EWS_PARITY_MATRIX.md), [`GRAPH_SCOPES.md`](./GRAPH_SCOPES.md), [`GRAPH_PRODUCT_PARITY_MATRIX.md`](./GRAPH_PRODUCT_PARITY_MATRIX.md) (workloads ↔ commands), [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md) (invoke-only surfaces), [`GRAPH_WRAPPER_GAP_AUDIT.md`](./GRAPH_WRAPPER_GAP_AUDIT.md) (consolidated gap backlog + hardening checklist).
 
 ---
 
@@ -25,20 +25,20 @@ Measurable exit criteria for workloads still **Partial** / **Gap**. Command refe
 | **Excel** | **`excel`** — worksheets, **range** / **range-patch** / **range-clear**, **used-range**, **tables** (list/get + **table-add|patch|delete**, rows add/**table-row-patch|delete**, **table-columns|column-get|column-patch**), **pivot-tables** + **pivot-table-*** refresh, **names** + **name-get** + **worksheet-names** / **worksheet-name-get**, charts, **workbook-get**, **application-calculate**, **session-create|refresh|close**, optional **`--session-id`** on mutating calls, **`comments-*`** (beta) | — | **Implemented** for script/agent workbook automation; workbook **images** / **shapes** / deep **range()** method graph → **`graph invoke`** (see [`CLI_REFERENCE.md`](./CLI_REFERENCE.md)). |
 | **Word (.docx)** | **`word`**: full **`files`** item mirror incl. **`list-item`**, **`follow`**/**`unfollow`**, **`sensitivity-assign`**/**`sensitivity-extract`**, **`retention-label`**/**`retention-label-remove`**, **`permanent-delete`** (+ **`preview`** … **`activities`**) | — | **Implemented** for Graph-documented drive-item APIs; **Gap** = in-document threaded comments (no OpenAPI path). Folder **list**/**`delta`**/**`search`** → **`files`**. |
 | **PowerPoint (.pptx)** | **`powerpoint`**: same mirror as **`word`** | — | **Implemented** on Graph; **Gap** = slide/body comments / `…/presentation/…` OM; beta → **`graph invoke`** — **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)** + watchlist. |
-| **Teams** | **`teams`** — as below + **app-catalog** / **app-catalog-get**, **apps** / **app-get** / **app-add** / **app-patch** / **app-upgrade** / **app-delete**, **chat-apps** / **chat-app-***, **user-apps** / **user-app-*** (personal scope) | RSC / tenant admin | **`teams list --user`** = **`GET /users/{id}/joinedTeams`**; chat **list** stays **`/me/chats`**; **`POST /users/{id}/teamwork/sendActivityNotification`** app-only → **`graph invoke`**; admin/RSC/shifts → **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)**. |
+| **Teams** | **`teams`** — as below + **app-catalog** / **app-catalog-get**, **apps** / **app-get** / **app-add** / **app-patch** / **app-upgrade** / **app-delete**, **chat-apps** / **chat-app-***, **user-apps** / **user-app-*** (personal scope) | RSC / tenant admin | **`teams list --user`** = **`GET /users/{id}/joinedTeams`**; chat **list** stays **`/me/chats`**; **`POST /users/{id}/teamwork/sendActivityNotification`** → **`teams activity-notify --user-id`** (typically app **`--token`**); admin/RSC/shifts → **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)**. |
 | **Presence** | **`presence`** — **`me`** / **`user`** / **`bulk`**, session **set/clear**, **`status-message-set`**, **`preferred-set`** / **`preferred-clear`**, **`clear-location`** | — | **subscription** automation via **`subscribe`** + **`serve`** (see command help). |
 | **Search** | **`graph-search`**: presets / `--types`, **`searchRequest`** flags + **`--merge-json-file`**, raw **`--body-file`** | — | **Implemented** for `POST /search/query` automation; uncommon **`resultTemplateOptions`** / **`sharePointOneDriveOptions`** shapes → **`--merge-json-file`** or **`--body-file`**. |
 | **Files / SharePoint** | **`files`** (delta, **`shared-with-me`**, **`thumbnails`**, copy/move, drive flags, **`invite`**, **`permissions`**, **`permission-remove`**, **`permission-update`**, **`checkout`** / **`checkin`**), **`sharepoint`** (**`resolve-site`**, **`get-site`**, **`drives`**, **`lists`**, **`get-list`**, **`columns`**, **`items`** with OData paging, get/delete item, items-delta, **`--json-file`** on create/update, followed sites), **`site-pages`**, **`excel`** (workbook object model incl. comments beta), **`teams channel-files-folder`** | — | Core drive + site libraries + list schema + list sync + sharing + Excel on-item workbook APIs wrapped; long tail stays **`graph invoke`**. |
 | **Copilot** | **`copilot`** | — | Graph `/copilot` OpenAPI-aligned (incl. `$count`, `/copilot/users` **`ai-user`**, root/communications/reports nav, settings/admin deletes, meeting insight mutations, activity-feed root + counts); preview/beta labeled in help. |
 | **Directory / rooms** | **`find`**, **`people`**, **`org`**, **`rooms`**, **`schedule`**, **`suggest`** | Admin directory | **Implemented** for delegated **Places** (lists, rooms in list, find w/ **query**, **get** place, **`find --rooms`**) + **People** (**`people list|get`**, **`/users/{id}/people`** with **`--user`**) + **org** (**`user`**, **`transitive-reports`**, manager, direct-reports). Tenant admin directory CRUD → **invoke**. |
 | **Bookings** | Full CRUD + reads + **publish** / **unpublish** / business create-delete | **`bookings staff-availability`** | **Implemented** for delegated Bookings v1; **`staff-availability`** stays **app-only** (`--token`). |
-| **Cloud Communications** | — | **All** | **[`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)** **invoke** recipes only. |
+| **Cloud Communications** (excl. wrapped meeting recordings/transcripts) | — | **invoke / out of scope** | **PSTN / Teams Phone** is **out of scope** for this CLI. Other communications APIs → **`graph invoke`** if approved — [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md). |
 | **Mail migration** | **`oof`**, **`rules`**, **`update-event`** (Graph id) | **`auto-reply`** (EWS) | **auto-reply** 1:1 Graph template UX = **not** a goal; see [`MIGRATION_TRACKING.md`](./MIGRATION_TRACKING.md). |
 | **Discovery / Insights** (Phase 1) | **`insights trending`** / **`used`** / **`shared`**, **`files recent`** / **`files activities`** / **`files preview`**, **`sharepoint followed-sites`** / **`follow`** / **`unfollow`** | — | Wraps **`/me/insights/*`**, **`/me/drive/recent`**, **`/drives/{id}/items/{id}/activities`**, **`/me/drive/items/{id}/preview`**, **`/me/followedSites`** (+`add`/`remove`). Reuses **`Sites.ReadWrite.All`** + **`Files.ReadWrite.All`**. |
 | **Outlook Groups** (Phase 2) | **`groups list`** / **`conversations`** / **`thread`** / **`posts`** / **`post-reply`** | — | Wraps **`/me/memberOf`** filtered to Microsoft 365 groups + **`/groups/{id}/conversations/threads/posts/reply`**. Reuses **`Group.ReadWrite.All`**. |
 | **Approvals** (Phase 2) | **`approvals list`** / **`get`** / **`steps`** / **`respond`** | — | Wraps **`/me/approvals`** + **`/steps`** (beta). Adds delegated **`ApprovalSolution.ReadWrite`** scope (canonical name; identifier `6768d3af-4562-48ff-82d2-c5e19eb21b9c`). A narrower **`ApprovalSolutionResponse.ReadWrite`** is available for read-and-respond only. |
 | **Meeting recordings & transcripts** (Phase 3) | **`meeting recordings`** / **`recording-download`** / **`recordings-all`** (+ `--delta`); **`meeting transcripts`** / **`transcript-download`** / **`transcripts-all`** | — | Wraps **`/me/onlineMeetings/{id}/recordings`** + **`/transcripts`**, **`getAllRecordings(...)`** / **`getAllTranscripts(...)`**, and **`recordings/delta()`** / **`transcripts/delta()`**. Adds **`OnlineMeetingRecording.Read.All`** (transcripts already have **`OnlineMeetingTranscript.Read.All`**). 403 typically means tenant Stream/Teams policy. |
-| **Teams activity feed** (Phase 3) | **`teams activity-notify`** | App-only `users/{id}/teamwork/sendActivityNotification` stays **`graph invoke`** | Wraps delegated **`POST /me/teamwork/sendActivityNotification`** + **`POST /chats/{id}/sendActivityNotification`**. Adds **`TeamsActivity.Send`**. |
+| **Teams activity feed** (Phase 3) | **`teams activity-notify`** | — | Wraps **`POST /me/teamwork/sendActivityNotification`**, **`POST /chats/{id}/sendActivityNotification`**, and **`POST /users/{id}/teamwork/sendActivityNotification`** (**`--user-id`**, typically application **`--token`**). Adds **`TeamsActivity.Send`**. |
 
 ---
 
@@ -177,10 +177,10 @@ Compare: **`workbook`** paths should return many hits; **`presentation`** on **d
 | Raw REST + JSON `$batch` | **Partial** | **`graph invoke`**, **`graph batch`** — escape hatch for any JSON Graph API |
 | Online meetings | **Implemented** | `meeting` |
 | To Do | **Implemented** | **`todo`** — task CRUD + **`todo delta`** + **`todo lists-delta`** (`lists/delta()`); long tail → **`graph invoke`** |
-| Contacts + delta / photo | **Implemented** | `contacts` |
+| Contacts + delta / photo + merge suggestions settings | **Implemented** | `contacts`; **`contacts merge-suggestions`** (Graph beta userSettings) |
 | Planner | **Implemented** | **`planner`** incl. beta **`plan-archive`** / **`plan-unarchive`**; **`planner delta`** |
 | Search (query) | **Implemented** | **`graph-search`** — presets / **`--types`**, **`--merge-json-file`**, **`--body-file`**, and flags for **`fields`**, **`contentSources`**, **`region`**, **`aggregationFilters`**, **`sortProperties`** (via **`--sort-json-file`**), **`enableTopResults`**, **`trimDuplicates`**; **`find`** stays directory/people |
-| Cloud communications (calls, PSTN, etc.) | **Gap** | Use **`graph invoke`** or dedicated apps; not wrapped |
+| Cloud communications (Graph voice/call control; **not** PSTN product scope) | **Gap** | **PSTN / Teams Phone** → **out of scope** (see [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md)). Other APIs → **`graph invoke`** if org-approved. |
 
 ---
 
@@ -214,11 +214,11 @@ Compare: **`workbook`** paths should return many hits; **`presentation`** on **d
 
 | Graph area | CLI | Notes |
 | --- | --- | --- |
-| **`GET /me/approvals`** | **Implemented** | **`approvals list`** — Approvals visible to the user (Teams Approvals app, Power Automate approvals). Beta. |
+| **`GET /me/approvals`** | **Implemented** | **`approvals list`** — Approvals visible to the user (Teams Approvals app, Power Automate approvals). Beta. Paging: **`--all`** (follow `@odata.nextLink`), **`--next <url>`**, JSON includes **`@odata.nextLink`** when present. |
 | **`GET /me/approvals/{id}`** | **Implemented** | **`approvals get`** |
 | **`GET /me/approvals/{id}/steps`** | **Implemented** | **`approvals steps`** |
 | **`PATCH /me/approvals/{id}/steps/{stepId}`** | **Implemented** | **`approvals respond <id> <stepId> --decision approve\|deny --justification "<text>"`** |
-| Cancel | **Gap** | No first-class action exposed in v1.0/beta as of writing — use **`graph invoke`** if your tenant exposes a `cancel` action. |
+| **`DELETE /me/approvals/{id}`** (owner cancel) | **Implemented** | **`approvals cancel <id>`** — optional **`--if-match`**; otherwise the CLI **`GET`**s the approval once for **`@odata.etag`**. |
 
 Scope: delegated **`ApprovalSolution.ReadWrite`** (canonical name; identifier `6768d3af-4562-48ff-82d2-c5e19eb21b9c`). A narrower **`ApprovalSolutionResponse.ReadWrite`** exists for read-and-respond only. Added to [`graph-oauth-scopes.ts`](../src/lib/graph-oauth-scopes.ts).
 
@@ -245,7 +245,7 @@ Scopes: **`OnlineMeetingRecording.Read.All`** (new) + **`OnlineMeetingTranscript
 | --- | --- | --- |
 | **`POST /me/teamwork/sendActivityNotification`** | **Implemented** | **`teams activity-notify`** — user-targeted ping (the bell). |
 | **`POST /chats/{id}/sendActivityNotification`** | **Implemented** | **`teams activity-notify --chat-id <id>`** — chat-scoped notification. |
-| **`POST /users/{id}/teamwork/sendActivityNotification`** | **Gap** | App-only path — stays **`graph invoke`**, see [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md). |
+| **`POST /users/{id}/teamwork/sendActivityNotification`** | **Implemented** | **`teams activity-notify --user-id <id>`** (typically **`--token`** with application access token); see [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md). |
 
 Scope: delegated **`TeamsActivity.Send`**.
 

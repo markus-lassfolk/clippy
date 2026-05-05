@@ -39,12 +39,13 @@
 | SharePoint followed sites | `sharepoint followed-sites`, `follow`, `unfollow` | `Sites.Read.All`, `Sites.ReadWrite.All` | `Sites.ReadWrite.All` |
 | Discovery / Insights | `insights` trending / used / shared, `files recent`, `files activities`, `files preview` | `Sites.Read.All`, `Sites.ReadWrite.All`, `Files.Read`, `Files.Read.All`, `Files.ReadWrite`, `Files.ReadWrite.All` | — |
 | Viva / employee experience (Graph beta) | `viva` — user + tenant `/employeeExperience` (communities, goals, learning, roles), work time + insights, admin/org itemInsights, workHoursAndLocations, meeting Engage Q&A | `User.Read`, `LearningAssignedCourse.Read.All`, `EngagementRole.Read`, `EngagementRole.Read.All`, `MailboxSettings.Read`, `MailboxSettings.ReadWrite` — tenant learning / communities / goals need product-specific admin-consented scopes per Microsoft; work-time mutations may be app-only (`Schedule-WorkingTime.*`) in some tenants | `EngagementRole.ReadWrite.All`, `MailboxSettings.ReadWrite`, `User.ReadWrite`, `User.ReadWrite.All` |
-| Approvals | `approvals` list / get / steps / respond — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite` | `ApprovalSolution.Read.All`, `ApprovalSolution.ReadWrite`, `ApprovalSolution.ReadWrite.All`, `ApprovalSolutionResponse.ReadWrite` | `ApprovalSolution.ReadWrite`, `ApprovalSolutionResponse.ReadWrite` |
-| Microsoft To Do | `todo` | `Tasks.Read`, `Tasks.ReadWrite` | `Tasks.ReadWrite` |
-| Planner & group-backed Teams | `planner`, `teams` members/channels/apps/tabs — broad group scope | `Group.Read.All`, `Group.ReadWrite.All` | `Group.ReadWrite.All` |
+| Approvals | `approvals` list / get / steps / respond / cancel (DELETE) — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite` | `ApprovalSolution.Read.All`, `ApprovalSolution.ReadWrite`, `ApprovalSolution.ReadWrite.All`, `ApprovalSolutionResponse.ReadWrite` | `ApprovalSolution.ReadWrite`, `ApprovalSolutionResponse.ReadWrite` |
+| Microsoft To Do | `todo` (incl. `attachment-session` list/get/patch/delete/content-*; `root` get/patch/delete for …/todo — destructive delete requires `--confirm`) | `Tasks.Read`, `Tasks.ReadWrite` | `Tasks.ReadWrite` |
+| Planner & group-backed Teams | `planner` (incl. `delete-plan-details`, `delete-task-details`), `teams` members/channels/apps/tabs — broad group scope | `Group.Read.All`, `Group.ReadWrite.All` | `Group.ReadWrite.All` |
 | Outlook Groups (Microsoft 365 groups) | `groups list`, `conversations`, `thread`, `posts`, `post-reply` | `Group.Read.All`, `Group.ReadWrite.All` | `Group.ReadWrite.All` |
-| Contacts (your mailbox) | `contacts` | `Contacts.Read`, `Contacts.ReadWrite` | `Contacts.ReadWrite` |
-| Contacts (shared mailbox) | `contacts --user` | `Contacts.Read.Shared`, `Contacts.ReadWrite.Shared` | `Contacts.ReadWrite.Shared` |
+| Contacts (your mailbox) | `contacts` (extensions: `-f/--folder`, `--child-folder` for nested contact folder paths) | `Contacts.Read`, `Contacts.ReadWrite` | `Contacts.ReadWrite` |
+| Contacts (shared mailbox) | `contacts --user` (extensions: `-f/--folder`, `--child-folder`) | `Contacts.Read.Shared`, `Contacts.ReadWrite.Shared` | `Contacts.ReadWrite.Shared` |
+| Contact merge suggestions (Graph beta) | `contacts merge-suggestions` get/set/delete — `/settings/contactMergeSuggestions` (see Microsoft Graph beta docs for exact permission names) | `User.Read`, `User.ReadWrite`, `User.Read.All` | `User.ReadWrite`, `User.ReadWrite.All` |
 | Online meetings | `meeting`, Teams links in `create-event` | `OnlineMeetings.Read`, `OnlineMeetings.ReadWrite` | `OnlineMeetings.ReadWrite` |
 | Meeting recordings | `meeting recordings`, `recording-download`, `recordings-all` (+ `--delta`) — tenant Stream/Teams policy applies | `OnlineMeetingRecording.Read.All` | — |
 | Meeting transcripts | `meeting transcripts`, `transcript-download`, `transcripts-all` (+ `--delta`) | `OnlineMeetingTranscript.Read.All` | — |
@@ -53,7 +54,7 @@
 | Teams channel messages | `teams messages`, read channel posts — often admin consent | `ChannelMessage.Read.All` | — |
 | Teams channel send | `teams channel-message-send`, replies, `channel-message-patch`, `channel-message-delete` (soft/hard), `tab-create` / `tab-update` / `tab-delete` | — | `ChannelMessage.Send` |
 | Teams chats (1:1 / group) | `teams chats`, messages, `chat-create`, `chat-member-add`, `chat-message-patch`, `chat-message-delete`, `chat-apps` / `chat-app-*` | `Chat.Read`, `Chat.ReadWrite` | `Chat.ReadWrite` |
-| Teams activity feed | `teams activity-notify` — POST /me/teamwork/sendActivityNotification or /chats/{id}/sendActivityNotification | — | `TeamsActivity.Send` |
+| Teams activity feed | `teams activity-notify` — POST /me/teamwork/sendActivityNotification, /chats/{id}/sendActivityNotification, or /users/{id}/teamwork/sendActivityNotification (--user-id; typically app token) | — | `TeamsActivity.Send` |
 | Teams membership (provision) | `teams team-member-add`, `teams channel-member-add` | — | `TeamMember.ReadWrite.All`, `TeamMember.ReadWriteNonGuestRole.All`, `ChannelMember.ReadWrite.All`, `Group.ReadWrite.All` |
 | Teams app catalog | `teams app-catalog`, `teams app-catalog-get` | `AppCatalog.Read.All`, `AppCatalog.Submit` | — |
 | Teams apps on a team | `teams apps`, `app-get`, `app-add`, `app-patch`, `app-upgrade`, `app-delete` | `Group.ReadWrite.All` | `Group.ReadWrite.All` |
@@ -156,10 +157,10 @@ Alphabetical **delegated** (and noted **application**) permissions referenced by
 | `TeamMember.ReadWriteNonGuestRole.All` | Teams membership (provision) | Non-guest variant |
 | `TeamsActivity.Send` | Teams activity feed | Activity notifications |
 | `TeamsAppInstallation.ReadWriteSelfForUser` | Teams apps (personal user scope) |  |
-| `User.Read` | Org hierarchy & profile; Profile / sign-in; Viva / employee experience (Graph beta) |  |
-| `User.Read.All` | Directory users; Org hierarchy & profile | Often admin consent |
-| `User.ReadWrite` | Profile / sign-in; Viva / employee experience (Graph beta) |  |
-| `User.ReadWrite.All` | Viva / employee experience (Graph beta) |  |
+| `User.Read` | Contact merge suggestions (Graph beta); Org hierarchy & profile; Profile / sign-in; Viva / employee experience (Graph beta) |  |
+| `User.Read.All` | Contact merge suggestions (Graph beta); Directory users; Org hierarchy & profile | Often admin consent |
+| `User.ReadWrite` | Contact merge suggestions (Graph beta); Profile / sign-in; Viva / employee experience (Graph beta) |  |
+| `User.ReadWrite.All` | Contact merge suggestions (Graph beta); Viva / employee experience (Graph beta) |  |
 
 ---
 

@@ -12,7 +12,10 @@ if (args.length === 0) {
 }
 
 function run(cmd, cmdArgs) {
-  const r = spawnSync(cmd, cmdArgs, { stdio: 'inherit' });
+  const r = spawnSync(cmd, cmdArgs, {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'test' }
+  });
   if (r.error?.code === 'ENOENT') return 'missing';
   if (r.error) {
     console.error(`Error spawning ${cmd}:`, r.error.message);
@@ -23,6 +26,10 @@ function run(cmd, cmdArgs) {
 const miss = run('bun', args);
 if (miss === 'missing') {
   const pinned = ['--yes', 'bun@1.3.11', ...args];
-  const r2 = spawnSync('npx', pinned, { stdio: 'inherit', shell: process.platform === 'win32' });
+  const r2 = spawnSync('npx', pinned, {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+    env: { ...process.env, NODE_ENV: 'test' }
+  });
   process.exit(r2.status ?? 1);
 }

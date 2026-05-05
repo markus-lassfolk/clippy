@@ -21,28 +21,38 @@ import {
   deleteAttachment,
   deleteChecklistItem,
   deleteTask,
+  deleteTaskAttachmentSession,
+  deleteTaskAttachmentSessionContent,
   deleteTaskLinkedResource,
   deleteTaskOpenExtension,
   deleteTodoList,
   deleteTodoListOpenExtension,
+  deleteTodoNavigationResource,
   getChecklistItem,
   getTask,
   getTaskAttachment,
   getTaskAttachmentContent,
+  getTaskAttachmentSession,
+  getTaskAttachmentSessionContent,
   getTaskLinkedResource,
   getTaskOpenExtension,
   getTasks,
   getTodoList,
   getTodoListOpenExtension,
   getTodoLists,
+  getTodoNavigationResource,
   getTodoListsDeltaPage,
   getTodoListsPage,
   getTodoTasksDeltaPage,
   listAttachments,
+  listTaskAttachmentSessions,
   listTaskChecklistItems,
   listTaskLinkedResources,
   listTaskOpenExtensions,
   listTodoListOpenExtensions,
+  patchTaskAttachmentSession,
+  patchTodoNavigationResource,
+  putTaskAttachmentSessionContent,
   removeLinkedResourceByWebUrl,
   setTaskOpenExtension,
   setTodoListOpenExtension,
@@ -1443,6 +1453,410 @@ todoCommand
     }
   );
 
+const todoAttachmentSessionCommand = new Command('attachment-session').description(
+  'Task attachment sessions (Graph .../attachmentSessions). v1 has no POST on this collection; sessions usually come from large-file upload (`todo upload-attachment-large` / createUploadSession).'
+);
+
+todoAttachmentSessionCommand
+  .command('list')
+  .description('List attachment sessions for a task (paged collection)')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (opts: { list: string; task: string; json?: boolean; token?: string; identity?: string; user?: string }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await listTaskAttachmentSessions(auth.token!, listId, opts.task, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else {
+        for (const s of r.data) {
+          console.log(`- ${s.id}${s.expirationDateTime ? ` (expires ${s.expirationDateTime})` : ''}`);
+        }
+      }
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('get')
+  .description('Get one attachment session by id')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (opts: {
+      list: string;
+      task: string;
+      session: string;
+      json?: boolean;
+      token?: string;
+      identity?: string;
+      user?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await getTaskAttachmentSession(auth.token!, listId, opts.task, opts.session, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(JSON.stringify(r.data, null, 2));
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('patch')
+  .description('PATCH an attachment session (JSON merge from file)')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .requiredOption('--json-file <path>', 'JSON patch body')
+  .option('--if-match <etag>', 'If-Match (optional concurrency)')
+  .option('--json', 'Echo updated session as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        session: string;
+        jsonFile: string;
+        ifMatch?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const raw = await readFile(opts.jsonFile, 'utf-8');
+      const patch = JSON.parse(raw) as Record<string, unknown>;
+      const r = await patchTaskAttachmentSession(
+        auth.token!,
+        listId,
+        opts.task,
+        opts.session,
+        patch,
+        opts.user,
+        opts.ifMatch
+      );
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`\n\u2705 Patched attachment session: ${opts.session}\n`);
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('delete')
+  .description('Delete an attachment session')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .option('--confirm', 'Confirm without prompt')
+  .option('--if-match <etag>', 'If-Match (optional concurrency)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        session: string;
+        confirm?: boolean;
+        ifMatch?: string;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      if (!opts.confirm) {
+        console.log(`Delete attachment session ${opts.session}? Run with --confirm.`);
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await deleteTaskAttachmentSession(
+        auth.token!,
+        listId,
+        opts.task,
+        opts.session,
+        opts.user,
+        opts.ifMatch
+      );
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(`\n\u2705 Deleted attachment session: ${opts.session}\n`);
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('content-get')
+  .description('GET binary content for an attachment session (writes file)')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .requiredOption('-o, --output <path>', 'Write bytes to this path')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (opts: {
+      list: string;
+      task: string;
+      session: string;
+      output: string;
+      token?: string;
+      identity?: string;
+      user?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await getTaskAttachmentSessionContent(auth.token!, listId, opts.task, opts.session, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      await writeFile(opts.output, r.data);
+      console.log(`Wrote ${r.data.byteLength} bytes to ${opts.output}`);
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('content-put')
+  .description('PUT binary content for an attachment session (octet-stream)')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .requiredOption('-f, --file <path>', 'Local file path (raw bytes)')
+  .option('--json', 'Echo updated session as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        session: string;
+        file: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const buf = await readFile(opts.file);
+      const r = await putTaskAttachmentSessionContent(
+        auth.token!,
+        listId,
+        opts.task,
+        opts.session,
+        new Uint8Array(buf),
+        opts.user
+      );
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(`\n\u2705 Uploaded session content for: ${opts.session}\n`);
+    }
+  );
+
+todoAttachmentSessionCommand
+  .command('content-delete')
+  .description('DELETE binary content for an attachment session')
+  .requiredOption('-l, --list <name|id>', 'List name or ID')
+  .requiredOption('-t, --task <id>', 'Task ID')
+  .requiredOption('-s, --session <id>', 'Attachment session id')
+  .option('--confirm', 'Confirm without prompt')
+  .option('--if-match <etag>', 'If-Match (optional concurrency)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: {
+        list: string;
+        task: string;
+        session: string;
+        confirm?: boolean;
+        ifMatch?: string;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      if (!opts.confirm) {
+        console.log(`Delete attachment session content for ${opts.session}? Run with --confirm.`);
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const { listId } = await resolveListId(auth.token!, opts.list, opts.user);
+      const r = await deleteTaskAttachmentSessionContent(
+        auth.token!,
+        listId,
+        opts.task,
+        opts.session,
+        opts.user,
+        opts.ifMatch
+      );
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(`\n\u2705 Deleted attachment session content: ${opts.session}\n`);
+    }
+  );
+
+const todoRootCommand = new Command('root').description(
+  'The signed-in user `todo` navigation resource (GET/PATCH/DELETE …/me/todo or …/users/{id}/todo). DELETE is destructive.'
+);
+
+todoRootCommand
+  .command('get')
+  .description('GET the todo container resource')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(async (opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await getTodoNavigationResource(auth.token!, opts.user);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+    else console.log(JSON.stringify(r.data));
+  });
+
+todoRootCommand
+  .command('patch')
+  .description('PATCH the todo container (JSON merge from file)')
+  .requiredOption('--json-file <path>', 'JSON patch body')
+  .option('--json', 'Echo body as formatted JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const raw = await readFile(opts.jsonFile, 'utf-8');
+      const patch = JSON.parse(raw) as Record<string, unknown>;
+      const r = await patchTodoNavigationResource(auth.token!, patch, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log(JSON.stringify(r.data));
+    }
+  );
+
+todoRootCommand
+  .command('delete')
+  .description('DELETE the todo navigation resource (unusual / destructive)')
+  .option('--confirm', 'Confirm without prompt')
+  .option('--if-match <etag>', 'If-Match (optional concurrency)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
+  .action(
+    async (
+      opts: { confirm?: boolean; ifMatch?: string; token?: string; identity?: string; user?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      if (!opts.confirm) {
+        console.log('DELETE …/todo is destructive. Run with --confirm after reviewing Microsoft Graph docs.');
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteTodoNavigationResource(auth.token!, opts.user, opts.ifMatch);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('\n\u2705 Todo navigation resource deleted.\n');
+    }
+  );
+
 todoCommand
   .command('delta')
   .description('One page of todo task delta (use -l for first page, or --url / --state-file for nextLink/deltaLink)')
@@ -2252,4 +2666,6 @@ todoExtensionCommand
     }
   );
 
+todoCommand.addCommand(todoAttachmentSessionCommand);
+todoCommand.addCommand(todoRootCommand);
 todoCommand.addCommand(todoExtensionCommand);

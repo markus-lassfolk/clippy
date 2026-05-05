@@ -4,7 +4,7 @@
  */
 
 import { callGraphAt, fetchAllPages, GraphApiError, type GraphResponse, graphError } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBetaUrl } from './graph-constants.js';
 
 function workingTimeSchedulePath(userId?: string): string {
   const u = userId?.trim();
@@ -77,7 +77,7 @@ export function buildVivaListQuery(opts: {
 
 export async function getWorkingTimeSchedule(token: string, userId?: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, workingTimeSchedulePath(userId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, workingTimeSchedulePath(userId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get workingTimeSchedule');
@@ -90,7 +90,7 @@ export async function patchWorkingTimeSchedule(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, workingTimeSchedulePath(userId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, workingTimeSchedulePath(userId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -110,7 +110,7 @@ export async function deleteWorkingTimeSchedule(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       workingTimeSchedulePath(userId),
       { method: 'DELETE', headers },
@@ -125,7 +125,7 @@ export async function deleteWorkingTimeSchedule(
 export async function startWorkingTime(token: string, userId?: string): Promise<GraphResponse<void>> {
   const path = `${workingTimeSchedulePath(userId)}/startWorkingTime`;
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to startWorkingTime');
@@ -135,7 +135,7 @@ export async function startWorkingTime(token: string, userId?: string): Promise<
 export async function endWorkingTime(token: string, userId?: string): Promise<GraphResponse<void>> {
   const path = `${workingTimeSchedulePath(userId)}/endWorkingTime`;
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to endWorkingTime');
@@ -144,7 +144,7 @@ export async function endWorkingTime(token: string, userId?: string): Promise<Gr
 
 export async function getUserItemInsightsSettings(token: string, userId?: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, itemInsightsPath(userId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, itemInsightsPath(userId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get itemInsights settings');
@@ -157,7 +157,7 @@ export async function patchUserItemInsightsSettings(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, itemInsightsPath(userId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, itemInsightsPath(userId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -177,7 +177,7 @@ export async function deleteUserItemInsightsSettings(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       itemInsightsPath(userId),
       { method: 'DELETE', headers },
@@ -199,13 +199,13 @@ export async function listEmployeeExperienceAssignedRoles(
     token,
     `${assignedRolesPath(userId)}${q}`,
     'Failed to list employeeExperience assignedRoles',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
 export async function getEmployeeExperience(token: string, userId?: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, employeeExperiencePath(userId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, employeeExperiencePath(userId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get employeeExperience');
@@ -218,7 +218,7 @@ export async function patchEmployeeExperience(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, employeeExperiencePath(userId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, employeeExperiencePath(userId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -238,7 +238,7 @@ export async function deleteEmployeeExperience(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       employeeExperiencePath(userId),
       { method: 'DELETE', headers },
@@ -256,7 +256,7 @@ export async function createEmployeeExperienceAssignedRole(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRolesPath(userId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRolesPath(userId), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -273,7 +273,7 @@ export async function getEmployeeExperienceAssignedRole(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleItemPath(userId, roleId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleItemPath(userId, roleId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get assignedRole');
@@ -287,7 +287,7 @@ export async function patchEmployeeExperienceAssignedRole(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleItemPath(userId, roleId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleItemPath(userId, roleId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -308,7 +308,7 @@ export async function deleteEmployeeExperienceAssignedRole(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       assignedRoleItemPath(userId, roleId),
       { method: 'DELETE', headers },
@@ -331,7 +331,7 @@ export async function listEmployeeExperienceAssignedRoleMembers(
     token,
     `${assignedRoleMembersCollectionPath(userId, roleId)}${q}`,
     'Failed to list assignedRole members',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -342,7 +342,7 @@ export async function createEmployeeExperienceAssignedRoleMember(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleMembersCollectionPath(userId, roleId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleMembersCollectionPath(userId, roleId), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -360,7 +360,7 @@ export async function getEmployeeExperienceAssignedRoleMember(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleMemberItemPath(userId, roleId, memberId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleMemberItemPath(userId, roleId, memberId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get assignedRole member');
@@ -375,7 +375,7 @@ export async function patchEmployeeExperienceAssignedRoleMember(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleMemberItemPath(userId, roleId, memberId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleMemberItemPath(userId, roleId, memberId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -397,7 +397,7 @@ export async function deleteEmployeeExperienceAssignedRoleMember(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       assignedRoleMemberItemPath(userId, roleId, memberId),
       { method: 'DELETE', headers },
@@ -436,7 +436,7 @@ export async function getEmployeeExperienceAssignedRoleMemberUser(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, assignedRoleMemberUserPath(userId, roleId, memberId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, assignedRoleMemberUserPath(userId, roleId, memberId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get assignedRole member user');
@@ -451,7 +451,7 @@ export async function getEmployeeExperienceAssignedRoleMemberUserMailboxSettings
 ): Promise<GraphResponse<unknown>> {
   try {
     return await callGraphAt<unknown>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       assignedRoleMemberUserMailboxSettingsPath(userId, roleId, memberId)
     );
@@ -470,7 +470,7 @@ export async function patchEmployeeExperienceAssignedRoleMemberUserMailboxSettin
 ): Promise<GraphResponse<unknown>> {
   try {
     return await callGraphAt<unknown>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       assignedRoleMemberUserMailboxSettingsPath(userId, roleId, memberId),
       {
@@ -497,7 +497,7 @@ export async function listEmployeeExperienceAssignedRoleMemberUserServiceProvisi
     token,
     `${assignedRoleMemberUserServiceProvisioningErrorsPath(userId, roleId, memberId)}${q}`,
     'Failed to list assignedRole member serviceProvisioningErrors',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -511,7 +511,7 @@ export async function listLearningCourseActivities(
     token,
     `${learningCourseActivitiesCollectionPath(userId)}${q}`,
     'Failed to list learningCourseActivities',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -522,7 +522,7 @@ export async function getLearningCourseActivity(
 ): Promise<GraphResponse<unknown>> {
   const path = `${learningCourseActivitiesCollectionPath(userId)}/${encodeURIComponent(activityId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get learningCourseActivity');
@@ -537,7 +537,7 @@ export async function getLearningCourseActivityByExternalId(
   const esc = escapeODataSingleQuotedKey(externalCourseActivityId.trim());
   const path = `${learningCourseActivitiesCollectionPath(userId)}(externalcourseActivityId='${esc}')`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get learningCourseActivity by external id');
@@ -548,7 +548,7 @@ export async function getLearningCourseActivityByExternalId(
 
 export async function getAdminPeopleItemInsights(token: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, '/admin/people/itemInsights');
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, '/admin/people/itemInsights');
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get admin people itemInsights');
@@ -557,7 +557,7 @@ export async function getAdminPeopleItemInsights(token: string): Promise<GraphRe
 
 export async function patchAdminPeopleItemInsights(token: string, body: unknown): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, '/admin/people/itemInsights', {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, '/admin/people/itemInsights', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -573,7 +573,7 @@ export async function deleteAdminPeopleItemInsights(token: string, ifMatch?: str
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       '/admin/people/itemInsights',
       { method: 'DELETE', headers },
@@ -594,7 +594,7 @@ export async function getOrganizationItemInsights(
   organizationId: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, organizationItemInsightsPath(organizationId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, organizationItemInsightsPath(organizationId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get organization itemInsights');
@@ -607,7 +607,7 @@ export async function patchOrganizationItemInsights(
   body: unknown
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, organizationItemInsightsPath(organizationId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, organizationItemInsightsPath(organizationId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -627,7 +627,7 @@ export async function deleteOrganizationItemInsights(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
     return await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       organizationItemInsightsPath(organizationId),
       { method: 'DELETE', headers },
@@ -649,7 +649,7 @@ function workHoursAndLocationsPath(userId?: string): string {
 
 export async function getWorkHoursAndLocations(token: string, userId?: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, workHoursAndLocationsPath(userId));
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, workHoursAndLocationsPath(userId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get workHoursAndLocations');
@@ -662,7 +662,7 @@ export async function patchWorkHoursAndLocations(
   userId?: string
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, workHoursAndLocationsPath(userId), {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, workHoursAndLocationsPath(userId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -683,7 +683,7 @@ export async function listWorkHoursOccurrences(
     token,
     `${workHoursAndLocationsPath(userId)}/occurrences${q}`,
     'Failed to list workHours occurrences',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -694,7 +694,7 @@ export async function postWorkHoursSetCurrentLocation(
 ): Promise<GraphResponse<unknown>> {
   const path = `${workHoursAndLocationsPath(userId)}/occurrences/setCurrentLocation`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body !== undefined ? JSON.stringify(body) : '{}'
@@ -712,7 +712,7 @@ export async function getWorkHoursOccurrence(
 ): Promise<GraphResponse<unknown>> {
   const path = `${workHoursAndLocationsPath(userId)}/occurrences/${encodeURIComponent(occurrenceId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get workPlanOccurrence');
@@ -727,7 +727,7 @@ export async function patchWorkHoursOccurrence(
 ): Promise<GraphResponse<unknown>> {
   const path = `${workHoursAndLocationsPath(userId)}/occurrences/${encodeURIComponent(occurrenceId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -748,7 +748,7 @@ export async function deleteWorkHoursOccurrence(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   const path = `${workHoursAndLocationsPath(userId)}/occurrences/${encodeURIComponent(occurrenceId.trim())}`;
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'DELETE', headers }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'DELETE', headers }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to delete workPlanOccurrence');
@@ -765,7 +765,7 @@ export async function getWorkHoursOccurrencesView(
   const e = escapeODataSingleQuotedKey(endDateTime.trim());
   const path = `${workHoursAndLocationsPath(userId)}/occurrencesView(startDateTime='${s}',endDateTime='${e}')`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get occurrencesView');
@@ -782,7 +782,7 @@ export async function listWorkHoursRecurrences(
     token,
     `${workHoursAndLocationsPath(userId)}/recurrences${q}`,
     'Failed to list workHours recurrences',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -793,7 +793,7 @@ export async function getWorkHoursRecurrence(
 ): Promise<GraphResponse<unknown>> {
   const path = `${workHoursAndLocationsPath(userId)}/recurrences/${encodeURIComponent(recurrenceId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get workPlanRecurrence');
@@ -808,7 +808,7 @@ export async function patchWorkHoursRecurrence(
 ): Promise<GraphResponse<unknown>> {
   const path = `${workHoursAndLocationsPath(userId)}/recurrences/${encodeURIComponent(recurrenceId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -829,7 +829,7 @@ export async function deleteWorkHoursRecurrence(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   const path = `${workHoursAndLocationsPath(userId)}/recurrences/${encodeURIComponent(recurrenceId.trim())}`;
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'DELETE', headers }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'DELETE', headers }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to delete workPlanRecurrence');
@@ -849,7 +849,7 @@ export async function listOnlineMeetingEngagementConversations(
     token,
     `${MEETING_CONV}${q}`,
     'Failed to list onlineMeetingConversations',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -858,7 +858,7 @@ export async function createOnlineMeetingEngagementConversation(
   body: unknown
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, MEETING_CONV, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, MEETING_CONV, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -875,7 +875,7 @@ export async function getOnlineMeetingEngagementConversation(
 ): Promise<GraphResponse<unknown>> {
   const path = `${MEETING_CONV}/${encodeURIComponent(conversationId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get onlineMeetingConversation');
@@ -889,7 +889,7 @@ export async function patchOnlineMeetingEngagementConversation(
 ): Promise<GraphResponse<unknown>> {
   const path = `${MEETING_CONV}/${encodeURIComponent(conversationId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -909,7 +909,7 @@ export async function deleteOnlineMeetingEngagementConversation(
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   const path = `${MEETING_CONV}/${encodeURIComponent(conversationId.trim())}`;
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'DELETE', headers }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'DELETE', headers }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to delete onlineMeetingConversation');
@@ -926,7 +926,7 @@ export async function listOnlineMeetingEngagementConversationMessages(
     token,
     `${MEETING_CONV}/${encodeURIComponent(conversationId.trim())}/messages${q}`,
     'Failed to list engagement conversation messages',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -937,7 +937,7 @@ export async function getOnlineMeetingEngagementConversationMessage(
 ): Promise<GraphResponse<unknown>> {
   const path = `${MEETING_CONV}/${encodeURIComponent(conversationId.trim())}/messages/${encodeURIComponent(messageId.trim())}`;
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get engagement conversation message');

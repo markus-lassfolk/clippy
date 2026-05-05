@@ -1,7 +1,7 @@
 import {
   callGraph,
   fetchAllPages,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -94,7 +94,7 @@ export async function listPeople(
     return graphResult(result.data.value ?? []);
   }
 
-  return fetchAllPages<Person>(token, path, 'Failed to list people', GRAPH_BASE_URL, { headers });
+  return fetchAllPages<Person>(token, path, 'Failed to list people', getGraphBaseUrl(), { headers });
 }
 
 /** GET /me/people/{id} or /users/{id}/people/{personId}. */

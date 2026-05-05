@@ -30,11 +30,26 @@ How to use **`m365-agent-cli`** when you automate mail, calendar, files, Teams, 
 ## 5. Escaping the wrapped surface
 
 - Arbitrary JSON Graph paths: **`graph invoke`**, **`graph batch`**.
-- Policies that stay out of first-class commands: [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md) (Cloud Communications, RSC, approvals patterns).
+- Policies that stay out of first-class commands: [`GRAPH_INVOKE_BOUNDARIES.md`](./GRAPH_INVOKE_BOUNDARIES.md) (Cloud Communications except wrapped meeting recordings/transcripts, **PSTN out of scope**, RSC, governance patterns).
 
 ## 6. Verify your token
 
 - **`m365-agent-cli verify-token`** and **`verify-token --capabilities`** to see whether **`User.Read.All`**, **`Team.ReadBasic.All`**, shared mail/calendar scopes, etc. are present before scripting manager workflows.
+
+## 7. CLI coverage vs Graph `/users/{id}/...` (gap hints)
+
+These are **common 403/404** causes when mixing “act as user” expectations with what the CLI actually wraps:
+
+| Scenario | Graph supports delegated `/users/{id}/...`? | CLI today |
+| --- | --- | --- |
+| Mail, calendar, contacts, files, rules, OOF, many `subscribe` resources | Often yes (with **Shared** scopes where needed) | **`--user`** on supported commands — confirm **`--help`**. |
+| Joined Teams for another user | Yes (`/users/{id}/joinedTeams`) | **`teams list --user`**. |
+| List **chats** for another user | No first-class list analogous to `/me/chats` | **`teams chats`** = signed-in user only; use manager session or other tooling. |
+| Teams activity feed notify for another user | App-only path documented | **`teams activity-notify`** = `/me/…` or chat; app-only **`/users/{id}/teamwork/...`** → **`graph invoke`**. |
+| Bookings staff availability | Typically **application** permission | **`bookings staff-availability --token`** (app token). |
+| Insights (`/me/insights/...`) with delegation | Graph supports user-scoped paths | **`insights * --user`** where the command exposes the flag. |
+
+Full gap table and pagination/delegation hardening notes: [`GRAPH_WRAPPER_GAP_AUDIT.md`](./GRAPH_WRAPPER_GAP_AUDIT.md).
 
 ---
 

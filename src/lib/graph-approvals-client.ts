@@ -1,18 +1,21 @@
 import {
   callGraphAt,
+  callGraphAbsolute,
+  fetchAllPages,
   GraphApiError,
   type GraphResponse,
   graphError,
   graphErrorFromApiError,
   graphResult
 } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBetaUrl } from './graph-constants.js';
 
 /** `microsoft.graph.approval` — Teams Approvals + Power Automate approvals (beta). */
 export interface Approval {
   id: string;
   /** Steps live as a navigation property; included via `$expand=steps` if requested. */
   steps?: ApprovalStep[];
+  '@odata.etag'?: string;
 }
 
 /** `microsoft.graph.approvalStep`. Writable: `reviewResult`, `justification`. */
@@ -37,24 +40,41 @@ export interface ApprovalStepListResponse {
   '@odata.nextLink'?: string;
 }
 
-/**
- * `GET /me/approvals` (beta). Defaults to `$expand=steps` so the caller can render
- * approve/deny actionable items without a second round-trip.
- */
-export async function listMyApprovals(
-  token: string,
-  options: { top?: number; expandSteps?: boolean } = {}
-): Promise<GraphResponse<ApprovalListResponse>> {
+function approvalsListRelativePath(options: { top?: number; expandSteps?: boolean }): string {
   const expand = options.expandSteps !== false ? '$expand=steps' : '';
   const top = options.top && options.top > 0 ? `$top=${Math.min(Math.max(1, options.top), 200)}` : '';
   const qs = [expand, top].filter(Boolean).join('&');
-  const path = `/me/approvals${qs ? `?${qs}` : ''}`;
+  return `/me/approvals${qs ? `?${qs}` : ''}`;
+}
+
+/**
+ * `GET /me/approvals` (beta). Defaults to `$expand=steps` so the caller can render
+ * approve/deny actionable items without a second round-trip.
+ * Pass `nextLink` (full `@odata.nextLink` URL from a previous response) for one continuation page.
+ */
+export async function listMyApprovals(
+  token: string,
+  options: { top?: number; expandSteps?: boolean; nextLink?: string } = {}
+): Promise<GraphResponse<ApprovalListResponse>> {
   try {
-    return await callGraphAt<ApprovalListResponse>(GRAPH_BETA_URL, token, path);
+    if (options.nextLink?.trim()) {
+      return await callGraphAbsolute<ApprovalListResponse>(token, options.nextLink.trim());
+    }
+    const path = approvalsListRelativePath(options);
+    return await callGraphAt<ApprovalListResponse>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to list /me/approvals');
   }
+}
+
+/** Follow `@odata.nextLink` until exhausted (uses `GRAPH_PAGE_DELAY_MS` between pages). */
+export async function listAllMyApprovals(
+  token: string,
+  options: { top?: number; expandSteps?: boolean } = {}
+): Promise<GraphResponse<Approval[]>> {
+  const path = approvalsListRelativePath(options);
+  return fetchAllPages<Approval>(token, path, 'Failed to list /me/approvals', getGraphBetaUrl());
 }
 
 /** `GET /me/approvals/{id}` (beta). */
@@ -66,7 +86,7 @@ export async function getApproval(
   const expand = options.expandSteps !== false ? '?$expand=steps' : '';
   const path = `/me/approvals/${encodeURIComponent(approvalId)}${expand}`;
   try {
-    return await callGraphAt<Approval>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<Approval>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to get approval');
@@ -80,7 +100,7 @@ export async function listApprovalSteps(
 ): Promise<GraphResponse<ApprovalStepListResponse>> {
   const path = `/me/approvals/${encodeURIComponent(approvalId)}/steps`;
   try {
-    return await callGraphAt<ApprovalStepListResponse>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<ApprovalStepListResponse>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to list approval steps');
@@ -99,7 +119,7 @@ export async function patchApprovalStep(
 ): Promise<GraphResponse<ApprovalStep>> {
   const path = `/me/approvals/${encodeURIComponent(approvalId)}/steps/${encodeURIComponent(stepId)}`;
   try {
-    const r = await callGraphAt<ApprovalStep>(GRAPH_BETA_URL, token, path, {
+    const r = await callGraphAt<ApprovalStep>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       body: JSON.stringify({
         reviewResult: body.reviewResult,
@@ -121,5 +141,33 @@ export async function patchApprovalStep(
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to PATCH approval step');
+  }
+}
+
+/**
+ * `DELETE /me/approvals/{id}` (beta) — remove/cancel an approval the signed-in user owns (requires `If-Match`).
+ * @see https://learn.microsoft.com/graph/api/approval-delete
+ */
+export async function deleteApproval(
+  token: string,
+  approvalId: string,
+  ifMatch: string
+): Promise<GraphResponse<void>> {
+  const path = `/me/approvals/${encodeURIComponent(approvalId)}`;
+  try {
+    const r = await callGraphAt<void>(
+      getGraphBetaUrl(),
+      token,
+      path,
+      { method: 'DELETE', headers: { 'If-Match': ifMatch.trim() } },
+      false
+    );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to DELETE approval', r.error?.code, r.error?.status);
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
+    return graphError(err instanceof Error ? err.message : 'Failed to DELETE approval');
   }
 }

@@ -45,13 +45,23 @@ jobs:
         run: bun run docs:graph-permission-matrix:check
 
       # Bun/Linux vs Windows can shift global line totals in lcov; scripts/check-coverage.mjs notes the same drift.
+      # Lib-scoped gate: target 80% (see plan). CI uses a ramp — M1=45%, M2→60%, M3→80%. Script default remains 80 when env unset.
       - name: Tests + coverage floor
         env:
           COVERAGE_MIN_LINES: '31'
+          # Roadmap M2: raised from 45 after test expansion (2026-05). Next target 60% (LIB_COVERAGE_ROADMAP_TO_60.md).
+          COVERAGE_MIN_LINES_LIB: '50'
         run: |
           bun run test:coverage
           test -f coverage/lcov.info || (echo '::error::coverage/lcov.info missing after bun test --coverage' && exit 1)
           bun run verify:coverage
+          bun run verify:coverage:lib
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            echo '### Lib coverage gaps (top 20, exclude ews)' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            node scripts/report-lib-coverage-gaps.mjs --top 20 >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Knip (unused files, deps, exports)
         run: bun run knip

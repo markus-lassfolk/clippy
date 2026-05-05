@@ -350,3 +350,41 @@ describe('pollGraphAsyncJob', () => {
     }
   });
 });
+
+describe('inviteDriveItem and listDriveItemPermissions', () => {
+  it('POSTs invite and GETs permissions', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        urls.push(typeof input === 'string' ? input : input.toString());
+        if (urls.length === 1) {
+          return new Response(JSON.stringify({ value: [] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify({ id: 'perm-1' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as unknown as typeof fetch;
+
+      const { inviteDriveItem, listDriveItemPermissions } = await import('./graph-client.js');
+      const inv = await inviteDriveItem(token, 'item-7', {
+        recipients: [{ email: 'a@b.com' }],
+        message: 'Please edit'
+      });
+      expect(inv.ok).toBe(true);
+      expect(urls[0]).toContain('/me/drive/items/item-7/invite');
+
+      const perms = await listDriveItemPermissions(token, 'item-7');
+      expect(perms.ok).toBe(true);
+      expect(urls[1]).toContain('/me/drive/items/item-7/permissions');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

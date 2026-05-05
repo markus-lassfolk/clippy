@@ -3,7 +3,7 @@ import {
   callGraphAt,
   type DriveLocation,
   driveItemPath,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -89,7 +89,7 @@ export async function listDriveItemActivities(
   itemId: string,
   options: { top?: number; graphBaseUrl?: string } = {}
 ): Promise<GraphResponse<ItemActivitiesResponse>> {
-  const base = options.graphBaseUrl ?? GRAPH_BASE_URL;
+  const base = options.graphBaseUrl ?? getGraphBaseUrl();
   const top = options.top && options.top > 0 ? `?$top=${Math.min(Math.max(1, options.top), 200)}` : '';
   const path = `${driveItemPath(loc, itemId)}/activities${top}`;
   try {
@@ -115,7 +115,7 @@ export async function createDriveItemPreview(
   loc: DriveLocation,
   itemId: string,
   body: { page?: number | string; zoom?: number; allowEdit?: boolean; chromeless?: boolean } = {},
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemPreview>> {
   const path = `${driveItemPath(loc, itemId)}/preview`;
   const cleaned: Record<string, unknown> = {};
@@ -159,7 +159,7 @@ export interface FollowedSitesRemoveMultiStatusBody {
 /** `GET /me/followedSites` — sites the user follows. */
 export async function listFollowedSites(
   token: string,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<FollowedSitesResponse>> {
   try {
     return await callGraphAt<FollowedSitesResponse>(graphBaseUrl, token, '/me/followedSites');
@@ -173,7 +173,7 @@ export async function listFollowedSites(
 export async function followSites(
   token: string,
   siteIds: string[],
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<FollowedSitesResponse>> {
   if (siteIds.length === 0) {
     return graphError('Provide at least one site id');
@@ -194,7 +194,7 @@ export async function followSites(
 export async function unfollowSites(
   token: string,
   siteIds: string[],
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   if (siteIds.length === 0) {
     return graphError('Provide at least one site id');

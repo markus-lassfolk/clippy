@@ -8,7 +8,7 @@ import {
   graphError,
   graphErrorFromApiError
 } from './graph-client.js';
-import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBaseUrl, getGraphBetaUrl } from './graph-constants.js';
 
 /** Parse repeatable CLI `--header "Name: value"` lines (first colon separates name from value). */
 export function parseGraphInvokeHeaders(headerLines: string[]): Record<string, string> {
@@ -78,7 +78,7 @@ export async function graphInvoke<T = unknown>(token: string, opts: GraphInvokeO
   try {
     const path = assertSafeGraphRelativePath(opts.path);
     const method = (opts.method || 'GET').toUpperCase();
-    const base = opts.beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
+    const base = opts.beta ? getGraphBetaUrl() : getGraphBaseUrl();
     const expectJson = opts.expectJson !== false;
     const init: GraphRequestInit = { method };
     const hasBody = opts.body !== undefined && method !== 'GET' && method !== 'HEAD';
@@ -109,7 +109,7 @@ export async function graphInvokeText(token: string, opts: GraphInvokeOptions): 
   try {
     const path = assertSafeGraphRelativePath(opts.path);
     const method = (opts.method || 'GET').toUpperCase();
-    const base = opts.beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
+    const base = opts.beta ? getGraphBetaUrl() : getGraphBaseUrl();
     const init: GraphRequestInit = { method };
     const hasBody = opts.body !== undefined && method !== 'GET' && method !== 'HEAD';
     if (hasBody) {
@@ -153,7 +153,7 @@ export async function graphPostBatch<T = unknown>(
         400
       );
     }
-    const base = beta ? GRAPH_BETA_URL : GRAPH_BASE_URL;
+    const base = beta ? getGraphBetaUrl() : getGraphBaseUrl();
     const init: GraphRequestInit = {
       method: 'POST',
       body: JSON.stringify(body)

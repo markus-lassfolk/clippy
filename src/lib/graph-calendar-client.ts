@@ -9,7 +9,7 @@ import {
   callGraphAbsolute,
   fetchAllPages,
   fetchGraphRaw,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -437,7 +437,7 @@ export async function listEventInstances(
   const requestInit: RequestInit | undefined = options?.preferOutlookTimezoneUtc
     ? { headers: { Prefer: PREFER_OUTLOOK_TIMEZONE_UTC } }
     : undefined;
-  return fetchAllPages<GraphCalendarEvent>(token, path, 'Failed to list event instances', GRAPH_BASE_URL, requestInit);
+  return fetchAllPages<GraphCalendarEvent>(token, path, 'Failed to list event instances', getGraphBaseUrl(), requestInit);
 }
 
 export async function getEvent(

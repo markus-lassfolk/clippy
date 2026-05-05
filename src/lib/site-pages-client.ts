@@ -1,7 +1,7 @@
 import {
   callGraphAt,
   fetchAllPages,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError
@@ -27,7 +27,7 @@ function siteBase(siteId: string): string {
 export async function listSitePages(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SitePage[]>> {
   return fetchAllPages<SitePage>(
     token,
@@ -41,7 +41,7 @@ export async function getSitePage(
   token: string,
   siteId: string,
   pageId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SitePage>> {
   try {
     return await callGraphAt<SitePage>(
@@ -62,7 +62,7 @@ export async function updateSitePage(
   siteId: string,
   pageId: string,
   pageData: Partial<SitePage>,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SitePage>> {
   try {
     return await callGraphAt<SitePage>(
@@ -86,7 +86,7 @@ export async function publishSitePage(
   token: string,
   siteId: string,
   pageId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(

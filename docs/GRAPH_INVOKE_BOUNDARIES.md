@@ -2,31 +2,15 @@
 
 Some Microsoft Graph areas are **not** wrapped as first-class subcommands in `m365-agent-cli`. This document explains why and how to call them safely.
 
-## Cloud Communications (calls, PSTN, meetings control)
+## Teams Phone / PSTN (out of scope)
 
-**Voice**, **PSTN**, **call records**, and related endpoints carry **high compliance and consent** requirements and vary by tenant licensing. Use **`m365-agent-cli graph invoke`** with paths from [Microsoft Graph documentation](https://learn.microsoft.com/en-us/graph/api/overview) after your organization approves the permissions.
+**PSTN**, **Teams Phone**, direct routing, and telephony administration are **intentionally out of scope** for `m365-agent-cli`. This project does not document recipes, track product gaps, or plan first-class wrappers for those surfaces. Use the **Microsoft Teams admin center**, your **telephony provider** tooling, or **PowerShell** / partner automation instead.
 
-Do **not** expect copy-paste examples to work without tenant policy and admin consent.
+## Cloud Communications (Graph — not wrapped here)
+
+Other **Microsoft Graph Cloud Communications** APIs (for example **call records**, call control, or org-specific voice scenarios) carry **high compliance and consent** requirements. They are **not** covered by this CLI’s first-class commands; if your organization approves automation, use **`graph invoke`** against the current [Graph API reference](https://learn.microsoft.com/en-us/graph/api/overview) and the correct **application** or **delegated** permissions.
 
 > **Carve-out:** **delegated meeting recordings & transcripts** (per-meeting + tenant-wide `getAllRecordings(...)` / `getAllTranscripts(...)` and their `delta` functions) **are** wrapped — see **`meeting recordings*`** / **`meeting transcripts*`** with **`OnlineMeetingRecording.Read.All`** / **`OnlineMeetingTranscript.Read.All`**. Tenant Stream/Teams policies can still return 403; that's policy, not CLI breakage.
-
-### Example `graph invoke` recipes (adjust tenant paths and ids)
-
-Replace `$TOKEN` with a bearer token that has the listed permission (often **application** permission + admin consent). Paths are **relative to `GRAPH_BASE_URL`** (already includes `/v1.0`).
-
-**List call records (requires CallRecords.Read.All or equivalent)**
-
-```bash
-m365-agent-cli graph invoke --token "$TOKEN" -X GET "/communications/callRecords?\$top=5"
-```
-
-**Get PSTN call session id / debugging** — follow Microsoft docs for the exact resource; pattern:
-
-```bash
-m365-agent-cli graph invoke --token "$TOKEN" -X GET "/communications/<resource-from-docs>"
-```
-
-Prefer **Teams admin center** or **tenant-approved** automation for PSTN policy changes.
 
 ## Teams resource-specific consent (RSC) / app-only admin scenarios
 
@@ -62,9 +46,15 @@ m365-agent-cli graph invoke --token "$TOKEN" --beta -X GET "/identityGovernance/
 
 Prefer **Power Automate** / **Approvals** in-product UX for policy-heavy workflows; use **`graph invoke`** only when your tenant has approved the exact API and scopes.
 
-## Teams activity feed — app-only path
+## Teams activity feed — user-targeted (often app-only)
 
-`teams activity-notify` wraps the **delegated** **`POST /me/teamwork/sendActivityNotification`** and **`POST /chats/{id}/sendActivityNotification`** flows (scope **`TeamsActivity.Send`**). The **app-only** **`POST /users/{id}/teamwork/sendActivityNotification`** path requires a different consent flow and is intentionally not wrapped — call it via **`graph invoke`** with an application token:
+`teams activity-notify` wraps **`POST /me/teamwork/sendActivityNotification`**, **`POST /chats/{id}/sendActivityNotification`**, and **`POST /users/{id}/teamwork/sendActivityNotification`** (use **`--user-id`** for the last; scope / permission **`TeamsActivity.Send`** — **application** consent is typical for the `/users/{id}/…` path).
+
+```bash
+m365-agent-cli teams activity-notify --user-id "$USER_ID" --token "$APP_TOKEN" --json-file ./notify.json
+```
+
+Equivalent raw invoke:
 
 ```bash
 m365-agent-cli graph invoke --token "$APP_TOKEN" -X POST "/users/$USER_ID/teamwork/sendActivityNotification" --json-file ./notify.json
@@ -114,7 +104,7 @@ This section is **not** sourced from the parity matrix. It reflects a **static r
 | Core CRUD (plans, buckets, tasks, plan/task **details** PATCH) | **v1.0** (`callGraph` → default `GRAPH_BASE_URL`) | Canonical paths such as `/planner/plans`, `/planner/tasks`, `/planner/buckets`, `/planner/plans/{id}/details`. |
 | **Beta-only in this repo** | **`GRAPH_BETA_URL`** | Archive / unarchive plan; `GET …/planner` (**get-me**); **`GET …/planner/myDayTasks`** (**list-my-day-tasks**); **`GET …/planner/recentPlans`** (**list-recent-plans**); **`PATCH …/planner`** (**update-me** with **`--etag`** + **`--json-file`**); favorite + roster plan lists; **`/me/planner/all/delta`**; roster create/get/members; create plan **in roster**; **personal / user container** plan create (**`planner create-plan --me`** → **`POST /me/planner/plans`**); **moveToContainer**; **getUsageRights** (see `planner-client.ts`). Several of these support optional **`--user`** (delegated **`/users/{id}/...`**; may **403**). |
 | **Wrapped plan create** | v1 **group** (`POST /planner/plans` + group `container.url`), beta **roster** (`createPlannerPlanInRoster`), or beta **user** container (**`createPlannerPlanForSignedInUser`**, **`planner create-plan --me`**) | Resolves **`GET /me?$select=id`** then posts a **`plannerPlan`** whose **`container`** targets **`…/beta/users/{id}`** with **`type: user`** (per **plannerPlanContainer**). |
-| **Delete “details” sub-resources** | Not wrapped | Graph exposes **`DELETE /planner/plans/{id}/details`** and **`DELETE /planner/tasks/{id}/details`** (and **`me`/group/team**-scoped variants). Rare; use **`graph invoke`** with the correct **`If-Match`** on the **details** resource. |
+| **Delete “details” sub-resources** | **Implemented** | **`planner delete-plan-details`** / **`planner delete-task-details`** (destructive; **`--confirm`**). Alternate URL shapes (group/team-scoped) → **`graph invoke`** if Graph routes you there. |
 | Alternate URL shapes | Partially covered | **`moveToContainer`** / **`getUsageRights()`** are implemented on **`/planner/plans/{id}/...`** (beta). Graph also lists **`/me/planner/plans/{id}/...`** variants — if the service returns routing or permission errors, retry the **`/me/...`** form via **`graph invoke --beta`**. |
 
 ### Microsoft To Do
@@ -123,16 +113,16 @@ This section is **not** sourced from the parity matrix. It reflects a **static r
 | --- | --- | --- |
 | All `todo-client` REST calls | **v1.0** only | No `GRAPH_BETA_URL` / `--beta` branch in `todo-client.ts`. |
 | Task attachments (large upload) | **createUploadSession** on `…/attachments/createUploadSession` | This is the supported large-file path in the CLI. |
-| **attachmentSessions** collection | Not wrapped | OpenAPI includes **`…/tasks/{id}/attachmentSessions`** (list/get/patch/delete and **content** PUT/GET/DELETE) as a distinct surface from **`createUploadSession`**. If Microsoft’s docs point you there, use **`graph invoke`**. |
-| **PATCH /me/todo** / **DELETE /me/todo** | Not wrapped | Highly destructive / unusual; **`graph invoke`** only after confirming tenant impact. |
+| **attachmentSessions** collection | **Wrapped** | **`todo attachment-session`** (list/get/patch/delete + **content** GET/PUT/DELETE). v1 has **no POST** on the collection; sessions typically follow **`createUploadSession`** / **`todo upload-attachment-large`**. |
+| **PATCH …/todo** / **DELETE …/todo** | **Wrapped** | **`todo root patch`** / **`todo root delete`** (**`--confirm`** required on delete; optional **`--if-match`**). Still unusual—confirm impact before delete. |
 
 ### Outlook contacts (Graph)
 
 | Area | What the CLI uses | Notes |
 | --- | --- | --- |
-| Folders, contacts, delta, photo, attachments, **open extensions** | **v1.0** | Extensions use **`/me/contacts/{id}/extensions`** (or delegated **`/users/{id}/...`**). |
-| Deeply nested folder extension paths | Not wrapped | Graph includes **`…/contactFolders/.../childFolders/.../contacts/.../extensions`**; the CLI targets the default **`…/contacts/{id}/extensions`** shape. Use **`graph invoke`** if the item only exists under a nested folder URL. |
-| **contactMergeSuggestions** (user settings) | Not wrapped | Separate **settings** API (`/users/{id}/settings/contactMergeSuggestions`), not the contacts command module. |
+| Folders, contacts, delta, photo, attachments, **open extensions** | **v1.0** | Default extensions: **`/me/contacts/{id}/extensions`** (or delegated **`/users/{id}/...`**). |
+| Nested **contactFolders** extension paths | **Wrapped** | **`contacts extension`** accepts **`-f/--folder`** and optional **`--child-folder`** for **`…/contactFolders/{id}/contacts/{contactId}/extensions`** and **`…/childFolders/{id}/…`** shapes. |
+| **contactMergeSuggestions** (user settings) | **Implemented** | **`contacts merge-suggestions`** `get` / `set` / `delete` — Graph **beta**; **`--user`** for **`/users/{id}/settings/contactMergeSuggestions`**. |
 
 ### Example `graph invoke` patterns (verify paths in current Graph docs)
 

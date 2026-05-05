@@ -232,7 +232,7 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     id: 'approvals',
     area: 'Approvals',
     detail:
-      '`approvals` list / get / steps / respond — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite`',
+      '`approvals` list / get / steps / respond / cancel (DELETE) — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite`',
     readScopes: [
       'ApprovalSolution.Read.All',
       'ApprovalSolution.ReadWrite',
@@ -244,14 +244,16 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'todo',
     area: 'Microsoft To Do',
-    detail: '`todo`',
+    detail:
+      '`todo` (incl. `attachment-session` list/get/patch/delete/content-*; `root` get/patch/delete for …/todo — destructive delete requires `--confirm`)',
     readScopes: ['Tasks.Read', 'Tasks.ReadWrite'],
     writeScopes: ['Tasks.ReadWrite']
   },
   {
     id: 'planner.groups',
     area: 'Planner & group-backed Teams',
-    detail: '`planner`, `teams` members/channels/apps/tabs — broad group scope',
+    detail:
+      '`planner` (incl. `delete-plan-details`, `delete-task-details`), `teams` members/channels/apps/tabs — broad group scope',
     readScopes: ['Group.Read.All', 'Group.ReadWrite.All'],
     writeScopes: ['Group.ReadWrite.All']
   },
@@ -265,16 +267,23 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'contacts.own',
     area: 'Contacts (your mailbox)',
-    detail: '`contacts`',
+    detail: '`contacts` (extensions: `-f/--folder`, `--child-folder` for nested contact folder paths)',
     readScopes: ['Contacts.Read', 'Contacts.ReadWrite'],
     writeScopes: ['Contacts.ReadWrite']
   },
   {
     id: 'contacts.shared',
     area: 'Contacts (shared mailbox)',
-    detail: '`contacts --user`',
+    detail: '`contacts --user` (extensions: `-f/--folder`, `--child-folder`)',
     readScopes: ['Contacts.Read.Shared', 'Contacts.ReadWrite.Shared'],
     writeScopes: ['Contacts.ReadWrite.Shared']
+  },
+  {
+    id: 'contacts.mergeSuggestions',
+    area: 'Contact merge suggestions (Graph beta)',
+    detail: '`contacts merge-suggestions` get/set/delete — `/settings/contactMergeSuggestions` (see Microsoft Graph beta docs for exact permission names)',
+    readScopes: ['User.Read', 'User.ReadWrite', 'User.Read.All'],
+    writeScopes: ['User.ReadWrite', 'User.ReadWrite.All']
   },
   {
     id: 'meetings.online',
@@ -340,7 +349,7 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     id: 'teams.activity',
     area: 'Teams activity feed',
     detail:
-      '`teams activity-notify` — POST /me/teamwork/sendActivityNotification or /chats/{id}/sendActivityNotification',
+      '`teams activity-notify` — POST /me/teamwork/sendActivityNotification, /chats/{id}/sendActivityNotification, or /users/{id}/teamwork/sendActivityNotification (--user-id; typically app token)',
     readScopes: [],
     writeScopes: ['TeamsActivity.Send'],
     readColumnDash: true

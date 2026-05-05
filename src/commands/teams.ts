@@ -55,6 +55,7 @@ import {
   sendChannelMessage,
   sendChannelMessageReply,
   sendChatActivityNotification,
+  sendUserTeamworkActivityNotification,
   sendChatMessage,
   sendChatMessageReply,
   sendMeTeamworkActivityNotification,
@@ -1595,29 +1596,46 @@ teamsCommand
 teamsCommand
   .command('activity-notify')
   .description(
-    'Teams activity feed: POST /me/teamwork/sendActivityNotification, or POST /chats/{id}/sendActivityNotification with --chat-id (`TeamsActivity.Send`). Body from --json-file (see Microsoft Graph docs).'
+    'Teams activity feed: POST /me/teamwork/sendActivityNotification (default), POST /chats/{id}/sendActivityNotification with --chat-id, or POST /users/{id}/teamwork/sendActivityNotification with --user-id (usually app-only token + `TeamsActivity.Send`). Body from --json-file (see Microsoft Graph docs).'
   )
   .requiredOption('--json-file <path>', 'JSON body: topic, activityType, previewText, recipient, …')
-  .option('--chat-id <id>', 'If set, notify in chat scope; otherwise notify the signed-in user')
+  .option('--chat-id <id>', 'If set, notify in chat scope (mutually exclusive with --user-id)')
+  .option(
+    '--user-id <id>',
+    'Target user id or UPN for POST /users/{id}/teamwork/sendActivityNotification (typically use --token with an application access token; mutually exclusive with --chat-id)'
+  )
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (opts: { jsonFile: string; chatId?: string; token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { jsonFile: string; chatId?: string; userId?: string; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const chat = opts.chatId?.trim();
+      const uid = opts.userId?.trim();
+      if (chat && uid) {
+        console.error('Error: use either --chat-id or --user-id, not both.');
+        process.exit(1);
+      }
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = chat
+        ? await sendChatActivityNotification(auth.token, chat, body)
+        : uid
+          ? await sendUserTeamworkActivityNotification(auth.token, uid, body)
+          : await sendMeTeamworkActivityNotification(auth.token, body);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Activity notification sent (204).');
     }
-    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-    const r = opts.chatId?.trim()
-      ? await sendChatActivityNotification(auth.token, opts.chatId.trim(), body)
-      : await sendMeTeamworkActivityNotification(auth.token, body);
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log('Activity notification sent (204).');
-  });
+  );
 
 teamsCommand
   .command('channel-message-patch')

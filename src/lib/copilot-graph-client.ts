@@ -5,7 +5,7 @@
 
 import { graphInvoke, graphInvokeText } from './graph-advanced-client.js';
 import { callGraphAbsolute, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBetaUrl } from './graph-constants.js';
 
 /** OData-style Copilot chat actions (canonical Graph paths). */
 export const COPILOT_CONVERSATION_CHAT_PATH_SUFFIX = '/microsoft.graph.copilot.chat';
@@ -718,7 +718,7 @@ export async function copilotPackagesDelete(
 export async function copilotPackageZipDownload(token: string, packageId: string): Promise<GraphResponse<Uint8Array>> {
   const id = encodeURIComponent(packageId.trim());
   const path = `/copilot/admin/catalog/packages/${id}/zipFile`;
-  const url = `${GRAPH_BETA_URL.replace(/\/$/, '')}${path}`;
+  const url = `${getGraphBetaUrl().replace(/\/+$/, '')}${path}`;
   try {
     // codeql[js/file-access-to-http]: Bearer token from caller; URL is fixed Graph beta package zip path.
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -748,7 +748,7 @@ export async function copilotPackageZipUpload(
 ): Promise<GraphResponse<unknown>> {
   const id = encodeURIComponent(packageId.trim());
   const path = `/copilot/admin/catalog/packages/${id}/zipFile`;
-  const url = `${GRAPH_BETA_URL.replace(/\/$/, '')}${path}`;
+  const url = `${getGraphBetaUrl().replace(/\/+$/, '')}${path}`;
   try {
     // codeql[js/file-access-to-http]: Bearer token from caller; URL is fixed Graph beta package zip path.
     const res = await fetch(url, {

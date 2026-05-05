@@ -10,7 +10,15 @@
     "{dynamic}/{dynamic}{dynamic}",
     "{dynamic}{dynamic}",
     "{dynamic}{dynamic}:/content",
-    "{dynamic}{dynamic}:/createUploadSession"
+    "{dynamic}{dynamic}:/createUploadSession",
+    "{dynamic}/occurrences{dynamic}",
+    "{dynamic}/pages/microsoft.graph.sitePage",
+    "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage",
+    "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage/publish",
+    "{dynamic}/reactions{dynamic}",
+    "{dynamic}/recurrences{dynamic}",
+    "{dynamic}/replies{dynamic}",
+    "{dynamic}/{dynamic}/messages{dynamic}"
   ],
   "notes": {
     "/places/microsoft.graph.room": "Graph v1.0 findRoom/findRooms uses this cast segment; OpenAPI in the msgraph index may list graph.room under different path spelling.",
@@ -23,6 +31,14 @@
     "{dynamic}/{dynamic}{dynamic}": "Adjacent template spans without separator in pattern string.",
     "{dynamic}{dynamic}": "Adjacent dynamic spans; inventory artifact.",
     "{dynamic}{dynamic}:/content": "DriveItem colon segment (`root:/path:/content`) collapsed by pattern extraction.",
-    "{dynamic}{dynamic}:/createUploadSession": "Same as above for createUploadSession."
+    "{dynamic}{dynamic}:/createUploadSession": "Same as above for createUploadSession.",
+    "{dynamic}/occurrences{dynamic}": "Viva workHoursAndLocations / similar occurrence segments; static inventory collapses path+query so FTS may not match.",
+    "{dynamic}/pages/microsoft.graph.sitePage": "SharePoint sitePage cast segment; OpenAPI may spell the path differently than this template.",
+    "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage": "Site page item cast; same indexing caveat.",
+    "{dynamic}/pages/{dynamic}/microsoft.graph.sitePage/publish": "Site page publish action; same indexing caveat.",
+    "{dynamic}/reactions{dynamic}": "Nested reactions collection under meeting Engage / channel messages; template too generic for openapi-search tokens.",
+    "{dynamic}/recurrences{dynamic}": "Work hours / calendar recurrence child collections; template collapsed.",
+    "{dynamic}/replies{dynamic}": "Threaded replies under conversations or messages; collapsed dynamic pattern.",
+    "{dynamic}/{dynamic}/messages{dynamic}": "Deep messages path (e.g. chats/channels); inventory merges multiple dynamic segments."
   }
 }

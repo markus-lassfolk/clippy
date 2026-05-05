@@ -9,7 +9,7 @@ import {
   graphError,
   graphResult
 } from './graph-client.js';
-import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBaseUrl, getGraphBetaUrl } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 
 export interface PlannerPlanContainer {
@@ -381,7 +381,7 @@ export async function createPlannerPlan(
   title: string
 ): Promise<GraphResponse<PlannerPlan>> {
   try {
-    const base = GRAPH_BASE_URL.replace(/\/$/, '');
+    const base = getGraphBaseUrl().replace(/\/+$/, '');
     const result = await callGraph<PlannerPlan>(token, '/planner/plans', {
       method: 'POST',
       body: JSON.stringify({
@@ -424,7 +424,7 @@ export async function createPlannerPlanForSignedInUser(
     );
   }
 
-  const betaBase = GRAPH_BETA_URL.replace(/\/$/, '');
+  const betaBase = getGraphBetaUrl().replace(/\/+$/, '');
   const body = {
     title: title.trim(),
     container: {
@@ -435,7 +435,7 @@ export async function createPlannerPlanForSignedInUser(
   };
 
   try {
-    const result = await callGraphAt<PlannerPlan>(GRAPH_BETA_URL, token, '/me/planner/plans', {
+    const result = await callGraphAt<PlannerPlan>(getGraphBetaUrl(), token, '/me/planner/plans', {
       method: 'POST',
       headers: { Prefer: 'include-unknown-enum-members' },
       body: JSON.stringify(body)
@@ -506,7 +506,7 @@ export async function archivePlannerPlan(
 ): Promise<GraphResponse<void>> {
   try {
     const result = await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/plans/${encodeURIComponent(planId.trim())}/archive`,
       {
@@ -535,7 +535,7 @@ export async function unarchivePlannerPlan(
 ): Promise<GraphResponse<void>> {
   try {
     const result = await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/plans/${encodeURIComponent(planId.trim())}/unarchive`,
       {
@@ -745,13 +745,67 @@ export async function updatePlannerPlanDetails(
   }
 }
 
+/** DELETE `/planner/plans/{id}/details` — removes the **details** facet (label names, sharedWith). Rare; requires the details resource ETag. */
+export async function deletePlannerPlanDetails(
+  token: string,
+  planId: string,
+  etag: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraph<void>(
+      token,
+      `/planner/plans/${encodeURIComponent(planId)}/details`,
+      { method: 'DELETE', headers: { 'If-Match': etag } },
+      false
+    );
+    if (!result.ok) {
+      return graphError(
+        result.error?.message || 'Failed to delete plan details',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete plan details');
+  }
+}
+
+/** DELETE `/planner/tasks/{id}/details` — removes task **details** (description, checklist, references). Task shell may remain until task delete. */
+export async function deletePlannerTaskDetails(
+  token: string,
+  taskId: string,
+  etag: string
+): Promise<GraphResponse<void>> {
+  try {
+    const result = await callGraph<void>(
+      token,
+      `/planner/tasks/${encodeURIComponent(taskId)}/details`,
+      { method: 'DELETE', headers: { 'If-Match': etag } },
+      false
+    );
+    if (!result.ok) {
+      return graphError(
+        result.error?.message || 'Failed to delete task details',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(undefined as undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete task details');
+  }
+}
+
 /** Beta: plans marked favorite by the user (`GET …/planner/favoritePlans`). */
 export async function listFavoritePlans(token: string, user?: string): Promise<GraphResponse<PlannerPlan[]>> {
   return fetchAllPages<PlannerPlan>(
     token,
     graphUserPath(user, 'planner/favoritePlans'),
     'Failed to list favorite plans',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -761,7 +815,7 @@ export async function listRosterPlans(token: string, user?: string): Promise<Gra
     token,
     graphUserPath(user, 'planner/rosterPlans'),
     'Failed to list roster plans',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -771,7 +825,7 @@ export async function listPlannerMyDayTasks(token: string, user?: string): Promi
     token,
     graphUserPath(user, 'planner/myDayTasks'),
     'Failed to list My Day tasks',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -781,7 +835,7 @@ export async function listPlannerRecentPlans(token: string, user?: string): Prom
     token,
     graphUserPath(user, 'planner/recentPlans'),
     'Failed to list recent plans',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -800,7 +854,7 @@ export async function getPlannerDeltaPage(
     if (nextOrDeltaUrl) {
       return await callGraphAbsolute<PlannerDeltaPage>(token, nextOrDeltaUrl);
     }
-    return await callGraphAt<PlannerDeltaPage>(GRAPH_BETA_URL, token, '/me/planner/all/delta');
+    return await callGraphAt<PlannerDeltaPage>(getGraphBetaUrl(), token, '/me/planner/all/delta');
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to get Planner delta');
@@ -1109,7 +1163,7 @@ export interface PlannerUser {
 export async function getPlannerUser(token: string, user?: string): Promise<GraphResponse<PlannerUser>> {
   const path = graphUserPath(user, 'planner');
   try {
-    const result = await callGraphAt<PlannerUser>(GRAPH_BETA_URL, token, path);
+    const result = await callGraphAt<PlannerUser>(getGraphBetaUrl(), token, path);
     if (!result.ok || !result.data) {
       return graphError(
         result.error?.message || 'Failed to get planner user',
@@ -1132,7 +1186,7 @@ async function patchPlannerUser(
 ): Promise<GraphResponse<PlannerUser | undefined>> {
   const path = graphUserPath(user, 'planner');
   try {
-    const result = await callGraphAt<PlannerUser>(GRAPH_BETA_URL, token, path, {
+    const result = await callGraphAt<PlannerUser>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       headers: {
         'If-Match': etag,
@@ -1221,7 +1275,7 @@ export interface PlannerRosterMember {
 /** Beta: `POST /planner/rosters` — create an empty roster (then add members and add a plan). */
 export async function createPlannerRoster(token: string): Promise<GraphResponse<PlannerRoster>> {
   try {
-    const result = await callGraphAt<PlannerRoster>(GRAPH_BETA_URL, token, '/planner/rosters', {
+    const result = await callGraphAt<PlannerRoster>(getGraphBetaUrl(), token, '/planner/rosters', {
       method: 'POST',
       body: JSON.stringify({ '@odata.type': '#microsoft.graph.plannerRoster' })
     });
@@ -1239,7 +1293,7 @@ export async function createPlannerRoster(token: string): Promise<GraphResponse<
 export async function getPlannerRoster(token: string, rosterId: string): Promise<GraphResponse<PlannerRoster>> {
   try {
     const result = await callGraphAt<PlannerRoster>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}`
     );
@@ -1262,7 +1316,7 @@ export async function listPlannerRosterMembers(
     token,
     `/planner/rosters/${encodeURIComponent(rosterId)}/members`,
     'Failed to list roster members',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -1281,7 +1335,7 @@ export async function addPlannerRosterMember(
     if (options?.tenantId !== undefined) body.tenantId = options.tenantId;
     if (options?.roles !== undefined && options.roles.length > 0) body.roles = options.roles;
     const result = await callGraphAt<PlannerRosterMember>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}/members`,
       {
@@ -1311,7 +1365,7 @@ export async function removePlannerRosterMember(
 ): Promise<GraphResponse<void>> {
   try {
     const result = await callGraphAt<void>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/rosters/${encodeURIComponent(rosterId)}/members/${encodeURIComponent(memberId)}`,
       { method: 'DELETE' },
@@ -1341,8 +1395,8 @@ export async function createPlannerPlanInRoster(
   title: string
 ): Promise<GraphResponse<PlannerPlan>> {
   try {
-    const base = GRAPH_BETA_URL.replace(/\/$/, '');
-    const result = await callGraphAt<PlannerPlan>(GRAPH_BETA_URL, token, '/planner/plans', {
+    const base = getGraphBetaUrl().replace(/\/+$/, '');
+    const result = await callGraphAt<PlannerPlan>(getGraphBetaUrl(), token, '/planner/plans', {
       method: 'POST',
       headers: { Prefer: 'include-unknown-enum-members' },
       body: JSON.stringify({
@@ -1377,7 +1431,7 @@ export async function movePlannerPlanToContainer(
 ): Promise<GraphResponse<unknown>> {
   try {
     const result = await callGraphAt<unknown>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/plans/${encodeURIComponent(planId.trim())}/moveToContainer`,
       {
@@ -1400,7 +1454,7 @@ export async function movePlannerPlanToContainer(
 export async function getPlannerPlanUsageRights(token: string, planId: string): Promise<GraphResponse<unknown>> {
   try {
     const result = await callGraphAt<unknown>(
-      GRAPH_BETA_URL,
+      getGraphBetaUrl(),
       token,
       `/planner/plans/${encodeURIComponent(planId.trim())}/getUsageRights()`,
       { method: 'GET' }

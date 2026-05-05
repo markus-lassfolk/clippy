@@ -6,7 +6,7 @@
  * argument parsing (Commander.js), auth resolution, API calls, and output formatting.
  */
 import '../lib/global-env.js';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { clearMockFetch, createMockFetch, setMockFetch } from '../test/mocks/index.js';
 
 // Track console output to assert on it
@@ -94,15 +94,8 @@ async function runCommand(action: () => Promise<void>): Promise<{ stdout: string
 
 // ─── Setup / Teardown ───────────────────────────────────────────────────────
 
-beforeAll(() => {
-  // Global fetch mock set once - individual commands may override with clearMockFetch + new mock
-  globalThis.fetch = createMockFetch();
-});
-
-afterAll(() => {
-  // @ts-expect-error
-  globalThis.fetch = undefined;
-});
+/** Bun may run multiple test files in the same isolate; never leak our mock `fetch` past this file's tests. */
+const originalGlobalFetch = globalThis.fetch;
 
 let savedExchangeBackend: string | undefined;
 let savedEwsUsername: string | undefined;
@@ -118,6 +111,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  clearMockFetch();
+  globalThis.fetch = originalGlobalFetch;
   if (savedExchangeBackend === undefined) {
     delete process.env.M365_EXCHANGE_BACKEND;
   } else {

@@ -2,7 +2,7 @@ import {
   callGraphAbsolute,
   callGraphAt,
   fetchAllPages,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -20,7 +20,7 @@ export async function getSiteByGraphPath(
   token: string,
   /** e.g. `contoso.sharepoint.com:/sites/TeamName` (host + `:` + server-relative path) */
   sitePath: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointSiteSummary>> {
   const raw = sitePath.trim();
   if (!raw) {
@@ -34,7 +34,7 @@ export async function getSiteByGraphPath(
 export async function getSiteDefaultDriveId(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<{ id: string }>> {
   return callGraphAt<{ id: string }>(apiBase, token, `/sites/${encodeURIComponent(siteId)}/drive`);
 }
@@ -60,7 +60,7 @@ export interface SharePointListItem {
 export async function getLists(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointList[]>> {
   let res: GraphResponse<{ value: SharePointList[] }>;
   try {
@@ -84,7 +84,7 @@ export interface ListItemsPageResponse {
 export async function getSiteById(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointSiteSummary>> {
   return callGraphAt<SharePointSiteSummary>(apiBase, token, `/sites/${encodeURIComponent(siteId)}`);
 }
@@ -100,7 +100,7 @@ export interface SiteDriveSummary {
 export async function getSiteDrives(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SiteDriveSummary[]>> {
   return fetchAllPages<SiteDriveSummary>(
     token,
@@ -117,7 +117,7 @@ export async function getListColumns(
   token: string,
   siteId: string,
   listId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointColumnDefinition[]>> {
   return fetchAllPages<SharePointColumnDefinition>(
     token,
@@ -131,7 +131,7 @@ export async function getListMetadata(
   token: string,
   siteId: string,
   listId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointList>> {
   try {
     return await callGraphAt<SharePointList>(
@@ -151,7 +151,7 @@ export async function getListItems(
   token: string,
   siteId: string,
   listId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointListItem[]>> {
   return fetchAllPages<SharePointListItem>(
     token,
@@ -171,7 +171,7 @@ export async function getListItemsPage(
   listId: string,
   opts: { nextLink?: string; filter?: string; orderby?: string; top?: number; apiBase?: string }
 ): Promise<GraphResponse<ListItemsPageResponse>> {
-  const apiBase = opts.apiBase ?? GRAPH_BASE_URL;
+  const apiBase = opts.apiBase ?? getGraphBaseUrl();
   try {
     if (opts.nextLink?.trim()) {
       return await callGraphAbsolute<ListItemsPageResponse>(token, opts.nextLink.trim());
@@ -227,7 +227,7 @@ export async function createListItem(
   siteId: string,
   listId: string,
   fields: Record<string, any>,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointListItem>> {
   try {
     return await callGraphAt<SharePointListItem>(
@@ -256,7 +256,7 @@ export async function updateListItem(
   listId: string,
   itemId: string,
   fields: Record<string, any>,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<Record<string, any>>> {
   try {
     return await callGraphAt<Record<string, any>>(
@@ -284,7 +284,7 @@ export async function getListItem(
   siteId: string,
   listId: string,
   itemId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharePointListItem>> {
   try {
     return await callGraphAt<SharePointListItem>(
@@ -305,7 +305,7 @@ export async function deleteListItem(
   siteId: string,
   listId: string,
   itemId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -334,7 +334,7 @@ export async function getListItemsDeltaPage(
   siteId: string,
   listId: string,
   nextOrDeltaLink?: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<ListItemsDeltaPage>> {
   try {
     if (nextOrDeltaLink?.trim()) {
@@ -356,7 +356,7 @@ export type SitePermission = Record<string, unknown>;
 export async function getSitePermissions(
   token: string,
   siteId: string,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SitePermission[]>> {
   return fetchAllPages<SitePermission>(
     token,
@@ -371,7 +371,7 @@ export async function updateSitePermission(
   siteId: string,
   permissionId: string,
   body: Record<string, unknown>,
-  apiBase: string = GRAPH_BASE_URL
+  apiBase: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SitePermission>> {
   try {
     return await callGraphAt<SitePermission>(

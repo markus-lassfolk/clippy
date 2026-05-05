@@ -3,7 +3,7 @@
  */
 
 import { callGraphAt, fetchAllPages, GraphApiError, type GraphResponse, graphError } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBetaUrl } from './graph-constants.js';
 
 const ROOT = '/communications/onlineMeetingConversations';
 
@@ -21,7 +21,7 @@ function replyPath(conversationId: string, parentMessageId: string, replyId: str
 
 async function betaGet(token: string, path: string): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path);
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Graph GET failed');
@@ -30,7 +30,7 @@ async function betaGet(token: string, path: string): Promise<GraphResponse<unkno
 
 async function betaPost(token: string, path: string, body: unknown): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -50,7 +50,7 @@ async function betaPatch(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
-    return await callGraphAt<unknown>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<unknown>(getGraphBetaUrl(), token, path, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(body)
@@ -65,7 +65,7 @@ async function betaDelete(token: string, path: string, ifMatch?: string): Promis
   const headers: Record<string, string> = {};
   if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
   try {
-    return await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'DELETE', headers }, false);
+    return await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'DELETE', headers }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Graph DELETE failed');
@@ -122,7 +122,7 @@ export async function listOnlineMeetingConversationMessageReactions(
     token,
     `${msgPath(conversationId, messageId)}/reactions${listSuffix(listQuery)}`,
     'Failed to list message reactions',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -184,7 +184,7 @@ export async function listOnlineMeetingConversationMessageReplies(
     token,
     `${msgPath(conversationId, messageId)}/replies${listSuffix(listQuery)}`,
     'Failed to list message replies',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -247,7 +247,7 @@ export async function listOnlineMeetingConversationMessageReplyReactions(
     token,
     `${replyPath(conversationId, messageId, replyId)}/reactions${listSuffix(listQuery)}`,
     'Failed to list reply reactions',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 

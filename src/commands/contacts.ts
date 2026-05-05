@@ -9,6 +9,11 @@ import {
   writeDeltaStateFile
 } from '../lib/graph-delta-state-file.js';
 import {
+  deleteContactMergeSuggestions,
+  getContactMergeSuggestions,
+  patchContactMergeSuggestions
+} from '../lib/graph-contact-merge-suggestions-client.js';
+import {
   addFileAttachmentToContact,
   addReferenceAttachmentToContact,
   type ContactListQuery,
@@ -38,12 +43,24 @@ import {
   setContactPhoto,
   updateContact,
   updateContactFolder,
-  updateContactOpenExtension
+  updateContactOpenExtension,
+  type ContactExtensionLocation
 } from '../lib/outlook-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 const contactsDesc =
   'Outlook contacts via Microsoft Graph (Contacts.ReadWrite; shared mailboxes: Contacts.Read.Shared / Contacts.ReadWrite.Shared — see docs/GRAPH_SCOPES.md)';
+
+function resolveContactExtensionLocation(opts: {
+  folder?: string;
+  childFolder?: string;
+}): ContactExtensionLocation | undefined | 'invalid' {
+  const folder = opts.folder?.trim();
+  const child = opts.childFolder?.trim();
+  if (child && !folder) return 'invalid';
+  if (!folder) return undefined;
+  return child ? { folderId: folder, childFolderId: child } : { folderId: folder };
+}
 
 export const contactsCommand = new Command('contacts').description(contactsDesc);
 
@@ -541,33 +558,10 @@ const contactExtensionCmd = new Command('extension').description('Open type exte
 
 contactExtensionCmd
   .command('list')
-  .description('List open extensions on a contact')
+  .description('List open extensions on a contact (default …/contacts/{id}/extensions; use --folder for contactFolders path)')
   .argument('<contactId>', 'Contact id')
-  .option('--json', 'Output as JSON')
-  .option('--token <token>', 'Use a specific token')
-  .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .option('--user <email>', 'Target user')
-  .action(async (contactId: string, opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
-    const token = await requireGraphAuth(opts);
-    const r = await listContactOpenExtensions(token, contactId, opts.user);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify(r.data, null, 2));
-    else {
-      for (const ext of r.data) {
-        const name = (ext.extensionName as string) || JSON.stringify(ext);
-        console.log(`- ${name}`);
-      }
-    }
-  });
-
-contactExtensionCmd
-  .command('get')
-  .description('Get one open extension by name')
-  .argument('<contactId>', 'Contact id')
-  .requiredOption('-n, --name <id>', 'extensionName')
+  .option('-f, --folder <folderId>', 'Contact folder id (Graph …/contactFolders/{id}/contacts/{contactId}/extensions)')
+  .option('--child-folder <folderId>', 'Child folder under --folder (…/childFolders/{id}/contacts/…)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -575,10 +569,67 @@ contactExtensionCmd
   .action(
     async (
       contactId: string,
-      opts: { name: string; json?: boolean; token?: string; identity?: string; user?: string }
+      opts: {
+        folder?: string;
+        childFolder?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      }
     ) => {
+      const loc = resolveContactExtensionLocation(opts);
+      if (loc === 'invalid') {
+        console.error('Error: --child-folder requires -f/--folder');
+        process.exit(1);
+      }
       const token = await requireGraphAuth(opts);
-      const r = await getContactOpenExtension(token, contactId, opts.name, opts.user);
+      const r = await listContactOpenExtensions(token, contactId, opts.user, loc);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else {
+        for (const ext of r.data) {
+          const name = (ext.extensionName as string) || JSON.stringify(ext);
+          console.log(`- ${name}`);
+        }
+      }
+    }
+  );
+
+contactExtensionCmd
+  .command('get')
+  .description('Get one open extension by name')
+  .argument('<contactId>', 'Contact id')
+  .requiredOption('-n, --name <id>', 'extensionName')
+  .option('-f, --folder <folderId>', 'Contact folder id')
+  .option('--child-folder <folderId>', 'Child folder under --folder')
+  .option('--json', 'Output as JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user')
+  .action(
+    async (
+      contactId: string,
+      opts: {
+        name: string;
+        folder?: string;
+        childFolder?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      }
+    ) => {
+      const loc = resolveContactExtensionLocation(opts);
+      if (loc === 'invalid') {
+        console.error('Error: --child-folder requires -f/--folder');
+        process.exit(1);
+      }
+      const token = await requireGraphAuth(opts);
+      const r = await getContactOpenExtension(token, contactId, opts.name, opts.user, loc);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -593,6 +644,8 @@ contactExtensionCmd
   .argument('<contactId>', 'Contact id')
   .requiredOption('-n, --name <id>', 'extensionName')
   .requiredOption('--json-file <path>', 'JSON object: custom properties (extensionName added automatically)')
+  .option('-f, --folder <folderId>', 'Contact folder id')
+  .option('--child-folder <folderId>', 'Child folder under --folder')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -600,14 +653,28 @@ contactExtensionCmd
   .action(
     async (
       contactId: string,
-      opts: { name: string; jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string },
+      opts: {
+        name: string;
+        jsonFile: string;
+        folder?: string;
+        childFolder?: string;
+        json?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
       cmd: any
     ) => {
       checkReadOnly(cmd);
+      const loc = resolveContactExtensionLocation(opts);
+      if (loc === 'invalid') {
+        console.error('Error: --child-folder requires -f/--folder');
+        process.exit(1);
+      }
       const token = await requireGraphAuth(opts);
       const raw = await readFile(opts.jsonFile, 'utf-8');
       const data = JSON.parse(raw) as Record<string, unknown>;
-      const r = await setContactOpenExtension(token, contactId, opts.name, data, opts.user);
+      const r = await setContactOpenExtension(token, contactId, opts.name, data, opts.user, loc);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -623,20 +690,35 @@ contactExtensionCmd
   .argument('<contactId>', 'Contact id')
   .requiredOption('-n, --name <id>', 'extensionName')
   .requiredOption('--json-file <path>', 'JSON object: properties to patch')
+  .option('-f, --folder <folderId>', 'Contact folder id')
+  .option('--child-folder <folderId>', 'Child folder under --folder')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user')
   .action(
     async (
       contactId: string,
-      opts: { name: string; jsonFile: string; token?: string; identity?: string; user?: string },
+      opts: {
+        name: string;
+        jsonFile: string;
+        folder?: string;
+        childFolder?: string;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
       cmd: any
     ) => {
       checkReadOnly(cmd);
+      const loc = resolveContactExtensionLocation(opts);
+      if (loc === 'invalid') {
+        console.error('Error: --child-folder requires -f/--folder');
+        process.exit(1);
+      }
       const token = await requireGraphAuth(opts);
       const raw = await readFile(opts.jsonFile, 'utf-8');
       const patch = JSON.parse(raw) as Record<string, unknown>;
-      const r = await updateContactOpenExtension(token, contactId, opts.name, patch, opts.user);
+      const r = await updateContactOpenExtension(token, contactId, opts.name, patch, opts.user, loc);
       if (!r.ok) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -650,6 +732,8 @@ contactExtensionCmd
   .description('Delete an open extension')
   .argument('<contactId>', 'Contact id')
   .requiredOption('-n, --name <id>', 'extensionName')
+  .option('-f, --folder <folderId>', 'Contact folder id')
+  .option('--child-folder <folderId>', 'Child folder under --folder')
   .option('--confirm', 'Confirm without prompt')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
@@ -657,7 +741,15 @@ contactExtensionCmd
   .action(
     async (
       contactId: string,
-      opts: { name: string; confirm?: boolean; token?: string; identity?: string; user?: string },
+      opts: {
+        name: string;
+        folder?: string;
+        childFolder?: string;
+        confirm?: boolean;
+        token?: string;
+        identity?: string;
+        user?: string;
+      },
       cmd: any
     ) => {
       checkReadOnly(cmd);
@@ -665,8 +757,13 @@ contactExtensionCmd
         console.log(`Delete extension "${opts.name}"? Run with --confirm.`);
         process.exit(1);
       }
+      const loc = resolveContactExtensionLocation(opts);
+      if (loc === 'invalid') {
+        console.error('Error: --child-folder requires -f/--folder');
+        process.exit(1);
+      }
       const token = await requireGraphAuth(opts);
-      const r = await deleteContactOpenExtension(token, contactId, opts.name, opts.user);
+      const r = await deleteContactOpenExtension(token, contactId, opts.name, opts.user, loc);
       if (!r.ok) {
         console.error(`Error: ${r.error?.message}`);
         process.exit(1);
@@ -960,4 +1057,83 @@ attachCmd
     }
   );
 
+const mergeSuggestionsCmd = new Command('merge-suggestions').description(
+  'Duplicate contact merge suggestions visibility (Graph **beta**: `/me/settings/contactMergeSuggestions` or `/users/{id}/…`). Uses `User.Read` / `User.ReadWrite` for self; delegated other users typically need `User.Read.All` / `User.ReadWrite.All`.'
+);
+
+mergeSuggestionsCmd
+  .command('get')
+  .description('Read contactMergeSuggestions settings (JSON to stdout)')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user (delegated)')
+  .action(async (opts: { json?: boolean; token?: string; identity?: string; user?: string }) => {
+    const token = await requireGraphAuth(opts);
+    const r = await getContactMergeSuggestions(token, opts.user);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log(JSON.stringify(r.data, null, 2));
+  });
+
+mergeSuggestionsCmd
+  .command('set')
+  .description('PATCH contactMergeSuggestions (`--json-file` body per Graph schema)')
+  .requiredOption('--json-file <path>', 'JSON body for PATCH')
+  .option('--json', 'Echo updated resource as JSON after PATCH')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user (delegated)')
+  .action(
+    async (
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const token = await requireGraphAuth(opts);
+      const raw = await readFile(opts.jsonFile.trim(), 'utf8');
+      const body = JSON.parse(raw) as Record<string, unknown>;
+      const r = await patchContactMergeSuggestions(token, body, opts.user);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify(r.data, null, 2));
+      else console.log('Updated contact merge suggestions settings.');
+    }
+  );
+
+mergeSuggestionsCmd
+  .command('delete')
+  .description('DELETE contactMergeSuggestions navigation property (requires If-Match; omit to fetch ETag first)')
+  .option('--if-match <etag>', 'If-Match header from `merge-suggestions get --json`')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .option('--user <email>', 'Target user (delegated)')
+  .action(async (opts: { ifMatch?: string; token?: string; identity?: string; user?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const token = await requireGraphAuth(opts);
+    let ifMatch = opts.ifMatch?.trim();
+    if (!ifMatch) {
+      const gr = await getContactMergeSuggestions(token, opts.user);
+      if (!gr.ok || !gr.data) {
+        console.error(`Error: ${gr.error?.message}`);
+        process.exit(1);
+      }
+      ifMatch = (gr.data as { '@odata.etag'?: string })['@odata.etag']?.trim();
+      if (!ifMatch) {
+        console.error('Error: missing @odata.etag; pass --if-match');
+        process.exit(1);
+      }
+    }
+    const r = await deleteContactMergeSuggestions(token, ifMatch, opts.user);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Deleted contact merge suggestions settings resource.');
+  });
+
+contactsCommand.addCommand(mergeSuggestionsCmd);
 contactsCommand.addCommand(attachCmd);

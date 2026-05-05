@@ -11,7 +11,7 @@ import {
   graphErrorFromApiError,
   graphResult
 } from './graph-client.js';
-import { GRAPH_BASE_URL } from './graph-constants.js';
+import { getGraphBaseUrl } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 
 function todoRoot(user?: string): string {
@@ -208,7 +208,7 @@ export async function getTodoLists(
     return graphResult(result.data.value || []);
   }
 
-  return fetchAllPages<TodoList>(token, path, 'Failed to get todo lists', GRAPH_BASE_URL, init);
+  return fetchAllPages<TodoList>(token, path, 'Failed to get todo lists', getGraphBaseUrl(), init);
 }
 
 /** Single GET (for `$top` / `$skip` / `$count`); includes `@odata.count` when requested. */
@@ -975,6 +975,282 @@ export async function getTaskAttachmentContent(
   } catch (err) {
     if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
     return graphError(err instanceof Error ? err.message : 'Failed to download attachment');
+  }
+}
+
+/** Graph [attachmentSession](https://learn.microsoft.com/graph/api/resources/attachmentsession) on a todoTask (large upload lifecycle). */
+export interface TodoAttachmentSession {
+  id: string;
+  expirationDateTime?: string;
+  nextExpectedRanges?: string[];
+}
+
+function taskAttachmentSessionsPath(
+  listId: string,
+  taskId: string,
+  user: string | undefined,
+  sessionId?: string,
+  subpath?: 'content'
+): string {
+  const base = `${todoRoot(user)}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/attachmentSessions`;
+  if (!sessionId) return base;
+  const item = `${base}/${encodeURIComponent(sessionId)}`;
+  return subpath === 'content' ? `${item}/content` : item;
+}
+
+/** List attachment sessions for a task (Graph does not expose POST here in v1; sessions typically follow `attachments/createUploadSession`). */
+export async function listTaskAttachmentSessions(
+  token: string,
+  listId: string,
+  taskId: string,
+  user?: string
+): Promise<GraphResponse<TodoAttachmentSession[]>> {
+  return fetchAllPages<TodoAttachmentSession>(
+    token,
+    taskAttachmentSessionsPath(listId, taskId, user),
+    'Failed to list attachment sessions'
+  );
+}
+
+export async function getTaskAttachmentSession(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  user?: string
+): Promise<GraphResponse<TodoAttachmentSession>> {
+  try {
+    const result = await callGraph<TodoAttachmentSession>(
+      token,
+      taskAttachmentSessionsPath(listId, taskId, user, sessionId)
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to get attachment session',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get attachment session');
+  }
+}
+
+export async function patchTaskAttachmentSession(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  patch: Record<string, unknown>,
+  user?: string,
+  ifMatch?: string
+): Promise<GraphResponse<TodoAttachmentSession>> {
+  const headers: Record<string, string> = {};
+  if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+  try {
+    const result = await callGraph<TodoAttachmentSession>(
+      token,
+      taskAttachmentSessionsPath(listId, taskId, user, sessionId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+        headers: Object.keys(headers).length ? headers : undefined
+      }
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to patch attachment session',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to patch attachment session');
+  }
+}
+
+export async function deleteTaskAttachmentSession(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  user?: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  const headers: Record<string, string> = {};
+  if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+  try {
+    return await callGraph<void>(
+      token,
+      taskAttachmentSessionsPath(listId, taskId, user, sessionId),
+      {
+        method: 'DELETE',
+        headers: Object.keys(headers).length ? headers : undefined
+      },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete attachment session');
+  }
+}
+
+export async function getTaskAttachmentSessionContent(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  user?: string
+): Promise<GraphResponse<Uint8Array>> {
+  const path = taskAttachmentSessionsPath(listId, taskId, user, sessionId, 'content');
+  try {
+    const res = await fetchGraphRaw(token, path);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (!res.ok) {
+      try {
+        const text = new TextDecoder().decode(buf);
+        const json = JSON.parse(text) as { error?: { code?: string; message?: string } };
+        return graphError(json.error?.message || `HTTP ${res.status}`, json.error?.code, res.status);
+      } catch {
+        return graphError(`Failed to read session content: HTTP ${res.status}`, undefined, res.status);
+      }
+    }
+    return graphResult(buf);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to read session content');
+  }
+}
+
+export async function putTaskAttachmentSessionContent(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  body: Uint8Array,
+  user?: string
+): Promise<GraphResponse<TodoAttachmentSession>> {
+  try {
+    const result = await callGraph<TodoAttachmentSession>(
+      token,
+      taskAttachmentSessionsPath(listId, taskId, user, sessionId, 'content'),
+      {
+        method: 'PUT',
+        body: new Blob([Uint8Array.from(body)]),
+        headers: { 'Content-Type': 'application/octet-stream' }
+      }
+    );
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to upload attachment session content',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to upload attachment session content');
+  }
+}
+
+export async function deleteTaskAttachmentSessionContent(
+  token: string,
+  listId: string,
+  taskId: string,
+  sessionId: string,
+  user?: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  const headers: Record<string, string> = {};
+  if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+  try {
+    return await callGraph<void>(
+      token,
+      taskAttachmentSessionsPath(listId, taskId, user, sessionId, 'content'),
+      {
+        method: 'DELETE',
+        headers: Object.keys(headers).length ? headers : undefined
+      },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete attachment session content');
+  }
+}
+
+/** GET the signed-in (or delegated) user's [todo](https://learn.microsoft.com/graph/api/resources/todo) container. */
+export async function getTodoNavigationResource(
+  token: string,
+  user?: string
+): Promise<GraphResponse<Record<string, unknown>>> {
+  try {
+    const result = await callGraph<Record<string, unknown>>(token, todoRoot(user));
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to get todo resource',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to get todo resource');
+  }
+}
+
+/** PATCH `…/todo` (unusual; merges [microsoft.graph.todo](https://learn.microsoft.com/graph/api/resources/todo)). */
+export async function patchTodoNavigationResource(
+  token: string,
+  patch: Record<string, unknown>,
+  user?: string
+): Promise<GraphResponse<Record<string, unknown>>> {
+  try {
+    const result = await callGraph<Record<string, unknown>>(token, todoRoot(user), {
+      method: 'PATCH',
+      body: JSON.stringify(patch)
+    });
+    if (!result.ok || !result.data) {
+      return graphError(
+        result.error?.message || 'Failed to patch todo resource',
+        result.error?.code,
+        result.error?.status
+      );
+    }
+    return graphResult(result.data);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to patch todo resource');
+  }
+}
+
+/** DELETE `…/todo` navigation (destructive). Optional `If-Match` with resource etag. */
+export async function deleteTodoNavigationResource(
+  token: string,
+  user?: string,
+  ifMatch?: string
+): Promise<GraphResponse<void>> {
+  const headers: Record<string, string> = {};
+  if (ifMatch?.trim()) headers['If-Match'] = ifMatch.trim();
+  try {
+    return await callGraph<void>(
+      token,
+      todoRoot(user),
+      {
+        method: 'DELETE',
+        headers: Object.keys(headers).length ? headers : undefined
+      },
+      false
+    );
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to delete todo resource');
   }
 }
 

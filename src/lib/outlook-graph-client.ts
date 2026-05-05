@@ -1018,20 +1018,44 @@ export async function deleteContact(token: string, contactId: string, user?: str
   }
 }
 
-function contactExtensionsPath(contactId: string, user: string | undefined, extensionName?: string): string {
-  const base = `${contactsRoot(user)}/${encodeURIComponent(contactId)}/extensions`;
+/** Use `…/contactFolders/{folderId}/contacts/{id}/extensions` (and optional child folder) instead of default `…/contacts/{id}/extensions`. */
+export interface ContactExtensionLocation {
+  folderId?: string;
+  childFolderId?: string;
+}
+
+function contactExtensionsPath(
+  contactId: string,
+  user: string | undefined,
+  extensionName?: string,
+  location?: ContactExtensionLocation
+): string {
+  const cid = encodeURIComponent(contactId);
+  const fid = location?.folderId?.trim();
+  if (fid) {
+    const encF = encodeURIComponent(fid);
+    const cf = location?.childFolderId?.trim();
+    if (cf) {
+      const base = `${contactFoldersRoot(user)}/${encF}/childFolders/${encodeURIComponent(cf)}/contacts/${cid}/extensions`;
+      return extensionName ? `${base}/${encodeURIComponent(extensionName)}` : base;
+    }
+    const base = `${contactFoldersRoot(user)}/${encF}/contacts/${cid}/extensions`;
+    return extensionName ? `${base}/${encodeURIComponent(extensionName)}` : base;
+  }
+  const base = `${contactsRoot(user)}/${cid}/extensions`;
   return extensionName ? `${base}/${encodeURIComponent(extensionName)}` : base;
 }
 
 export async function listContactOpenExtensions(
   token: string,
   contactId: string,
-  user?: string
+  user?: string,
+  location?: ContactExtensionLocation
 ): Promise<GraphResponse<Array<Record<string, unknown>>>> {
   try {
     const result = await callGraph<{ value: Array<Record<string, unknown>> }>(
       token,
-      contactExtensionsPath(contactId, user)
+      contactExtensionsPath(contactId, user, undefined, location)
     );
     if (!result.ok || !result.data) {
       return graphError(
@@ -1051,12 +1075,13 @@ export async function getContactOpenExtension(
   token: string,
   contactId: string,
   extensionName: string,
-  user?: string
+  user?: string,
+  location?: ContactExtensionLocation
 ): Promise<GraphResponse<Record<string, unknown>>> {
   try {
     const result = await callGraph<Record<string, unknown>>(
       token,
-      contactExtensionsPath(contactId, user, extensionName)
+      contactExtensionsPath(contactId, user, extensionName, location)
     );
     if (!result.ok || !result.data) {
       return graphError(
@@ -1077,7 +1102,8 @@ export async function setContactOpenExtension(
   contactId: string,
   extensionName: string,
   extensionData: Record<string, unknown>,
-  user?: string
+  user?: string,
+  location?: ContactExtensionLocation
 ): Promise<GraphResponse<Record<string, unknown>>> {
   const body = {
     '@odata.type': 'microsoft.graph.openTypeExtension',
@@ -1086,7 +1112,7 @@ export async function setContactOpenExtension(
   };
   let result: GraphResponse<Record<string, unknown>>;
   try {
-    result = await callGraph<Record<string, unknown>>(token, contactExtensionsPath(contactId, user), {
+    result = await callGraph<Record<string, unknown>>(token, contactExtensionsPath(contactId, user, undefined, location), {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -1111,12 +1137,13 @@ export async function updateContactOpenExtension(
   contactId: string,
   extensionName: string,
   patch: Record<string, unknown>,
-  user?: string
+  user?: string,
+  location?: ContactExtensionLocation
 ): Promise<GraphResponse<void>> {
   try {
     const result = await callGraph<void>(
       token,
-      contactExtensionsPath(contactId, user, extensionName),
+      contactExtensionsPath(contactId, user, extensionName, location),
       {
         method: 'PATCH',
         body: JSON.stringify(patch)
@@ -1143,12 +1170,13 @@ export async function deleteContactOpenExtension(
   token: string,
   contactId: string,
   extensionName: string,
-  user?: string
+  user?: string,
+  location?: ContactExtensionLocation
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraph<void>(
       token,
-      contactExtensionsPath(contactId, user, extensionName),
+      contactExtensionsPath(contactId, user, extensionName, location),
       { method: 'DELETE' },
       false
     );

@@ -12,7 +12,7 @@ import {
   driveItemPath,
   driveRootSearchPath
 } from './drive-location.js';
-import { GRAPH_BASE_URL } from './graph-constants.js';
+import { getGraphBaseUrl } from './graph-constants.js';
 
 export type { DriveLocation } from './drive-location.js';
 export {
@@ -24,8 +24,7 @@ export {
   driveRootPrefix,
   driveRootSearchPath
 } from './drive-location.js';
-export { GRAPH_BETA_URL, graphApiRoot } from './graph-constants.js';
-export { GRAPH_BASE_URL };
+export { getGraphBaseUrl, getGraphBetaUrl, graphApiRoot } from './graph-constants.js';
 
 /** Default 60s; override with `GRAPH_TIMEOUT_MS` (milliseconds). */
 const GRAPH_TIMEOUT_MS = Number(process.env.GRAPH_TIMEOUT_MS) > 0 ? Number(process.env.GRAPH_TIMEOUT_MS) : 60_000;
@@ -324,7 +323,7 @@ async function delayBeforeThrottleRetry(headers: Headers, throttleAttempt: numbe
 
 function resolveNextPath(nextLink: string, baseUrl: string): string {
   try {
-    const normalizedBase = baseUrl.replace(/\/$/, '');
+    const normalizedBase = baseUrl.replace(/\/+$/, '');
     if (nextLink.startsWith(normalizedBase)) {
       return nextLink.substring(normalizedBase.length);
     }
@@ -346,7 +345,7 @@ export async function fetchAllPages<T>(
   token: string,
   initialPath: string,
   errorMessage: string,
-  baseUrl: string = GRAPH_BASE_URL,
+  baseUrl: string = getGraphBaseUrl(),
   requestInit?: RequestInit
 ): Promise<GraphResponse<T[]>> {
   const items: T[] = [];
@@ -385,7 +384,7 @@ export async function fetchGraphRaw(
   token: string,
   path: string,
   options: RequestInit = {},
-  baseUrl: string = GRAPH_BASE_URL
+  baseUrl: string = getGraphBaseUrl()
 ): Promise<Response> {
   // codeql[js/file-access-to-http]: Bearer token may come from the local OAuth cache; path is a Graph API path string.
   const { headers: optHeaders, ...rest } = options;
@@ -396,7 +395,7 @@ export async function fetchGraphRaw(
       headers.set(key, value);
     });
   }
-  const root = baseUrl.replace(/\/$/, '');
+  const root = baseUrl.replace(/\/+$/, '');
   return fetch(`${root}${path}`, {
     ...rest,
     headers
@@ -431,7 +430,18 @@ async function callGraphUrlWithRetries<T>(
       } else if (expectJson) {
         headers.set('Accept', 'application/json');
       }
-      if (fetchInit.body && !(fetchInit.body instanceof Uint8Array) && !(fetchInit.body instanceof ArrayBuffer)) {
+      const bodyInit = fetchInit.body;
+      const isFormData =
+        bodyInit !== null &&
+        bodyInit !== undefined &&
+        typeof FormData !== 'undefined' &&
+        bodyInit instanceof FormData;
+      if (
+        bodyInit &&
+        !(bodyInit instanceof Uint8Array) &&
+        !(bodyInit instanceof ArrayBuffer) &&
+        !isFormData
+      ) {
         headers.set('Content-Type', 'application/json');
       }
       if (existingHeaders) {
@@ -508,7 +518,7 @@ export async function callGraphAt<T>(
   options: RequestInit = {},
   expectJson: boolean = true
 ): Promise<GraphResponse<T>> {
-  const normalizedBase = baseUrl.replace(/\/$/, '');
+  const normalizedBase = baseUrl.replace(/\/+$/, '');
   const fullUrl = `${normalizedBase}${path}`;
   const { init: fetchInit, onUnauthorized } = splitGraphRequestInit(options);
   return callGraphUrlWithRetries<T>(fullUrl, token, fetchInit, expectJson, 'json', onUnauthorized);
@@ -524,7 +534,7 @@ export async function callGraphAtText(
   path: string,
   options: RequestInit = {}
 ): Promise<GraphResponse<string>> {
-  const normalizedBase = baseUrl.replace(/\/$/, '');
+  const normalizedBase = baseUrl.replace(/\/+$/, '');
   const fullUrl = `${normalizedBase}${path}`;
   const { init: fetchInit, onUnauthorized } = splitGraphRequestInit(options);
   return callGraphUrlWithRetries<string>(fullUrl, token, fetchInit, true, 'text', onUnauthorized);
@@ -536,7 +546,7 @@ export async function callGraph<T>(
   options: RequestInit = {},
   expectJson: boolean = true
 ): Promise<GraphResponse<T>> {
-  return callGraphAt(GRAPH_BASE_URL, token, path, options, expectJson);
+  return callGraphAt(getGraphBaseUrl(), token, path, options, expectJson);
 }
 
 function validateGraphUrl(absoluteUrl: string): { valid: boolean; error?: string } {
@@ -642,7 +652,7 @@ export async function listFiles(
   token: string,
   folder?: DriveItemReference,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem[]>> {
   const basePath = buildDriveFolderOrRootPath(location, folder);
   return fetchAllPages<DriveItem>(token, `${basePath}/children`, 'Failed to list files', graphBaseUrl);
@@ -652,7 +662,7 @@ export async function searchFiles(
   token: string,
   query: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem[]>> {
   return fetchAllPages<DriveItem>(
     token,
@@ -666,7 +676,7 @@ export async function getFileMetadata(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem>> {
   try {
     return await callGraphAt<DriveItem>(graphBaseUrl, token, driveItemPath(location, itemId));
@@ -689,7 +699,7 @@ export async function uploadFile(
   localPath: string,
   folder?: DriveItemReference,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem>> {
   try {
     const absolutePath = resolve(localPath);
@@ -742,7 +752,7 @@ export async function uploadLargeFile(
   localPath: string,
   folder?: DriveItemReference,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<UploadLargeResult>> {
   try {
     const absolutePath = resolve(localPath);
@@ -910,7 +920,7 @@ export async function downloadFile(
   outputPath?: string,
   item?: DriveItem,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<{ path: string; item: DriveItem }>> {
   let resolvedItem = item;
   let targetPath: string | undefined;
@@ -1048,7 +1058,7 @@ export async function deleteFile(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(graphBaseUrl, token, driveItemPath(location, itemId), { method: 'DELETE' }, false);
@@ -1066,7 +1076,7 @@ export async function shareFile(
   type: 'view' | 'edit' = 'view',
   scope: 'anonymous' | 'organization' = 'organization',
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<SharingLinkResult>> {
   let result: GraphResponse<{ link?: SharingLinkResult }>;
   try {
@@ -1094,7 +1104,7 @@ export async function checkoutFile(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1117,7 +1127,7 @@ export async function checkinFile(
   itemId: string,
   comment?: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<CheckinResult>> {
   let result: GraphResponse<void>;
   try {
@@ -1161,7 +1171,7 @@ export async function getDriveItemListItem(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemListItem>> {
   try {
     return await callGraphAt<DriveItemListItem>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/listItem`);
@@ -1176,7 +1186,7 @@ export async function followDriveItem(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1196,7 +1206,7 @@ export async function unfollowDriveItem(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1218,7 +1228,7 @@ export async function assignDriveItemSensitivityLabel(
   itemId: string,
   body: Record<string, unknown>,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<unknown>> {
   try {
     return await callGraphAt<unknown>(
@@ -1242,7 +1252,7 @@ export async function extractDriveItemSensitivityLabels(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<unknown>> {
   try {
     return await callGraphAt<unknown>(
@@ -1266,7 +1276,7 @@ export async function permanentDeleteDriveItem(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1291,7 +1301,7 @@ export async function restoreDeletedDriveItem(
   itemId: string,
   body: Record<string, unknown> | undefined,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem>> {
   try {
     return await callGraphAt<DriveItem>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/restore`, {
@@ -1310,7 +1320,7 @@ export async function getDriveItemRetentionLabel(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<Record<string, unknown>>> {
   try {
     return await callGraphAt<Record<string, unknown>>(
@@ -1330,7 +1340,7 @@ export async function removeDriveItemRetentionLabel(
   itemId: string,
   ifMatch: string | undefined,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     const headers: Record<string, string> = {};
@@ -1353,7 +1363,7 @@ export async function createOfficeCollaborationLink(
   itemId: string,
   options: { lock?: boolean } = {},
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<OfficeCollabLinkResult>> {
   const item = await getFileMetadata(token, itemId, location, graphBaseUrl);
   if (!item.ok || !item.data) {
@@ -1407,7 +1417,7 @@ export async function listFileVersions(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemVersion[]>> {
   return fetchAllPages<DriveItemVersion>(
     token,
@@ -1422,7 +1432,7 @@ export async function restoreFileVersion(
   itemId: string,
   versionId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1461,7 +1471,7 @@ export async function getFileAnalytics(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<FileAnalytics>> {
   const base = driveItemPath(location, itemId);
   const [allTimeResult, lastSevenDaysResult] = await Promise.allSettled([
@@ -1496,7 +1506,7 @@ export async function downloadConvertedFile(
   format: string = 'pdf',
   outputPath?: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<{ path: string }>> {
   let tmpPath: string | undefined;
   try {
@@ -1604,7 +1614,7 @@ export async function inviteDriveItem(
   itemId: string,
   body: Record<string, unknown>,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<unknown>> {
   try {
     return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/invite`, {
@@ -1623,7 +1633,7 @@ export async function listDriveItemPermissions(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemPermission[]>> {
   return fetchAllPages<DriveItemPermission>(
     token,
@@ -1638,7 +1648,7 @@ export async function deleteDriveItemPermission(
   itemId: string,
   permissionId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<void>> {
   try {
     return await callGraphAt<void>(
@@ -1676,7 +1686,7 @@ export async function listDriveItemThumbnails(
   token: string,
   itemId: string,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemThumbnailSet[]>> {
   try {
     const r = await callGraphAt<{ value?: DriveItemThumbnailSet[] }>(
@@ -1712,7 +1722,7 @@ export async function getDriveItemDeltaPage(
     graphBaseUrl?: string;
   }
 ): Promise<GraphResponse<DriveDeltaPage>> {
-  const graphBaseUrl = options.graphBaseUrl ?? GRAPH_BASE_URL;
+  const graphBaseUrl = options.graphBaseUrl ?? getGraphBaseUrl();
   try {
     if (options.nextOrDeltaLink?.trim()) {
       return await callGraphAbsolute<DriveDeltaPage>(token, options.nextOrDeltaLink.trim());
@@ -1741,7 +1751,7 @@ export interface SharedWithMeDriveItem {
 
 export async function listDriveSharedWithMe(
   token: string,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<{ value?: SharedWithMeDriveItem[] }>> {
   try {
     return await callGraphAt<{ value?: SharedWithMeDriveItem[] }>(graphBaseUrl, token, '/me/drive/sharedWithMe');
@@ -1764,7 +1774,7 @@ export async function startCopyDriveItem(
   itemId: string,
   body: CopyDriveItemBody,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<{ monitorUrl?: string; status?: number }>> {
   try {
     const res = await fetchGraphRaw(
@@ -1848,7 +1858,7 @@ export async function moveDriveItem(
   itemId: string,
   parentReference: { id: string; driveId?: string },
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItem>> {
   try {
     return await callGraphAt<DriveItem>(graphBaseUrl, token, driveItemPath(location, itemId), {
@@ -1869,7 +1879,7 @@ export async function patchDriveItemPermission(
   permissionId: string,
   body: Record<string, unknown>,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemPermission>> {
   try {
     return await callGraphAt<DriveItemPermission>(

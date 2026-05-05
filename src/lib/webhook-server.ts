@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -19,7 +19,7 @@ function sendResponse(res: ServerResponse, status: number, body: string, content
  * Minimal webhook receiver for Graph subscription notifications.
  * Uses Node `http` so the CLI can load under Node/tsx without the Bun runtime.
  */
-export function startWebhookServer(port: number = 3000): void {
+export function startWebhookServer(port: number = 3000): Server {
   console.log(`Starting webhook receiver on http://localhost:${port}/webhooks/m365-agent-cli`);
 
   const server = createServer(async (req, res) => {
@@ -82,4 +82,5 @@ export function startWebhookServer(port: number = 3000): void {
   });
 
   server.listen(port);
+  return server;
 }

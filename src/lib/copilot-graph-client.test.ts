@@ -99,4 +99,36 @@ describe('buildCopilotRetrievalBody', () => {
       /dataSource must be one of/
     );
   });
+  test('rejects empty queryString', () => {
+    expect(() => buildCopilotRetrievalBody({ queryString: '   ', dataSource: 'sharePoint' })).toThrow(/required/);
+  });
+  test('rejects queryString over max length', () => {
+    const q = 'x'.repeat(1501);
+    expect(() => buildCopilotRetrievalBody({ queryString: q, dataSource: 'oneDriveBusiness' })).toThrow(/exceeds/);
+  });
+  test('includes filterExpression and maximumNumberOfResults', () => {
+    expect(
+      buildCopilotRetrievalBody({
+        queryString: 'q',
+        dataSource: 'externalItem',
+        filterExpression: '  path:x  ',
+        maximumNumberOfResults: 25,
+        resourceMetadata: ['a', 'b']
+      })
+    ).toEqual({
+      queryString: 'q',
+      dataSource: 'externalItem',
+      filterExpression: 'path:x',
+      maximumNumberOfResults: 25,
+      resourceMetadata: ['a', 'b']
+    });
+  });
+  test('rejects maximumNumberOfResults out of range', () => {
+    expect(() =>
+      buildCopilotRetrievalBody({ queryString: 'q', dataSource: 'sharePoint', maximumNumberOfResults: 0 })
+    ).toThrow(/1–25/);
+    expect(() =>
+      buildCopilotRetrievalBody({ queryString: 'q', dataSource: 'sharePoint', maximumNumberOfResults: 26 })
+    ).toThrow(/1–25/);
+  });
 });

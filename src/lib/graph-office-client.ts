@@ -3,7 +3,7 @@ import { DEFAULT_DRIVE_LOCATION } from './drive-location.js';
 import {
   callGraphAt,
   driveItemPath,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -26,7 +26,7 @@ export async function createDriveItemPreview(
   itemId: string,
   body: Record<string, unknown>,
   location: DriveLocation = DEFAULT_DRIVE_LOCATION,
-  graphBaseUrl: string = GRAPH_BASE_URL
+  graphBaseUrl: string = getGraphBaseUrl()
 ): Promise<GraphResponse<DriveItemPreviewResponse>> {
   try {
     const path = `${driveItemPath(location, itemId)}/preview`;

@@ -1,5 +1,5 @@
 import { callGraph, callGraphAt, GraphApiError, type GraphResponse, graphError, graphResult } from './graph-client.js';
-import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBaseUrl, getGraphBetaUrl } from './graph-constants.js';
 import { graphUserPath } from './graph-user-path.js';
 
 export interface GraphTeam {
@@ -80,7 +80,7 @@ export interface TeamsAppCatalogEntry {
 
 /** OData bind URL for `POST …/installedApps` bodies (`teamsApp@odata.bind`). */
 export function teamsAppCatalogBindUrl(catalogTeamsAppId: string): string {
-  const base = GRAPH_BASE_URL.replace(/\/$/, '');
+  const base = getGraphBaseUrl().replace(/\/+$/, '');
   return `${base}/appCatalogs/teamsApps/${encodeURIComponent(catalogTeamsAppId.trim())}`;
 }
 
@@ -1117,6 +1117,37 @@ export async function sendMeTeamworkActivityNotification(
   }
 }
 
+/** `POST /users/{id}/teamwork/sendActivityNotification` — typically **application** permission `TeamsActivity.Send`; returns 204. */
+export async function sendUserTeamworkActivityNotification(
+  token: string,
+  userId: string,
+  body: Record<string, unknown>
+): Promise<GraphResponse<void>> {
+  const u = encodeURIComponent(userId.trim());
+  try {
+    const r = await callGraph<void>(
+      token,
+      `/users/${u}/teamwork/sendActivityNotification`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+    if (!r.ok) {
+      return graphError(
+        r.error?.message || 'Failed to send user teamwork activity notification',
+        r.error?.code,
+        r.error?.status
+      );
+    }
+    return graphResult(undefined);
+  } catch (err) {
+    if (err instanceof GraphApiError) return graphError(err.message, err.code, err.status);
+    return graphError(err instanceof Error ? err.message : 'Failed to send user teamwork activity notification');
+  }
+}
+
 /** `POST /chats/{id}/sendActivityNotification` — requires `TeamsActivity.Send`; returns 204. */
 export async function sendChatActivityNotification(
   token: string,
@@ -1163,7 +1194,7 @@ export async function updateChannelMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/teams/${t}/channels/${c}/messages/${m}`;
     const r = useBeta
-      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+      ? await callGraphAt<GraphChatMessage>(getGraphBetaUrl(), token, path, {
           method: 'PATCH',
           body: JSON.stringify(body)
         })
@@ -1198,7 +1229,7 @@ export async function updateChannelMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/teams/${t}/channels/${ch}/messages/${p}/replies/${r}`;
     const res = useBeta
-      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+      ? await callGraphAt<GraphChatMessage>(getGraphBetaUrl(), token, path, {
           method: 'PATCH',
           body: JSON.stringify(body)
         })
@@ -1292,7 +1323,7 @@ export async function softDeleteChannelMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/teams/${t}/channels/${c}/messages/${m}/softDelete`;
     const r = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to soft-delete channel message', r.error?.code, r.error?.status);
@@ -1317,7 +1348,7 @@ export async function undoSoftDeleteChannelMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/teams/${t}/channels/${c}/messages/${m}/undoSoftDelete`;
     const r = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to undo soft-delete', r.error?.code, r.error?.status);
@@ -1344,7 +1375,7 @@ export async function softDeleteChannelMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/teams/${t}/channels/${c}/messages/${p}/replies/${r}/softDelete`;
     const res = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!res.ok) {
       return graphError(res.error?.message || 'Failed to soft-delete reply', res.error?.code, res.error?.status);
@@ -1371,7 +1402,7 @@ export async function undoSoftDeleteChannelMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/teams/${t}/channels/${c}/messages/${p}/replies/${r}/undoSoftDelete`;
     const res = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!res.ok) {
       return graphError(res.error?.message || 'Failed to undo soft-delete reply', res.error?.code, res.error?.status);
@@ -1395,7 +1426,7 @@ export async function updateChatMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/chats/${c}/messages/${m}`;
     const r = useBeta
-      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+      ? await callGraphAt<GraphChatMessage>(getGraphBetaUrl(), token, path, {
           method: 'PATCH',
           body: JSON.stringify(body)
         })
@@ -1427,7 +1458,7 @@ export async function updateChatMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/chats/${c}/messages/${p}/replies/${r}`;
     const res = useBeta
-      ? await callGraphAt<GraphChatMessage>(GRAPH_BETA_URL, token, path, {
+      ? await callGraphAt<GraphChatMessage>(getGraphBetaUrl(), token, path, {
           method: 'PATCH',
           body: JSON.stringify(body)
         })
@@ -1507,7 +1538,7 @@ export async function softDeleteChatMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/chats/${c}/messages/${m}/softDelete`;
     const r = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to soft-delete chat message', r.error?.code, r.error?.status);
@@ -1530,7 +1561,7 @@ export async function undoSoftDeleteChatMessage(
     const m = encodeURIComponent(messageId.trim());
     const path = `/chats/${c}/messages/${m}/undoSoftDelete`;
     const r = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to undo soft-delete chat message', r.error?.code, r.error?.status);
@@ -1555,7 +1586,7 @@ export async function softDeleteChatMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/chats/${c}/messages/${p}/replies/${r}/softDelete`;
     const res = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!res.ok) {
       return graphError(res.error?.message || 'Failed to soft-delete chat reply', res.error?.code, res.error?.status);
@@ -1580,7 +1611,7 @@ export async function undoSoftDeleteChatMessageReply(
     const r = encodeURIComponent(replyId.trim());
     const path = `/chats/${c}/messages/${p}/replies/${r}/undoSoftDelete`;
     const res = useBeta
-      ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
+      ? await callGraphAt<void>(getGraphBetaUrl(), token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!res.ok) {
       return graphError(

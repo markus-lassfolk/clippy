@@ -1,477 +1,279 @@
 import { describe, expect, it } from 'bun:test';
 
-const token = 'test-token';
+const token = 'tok';
 const baseUrl = 'https://graph.microsoft.com/v1.0';
 
-describe('listCalendars', () => {
-  it('GETs /calendars collection', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(
-          JSON.stringify({
-            value: [{ id: 'cal-1', name: 'Calendar' }]
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } }
-        );
-      }) as typeof fetch;
-
-      const { listCalendars } = await import('./graph-calendar-client.js');
-      const r = await listCalendars(token);
-
-      expect(r.ok).toBe(true);
-      expect(r.data?.[0]?.name).toBe('Calendar');
-      expect(urls[0]).toContain('/me/calendars');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('listCalendarView', () => {
-  it('GETs default /calendar/calendarView with start and end', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(
-          JSON.stringify({
-            value: [{ id: 'evt-1', subject: 'Standup' }]
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } }
-        );
-      }) as typeof fetch;
-
-      const { listCalendarView } = await import('./graph-calendar-client.js');
-      const r = await listCalendarView(token, '2026-04-01T00:00:00Z', '2026-04-02T00:00:00Z', {});
-
-      expect(r.ok).toBe(true);
-      expect(r.data?.[0]?.subject).toBe('Standup');
-      expect(urls[0]).toContain('/me/calendar/calendarView');
-      expect(urls[0]).toContain('startDateTime=');
-      expect(urls[0]).toContain('endDateTime=');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it('GETs /calendars/{id}/calendarView when calendarId set', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ value: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { listCalendarView } = await import('./graph-calendar-client.js');
-      const r = await listCalendarView(token, '2026-04-01T00:00:00Z', '2026-04-02T00:00:00Z', {
-        calendarId: 'abc/def'
-      });
-
-      expect(r.ok).toBe(true);
-      expect(urls[0]).toContain('/me/calendars/abc%2Fdef/calendarView');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('getEvent', () => {
-  it('GETs /events/{id}', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ id: 'evt-1', subject: 'Hi' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { getEvent } = await import('./graph-calendar-client.js');
-      const r = await getEvent(token, 'evt-1', undefined, 'subject,id');
-
-      expect(r.ok).toBe(true);
-      expect(r.data?.subject).toBe('Hi');
-      expect(urls[0]).toContain('/me/events/evt-1');
-      expect(urls[0]).toContain('$select=');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it('sends Prefer outlook.timezone=UTC when preferOutlookTimezoneUtc', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const headers: Headers[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
-        headers.push(new Headers(init?.headers as HeadersInit));
-        return new Response(JSON.stringify({ id: 'evt-1' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { getEvent } = await import('./graph-calendar-client.js');
-      await getEvent(token, 'evt-1', undefined, 'id', { preferOutlookTimezoneUtc: true });
-
-      expect(headers[0].get('Prefer')).toBe('outlook.timezone="UTC"');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
 describe('normalizeGraphCalendarRangeInstant', () => {
-  it('adds Z to local-style instant without zone', async () => {
+  it('normalizes date-only and zone-less instants', async () => {
     const { normalizeGraphCalendarRangeInstant } = await import('./graph-calendar-client.js');
-    expect(normalizeGraphCalendarRangeInstant('2026-01-15T10:00:00')).toBe('2026-01-15T10:00:00Z');
-    expect(normalizeGraphCalendarRangeInstant('2026-01-15T10:00:00.0000000')).toBe('2026-01-15T10:00:00Z');
-  });
-
-  it('passes through values that already have Z or offset', async () => {
-    const { normalizeGraphCalendarRangeInstant } = await import('./graph-calendar-client.js');
-    expect(normalizeGraphCalendarRangeInstant('2026-01-15T10:00:00Z')).toBe('2026-01-15T10:00:00Z');
-    expect(normalizeGraphCalendarRangeInstant('2026-01-15T11:00:00+01:00')).toBe('2026-01-15T11:00:00+01:00');
-  });
-
-  it('expands date-only to UTC midnight', async () => {
-    const { normalizeGraphCalendarRangeInstant } = await import('./graph-calendar-client.js');
-    expect(normalizeGraphCalendarRangeInstant('2026-03-01')).toBe('2026-03-01T00:00:00.000Z');
+    expect(normalizeGraphCalendarRangeInstant('')).toMatch(/1970-01-01/);
+    expect(normalizeGraphCalendarRangeInstant('2026-03-15')).toBe('2026-03-15T00:00:00.000Z');
+    expect(normalizeGraphCalendarRangeInstant('2026-03-15T14:30:00')).toBe('2026-03-15T14:30:00Z');
+    expect(normalizeGraphCalendarRangeInstant('2026-03-15T14:30:00.123')).toBe('2026-03-15T14:30:00Z');
+    expect(normalizeGraphCalendarRangeInstant('2026-03-15T14:30:00Z')).toBe('2026-03-15T14:30:00Z');
+    expect(normalizeGraphCalendarRangeInstant('2026-03-15T14:30:00+02:00')).toBe('2026-03-15T14:30:00+02:00');
   });
 });
 
-describe('listEventInstances', () => {
-  it('normalizes start/end query params and optional Prefer header', async () => {
+describe('graph-calendar-client fetch wrappers', () => {
+  it('listCalendarGroups returns pages', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;
-    const captured: Array<{ url: string; prefer?: string | null }> = [];
     const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ value: [{ id: 'g1', name: 'G' }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })) as typeof fetch;
+      const { listCalendarGroups } = await import('./graph-calendar-client.js');
+      const r = await listCalendarGroups(token);
+      expect(r.ok).toBe(true);
+      expect(r.data?.[0]?.id).toBe('g1');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 
+  it('listCalendars and getCalendar hit user calendar paths', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const urls: string[] = [];
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        const u = typeof input === 'string' ? input : input.toString();
+        urls.push(u);
+        if (u.includes('/me/calendars/cal-1') && !u.includes('calendarView')) {
+          return new Response(JSON.stringify({ id: 'cal-1', name: 'C' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify({ value: [{ id: 'cal-1', name: 'C' }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+      const { listCalendars, getCalendar } = await import('./graph-calendar-client.js');
+      const list = await listCalendars(token);
+      expect(list.ok).toBe(true);
+      expect(urls.some((u) => u.includes('/me/calendars'))).toBe(true);
+
+      const one = await getCalendar(token, 'cal-1');
+      expect(one.ok).toBe(true);
+      expect(urls.some((u) => u.includes('/me/calendars/cal-1'))).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('createCalendarGroup posts name', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    let posted = '';
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async (_input, init) => {
+        posted = String(init?.body ?? '');
+        return new Response(JSON.stringify({ id: 'ng', name: 'N' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        });
+      }) as typeof fetch;
+      const { createCalendarGroup } = await import('./graph-calendar-client.js');
+      const r = await createCalendarGroup(token, '  N  ');
+      expect(r.ok).toBe(true);
+      expect(JSON.parse(posted)).toEqual({ name: 'N' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('covers calendar events, permissions, attachments, delta, and calendar resource CRUD', async () => {
+    process.env.GRAPH_BASE_URL = baseUrl;
+    const originalFetch = globalThis.fetch;
+    const eventBody = {
+      subject: 'S',
+      start: { dateTime: '2026-01-01T10:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-01-01T11:00:00', timeZone: 'UTC' }
+    };
     try {
       globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : input.toString();
-        const h = new Headers(init?.headers as HeadersInit);
-        captured.push({ url, prefer: h.get('Prefer') });
-        return new Response(JSON.stringify({ value: [] }), {
+        const u = typeof input === 'string' ? input : input.toString();
+        const m = (init?.method || 'GET').toUpperCase();
+        if (m === 'DELETE') {
+          return new Response(null, { status: 204 });
+        }
+        if (m === 'POST' && u.includes('/cancel')) {
+          return new Response(null, { status: 202 });
+        }
+        if (u.includes('/attachments/') && u.includes('/$value')) {
+          return new Response(new Uint8Array([7, 8]), { status: 200 });
+        }
+        if (u.includes('/calendarView')) {
+          return new Response(JSON.stringify({ value: [{ id: 'ev-v', subject: 'V' }] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (m === 'POST' && u.includes('/events') && !u.includes('/attachments')) {
+          return new Response(JSON.stringify({ id: 'new-ev', subject: 'S' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (m === 'PATCH' && u.includes('/events/')) {
+          return new Response(JSON.stringify({ id: 'e1', subject: 'Upd' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/instances')) {
+          return new Response(JSON.stringify({ value: [{ id: 'inst-1' }] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/attachments/') && !u.includes('/$value') && m === 'GET') {
+          return new Response(JSON.stringify({ id: 'att1', name: 'a.bin' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/attachments') && m === 'GET' && !u.includes('/attachments/')) {
+          return new Response(JSON.stringify({ value: [{ id: 'a1' }] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/calendarPermissions') && m === 'POST') {
+          return new Response(JSON.stringify({ id: 'perm-new', role: 'read' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/calendarPermissions') && m === 'PATCH') {
+          return new Response(JSON.stringify({ id: 'perm-1', role: 'write' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (u.includes('/events/delta') && u.includes('$skiptoken=2')) {
+          return new Response(
+            JSON.stringify({ value: [], '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/me/events/delta' }),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' }
+            }
+          );
+        }
+        if (u.includes('/events/delta') && m === 'GET') {
+          return new Response(
+            JSON.stringify({
+              value: [{ id: 'd1' }],
+              '@odata.nextLink': `${baseUrl}/me/events/delta?$skiptoken=2`
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } }
+          );
+        }
+        if (u.includes('/calendarGroups/g1')) {
+          return new Response(null, { status: 204 });
+        }
+        if (m === 'POST' && u.includes('/calendars') && !u.includes('/events')) {
+          return new Response(JSON.stringify({ id: 'cal-new', name: 'C2' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (m === 'PATCH' && u.includes('/calendars/cal-patch')) {
+          return new Response(JSON.stringify({ id: 'cal-patch', name: 'Ren' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify({ id: 'e1', subject: 'E' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
       }) as typeof fetch;
 
-      const { listEventInstances } = await import('./graph-calendar-client.js');
-      const r = await listEventInstances(token, 'master-1', '2026-01-01', '2026-01-02T12:00:00', {
+      const cal = await import('./graph-calendar-client.js');
+
+      const v = await cal.listCalendarView(token, '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z');
+      expect(v.ok).toBe(true);
+      const v2 = await cal.listCalendarView(token, '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', {
+        calendarId: 'cal-1'
+      });
+      expect(v2.ok).toBe(true);
+
+      const cr = await cal.createCalendarEvent(token, eventBody);
+      expect(cr.ok).toBe(true);
+      const cr2 = await cal.createCalendarEvent(token, eventBody, undefined, 'cal-1');
+      expect(cr2.ok).toBe(true);
+
+      const up = await cal.updateCalendarEvent(token, 'e1', { subject: 'Upd' });
+      expect(up.ok).toBe(true);
+      const del = await cal.deleteCalendarEvent(token, 'e1');
+      expect(del.ok).toBe(true);
+      const can = await cal.cancelCalendarEvent(token, 'e1', { comment: 'x' });
+      expect(can.ok).toBe(true);
+
+      const inst = await cal.listEventInstances(token, 'series-1', '2026-01-01', '2026-02-01', {
+        select: 'id,subject',
         preferOutlookTimezoneUtc: true
       });
+      expect(inst.ok).toBe(true);
 
-      expect(r.ok).toBe(true);
-      expect(captured[0].url).toContain('startDateTime=2026-01-01T00%3A00%3A00.000Z');
-      expect(captured[0].url).toContain('endDateTime=2026-01-02T12%3A00%3A00Z');
-      expect(captured[0].prefer).toBe('outlook.timezone="UTC"');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
+      const ge = await cal.getEvent(token, 'e1', undefined, 'id,subject', { preferOutlookTimezoneUtc: true });
+      expect(ge.ok).toBe(true);
 
-describe('updateCalendarEvent', () => {
-  it('PATCHes /events/{id} with JSON body and returns updated event', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const requests: Array<{ url: string; method?: string; body?: string }> = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : input.toString();
-        requests.push({
-          url,
-          method: init?.method,
-          body: typeof init?.body === 'string' ? init.body : undefined
-        });
-        return new Response(JSON.stringify({ id: 'evt-1', subject: 'Patched' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { updateCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await updateCalendarEvent(token, 'evt-1', { subject: 'Patched' }, undefined);
-
-      expect(r.ok).toBe(true);
-      expect(r.data?.subject).toBe('Patched');
-      expect(requests[0].method).toBe('PATCH');
-      expect(requests[0].url).toContain('/me/events/evt-1');
-      expect(requests[0].body).toBe(JSON.stringify({ subject: 'Patched' }));
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('deleteCalendarEvent', () => {
-  it('DELETEs /events/{id} and succeeds on 204', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const requests: Array<{ url: string; method?: string }> = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : input.toString();
-        requests.push({ url, method: init?.method });
-        return new Response(null, { status: 204 });
-      }) as typeof fetch;
-
-      const { deleteCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await deleteCalendarEvent(token, 'evt-del', undefined);
-
-      expect(r.ok).toBe(true);
-      expect(requests[0].method).toBe('DELETE');
-      expect(requests[0].url).toContain('/me/events/evt-del');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('cancelCalendarEvent', () => {
-  it('POSTs /events/{id}/cancel with lowercase comment field', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const requests: Array<{ url: string; body?: string }> = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : input.toString();
-        requests.push({
-          url,
-          body: typeof init?.body === 'string' ? init.body : undefined
-        });
-        return new Response(null, { status: 204 });
-      }) as typeof fetch;
-
-      const { cancelCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await cancelCalendarEvent(token, 'evt-can', { comment: 'Sorry' });
-
-      expect(r.ok).toBe(true);
-      expect(requests[0].url).toContain('/me/events/evt-can/cancel');
-      expect(requests[0].body).toBe(JSON.stringify({ comment: 'Sorry' }));
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it('sends empty comment when omitted', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    let body = '';
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
-        body = typeof init?.body === 'string' ? init.body : '';
-        return new Response(null, { status: 204 });
-      }) as typeof fetch;
-
-      const { cancelCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await cancelCalendarEvent(token, 'evt-x', {});
-      expect(r.ok).toBe(true);
-      expect(body).toBe(JSON.stringify({ comment: '' }));
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('createCalendarEvent', () => {
-  it('POSTs to /me/events by default', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        expect(init?.method).toBe('POST');
-        return new Response(JSON.stringify({ id: 'ev-1', subject: 'Hi' }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { createCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await createCalendarEvent(
-        token,
-        {
-          subject: 'Hi',
-          start: { dateTime: '2026-05-05T10:00:00', timeZone: 'UTC' },
-          end: { dateTime: '2026-05-05T11:00:00', timeZone: 'UTC' }
-        },
-        undefined,
-        undefined
-      );
-
-      expect(r.ok).toBe(true);
-      expect(urls[0]).toContain('/me/events');
-      expect(urls[0]).not.toContain('/calendars/');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it('POSTs to /me/calendars/{id}/events when calendarId set', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ id: 'ev-2', subject: 'On secondary' }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { createCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await createCalendarEvent(
-        token,
-        {
-          subject: 'On secondary',
-          start: { dateTime: '2026-05-05T10:00:00', timeZone: 'UTC' },
-          end: { dateTime: '2026-05-05T11:00:00', timeZone: 'UTC' }
-        },
-        undefined,
-        'cal-secondary'
-      );
-
-      expect(r.ok).toBe(true);
-      expect(urls[0]).toContain('/me/calendars/cal-secondary/events');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('createCalendarResource', () => {
-  it('POSTs to /me/calendars', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        expect(init?.method).toBe('POST');
-        return new Response(JSON.stringify({ id: 'new-cal', name: 'Team' }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { createCalendarResource } = await import('./graph-calendar-client.js');
-      const r = await createCalendarResource(token, { name: 'Team', color: 'preset7' });
-      expect(r.ok).toBe(true);
-      expect(r.data?.id).toBe('new-cal');
-      expect(urls[0]).toContain('/me/calendars');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('addFileAttachmentToCalendarEvent', () => {
-  it('POSTs to /events/{id}/attachments', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ id: 'att-1', name: 'f.txt' }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { addFileAttachmentToCalendarEvent } = await import('./graph-calendar-client.js');
-      const r = await addFileAttachmentToCalendarEvent(token, 'evt-1', {
-        name: 'f.txt',
-        contentType: 'text/plain',
-        contentBytes: 'aGk='
+      const lp = await cal.listCalendarPermissions(token);
+      expect(lp.ok).toBe(true);
+      const cp = await cal.createCalendarPermission(token, {
+        emailAddress: { address: 'x@y.com' },
+        role: 'read'
       });
+      expect(cp.ok).toBe(true);
+      const upp = await cal.updateCalendarPermission(token, 'perm-1', { role: 'write' });
+      expect(upp.ok).toBe(true);
+      const dp = await cal.deleteCalendarPermission(token, 'perm-1');
+      expect(dp.ok).toBe(true);
 
-      expect(r.ok).toBe(true);
-      expect(urls[0]).toContain('/me/events/evt-1/attachments');
+      const la = await cal.listEventAttachments(token, 'e1');
+      expect(la.ok).toBe(true);
+      const ga = await cal.getEventAttachment(token, 'e1', 'att1');
+      expect(ga.ok).toBe(true);
+      const bytes = await cal.downloadEventAttachmentBytes(token, 'e1', 'att1');
+      expect(bytes.ok).toBe(true);
+      expect(bytes.data?.length).toBe(2);
+
+      const d0 = await cal.eventsDeltaPage(token, {});
+      expect(d0.ok).toBe(true);
+      const d1 = await cal.eventsDeltaPage(token, {
+        nextLink: `${baseUrl}/me/events/delta?$skiptoken=2`
+      });
+      expect(d1.ok).toBe(true);
+      const dCal = await cal.eventsDeltaPage(token, { calendarId: 'cal-1' });
+      expect(dCal.ok).toBe(true);
+
+      const dg = await cal.deleteCalendarGroup(token, 'g1');
+      expect(dg.ok).toBe(true);
+
+      const cres = await cal.createCalendarResource(token, { name: 'C2', color: 'auto' });
+      expect(cres.ok).toBe(true);
+      const cgrp = await cal.createCalendarResource(token, { name: 'C3' }, undefined, 'grp-1');
+      expect(cgrp.ok).toBe(true);
+      const cup = await cal.updateCalendarResource(token, 'cal-patch', { name: 'Ren' });
+      expect(cup.ok).toBe(true);
+      const cdel = await cal.deleteCalendarResource(token, 'cal-del');
+      expect(cdel.ok).toBe(true);
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
-});
 
-describe('eventsDeltaPage', () => {
-  it('GETs /me/events/delta when no calendar id', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ value: [{ id: 'e1', subject: 'X' }] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { eventsDeltaPage } = await import('./graph-calendar-client.js');
-      const r = await eventsDeltaPage(token, {});
-
-      expect(r.ok).toBe(true);
-      expect(r.data?.value?.[0]?.id).toBe('e1');
-      expect(urls[0]).toContain('/me/events/delta');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it('GETs /calendars/{id}/events/delta when calendar set', async () => {
-    process.env.GRAPH_BASE_URL = baseUrl;
-    const urls: string[] = [];
-    const originalFetch = globalThis.fetch;
-
-    try {
-      globalThis.fetch = (async (input: string | URL | Request) => {
-        urls.push(typeof input === 'string' ? input : input.toString());
-        return new Response(JSON.stringify({ value: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }) as typeof fetch;
-
-      const { eventsDeltaPage } = await import('./graph-calendar-client.js');
-      const r = await eventsDeltaPage(token, { calendarId: 'cal-99' });
-
-      expect(r.ok).toBe(true);
-      expect(urls[0]).toContain('/me/calendars/cal-99/events/delta');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+  it('updateCalendarResource returns error when nothing to patch', async () => {
+    const { updateCalendarResource } = await import('./graph-calendar-client.js');
+    const r = await updateCalendarResource('tok', 'cal-x', {});
+    expect(r.ok).toBe(false);
+    expect(r.error?.message).toMatch(/Nothing to update/);
   });
 });

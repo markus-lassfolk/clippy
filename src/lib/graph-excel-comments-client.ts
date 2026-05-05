@@ -12,7 +12,7 @@ import {
   graphError,
   graphErrorFromApiError
 } from './graph-client.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
+import { getGraphBetaUrl } from './graph-constants.js';
 
 export type WorkbookCommentJson = Record<string, unknown>;
 
@@ -33,7 +33,7 @@ export async function listExcelWorkbookComments(
     token,
     commentsCollectionPath(location, itemId),
     'Failed to list workbook comments',
-    GRAPH_BETA_URL
+    getGraphBetaUrl()
   );
 }
 
@@ -44,7 +44,7 @@ export async function getExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(GRAPH_BETA_URL, token, commentItemPath(location, itemId, commentId));
+    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, commentItemPath(location, itemId, commentId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to get workbook comment');
@@ -58,7 +58,7 @@ export async function createExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(GRAPH_BETA_URL, token, commentsCollectionPath(location, itemId), {
+    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, commentsCollectionPath(location, itemId), {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -77,7 +77,7 @@ export async function addExcelWorkbookCommentReply(
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
     const path = `${commentItemPath(location, itemId, commentId)}/replies`;
-    return await callGraphAt<WorkbookCommentJson>(GRAPH_BETA_URL, token, path, {
+    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, path, {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -95,7 +95,7 @@ export async function patchExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(GRAPH_BETA_URL, token, commentItemPath(location, itemId, commentId), {
+    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, commentItemPath(location, itemId, commentId), {
       method: 'PATCH',
       body: JSON.stringify(body)
     });

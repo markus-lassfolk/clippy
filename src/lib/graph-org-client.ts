@@ -1,7 +1,7 @@
 import {
   callGraph,
   fetchAllPages,
-  GRAPH_BASE_URL,
+  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -71,7 +71,7 @@ export async function listTransitiveReports(
   forUser?: string
 ): Promise<GraphResponse<OrgDirectoryObject[]>> {
   const path = graphUserPath(forUser, 'transitiveReports');
-  return fetchAllPages<OrgDirectoryObject>(token, path, 'Failed to list transitive reports', GRAPH_BASE_URL, {
+  return fetchAllPages<OrgDirectoryObject>(token, path, 'Failed to list transitive reports', getGraphBaseUrl(), {
     headers: { ConsistencyLevel: 'eventual' }
   });
 }

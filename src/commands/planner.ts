@@ -23,7 +23,9 @@ import {
   createTask,
   deletePlannerBucket,
   deletePlannerPlan,
+  deletePlannerPlanDetails,
   deletePlannerTask,
+  deletePlannerTaskDetails,
   getAssignedToTaskBoardFormat,
   getBucketTaskBoardFormat,
   getPlanDetails,
@@ -1335,6 +1337,88 @@ plannerCommand
       const again = await getPlanDetails(auth.token!, opts.plan);
       if (opts.json && again.ok && again.data) console.log(JSON.stringify(again.data, null, 2));
       else console.log(`Updated plan details for plan: ${opts.plan}`);
+    }
+  );
+
+plannerCommand
+  .command('delete-plan-details')
+  .description('DELETE plan details facet (`/planner/plans/{id}/details`) — destructive; labels/sharedWith data is removed')
+  .requiredOption('-p, --plan <planId>', 'Plan ID')
+  .option('--confirm', 'Confirm deletion')
+  .option('--json', 'Output JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(
+    async (opts: { plan: string; confirm?: boolean; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const dr = await getPlanDetails(auth.token!, opts.plan);
+      if (!dr.ok || !dr.data) {
+        console.error(`Error: ${dr.error?.message}`);
+        process.exit(1);
+      }
+      const etag = dr.data['@odata.etag'];
+      if (!etag) {
+        console.error('Plan details missing ETag');
+        process.exit(1);
+      }
+      if (!opts.confirm) {
+        console.log(`Delete plan DETAILS for plan ${opts.plan}? (Plan object may remain; this removes details only.)`);
+        console.log('Run with --confirm to confirm.');
+        process.exit(1);
+      }
+      const del = await deletePlannerPlanDetails(auth.token!, opts.plan, etag);
+      if (!del.ok) {
+        console.error(`Error: ${del.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify({ deletedPlanDetails: opts.plan }, null, 2));
+      else console.log(`Deleted plan details for plan: ${opts.plan}`);
+    }
+  );
+
+plannerCommand
+  .command('delete-task-details')
+  .description('DELETE task details facet (`/planner/tasks/{id}/details`) — checklist/description/references removed')
+  .requiredOption('-i, --id <taskId>', 'Task ID')
+  .option('--confirm', 'Confirm deletion')
+  .option('--json', 'Output JSON')
+  .option('--token <token>', 'Use a specific token')
+  .option('--identity <name>', 'Graph token cache identity (default: default)')
+  .action(
+    async (opts: { id: string; confirm?: boolean; json?: boolean; token?: string; identity?: string }, cmd: any) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const dr = await getPlannerTaskDetails(auth.token!, opts.id);
+      if (!dr.ok || !dr.data) {
+        console.error(`Error: ${dr.error?.message}`);
+        process.exit(1);
+      }
+      const etag = dr.data['@odata.etag'];
+      if (!etag) {
+        console.error('Task details missing ETag');
+        process.exit(1);
+      }
+      if (!opts.confirm) {
+        console.log(`Delete TASK DETAILS for task ${opts.id}? (Task row may remain.)`);
+        console.log('Run with --confirm to confirm.');
+        process.exit(1);
+      }
+      const del = await deletePlannerTaskDetails(auth.token!, opts.id, etag);
+      if (!del.ok) {
+        console.error(`Error: ${del.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify({ deletedTaskDetails: opts.id }, null, 2));
+      else console.log(`Deleted task details for task: ${opts.id}`);
     }
   );
 
