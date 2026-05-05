@@ -2,7 +2,6 @@ import {
   callGraph,
   type DriveLocation,
   driveItemPath,
-  driveRootPrefix,
   GraphApiError,
   type GraphResponse,
   graphError,
@@ -66,21 +65,6 @@ export async function listInsights(
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : `Failed to list insights/${kind}`);
-  }
-}
-
-/** `GET /me/drive/recent` — list recently used items in the user's drive. */
-export async function listDriveRecent(
-  token: string,
-  options: { user?: string; top?: number } = {}
-): Promise<GraphResponse<InsightListResponse>> {
-  const base = options.user ? `/users/${encodeURIComponent(options.user)}/drive` : '/me/drive';
-  const top = options.top && options.top > 0 ? `?$top=${Math.min(Math.max(1, options.top), 200)}` : '';
-  try {
-    return await callGraph<InsightListResponse>(token, `${base}/recent${top}`);
-  } catch (err) {
-    if (err instanceof GraphApiError) return graphErrorFromApiError(err);
-    return graphError(err instanceof Error ? err.message : 'Failed to list /me/drive/recent');
   }
 }
 
@@ -207,9 +191,4 @@ export async function unfollowSites(token: string, siteIds: string[]): Promise<G
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to unfollow site');
   }
-}
-
-/** Convenience: build the `/recent` path for any drive location. */
-export function driveRecentPath(loc: DriveLocation): string {
-  return `${driveRootPrefix(loc)}/recent`;
 }

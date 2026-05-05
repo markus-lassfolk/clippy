@@ -15,7 +15,7 @@ const MAX_RETRIEVAL_QUERY = 1500;
 export const COPILOT_RETRIEVAL_DATA_SOURCES = ['sharePoint', 'oneDriveBusiness', 'externalItem'] as const;
 export type CopilotRetrievalDataSource = (typeof COPILOT_RETRIEVAL_DATA_SOURCES)[number];
 
-export function assertCopilotRetrievalDataSource(s: string): CopilotRetrievalDataSource {
+function assertCopilotRetrievalDataSource(s: string): CopilotRetrievalDataSource {
   const t = s.trim();
   if (!(COPILOT_RETRIEVAL_DATA_SOURCES as readonly string[]).includes(t)) {
     throw new GraphApiError(

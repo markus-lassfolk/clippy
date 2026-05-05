@@ -29,7 +29,7 @@ export function parseGraphInvokeHeaders(headerLines: string[]): Record<string, s
 }
 
 /** Reject path traversal and non-relative Graph paths (must be under v1.0/beta root). */
-export function assertSafeGraphRelativePath(path: string): string {
+function assertSafeGraphRelativePath(path: string): string {
   const p = path.trim();
   if (!p.startsWith('/')) {
     throw new GraphApiError('Path must start with / (relative to GRAPH_BASE_URL)', 'InvalidPath', 400);

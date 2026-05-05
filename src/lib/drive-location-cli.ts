@@ -2,7 +2,7 @@ import process from 'node:process';
 import type { Command } from 'commander';
 import { type DriveLocation, type DriveLocationCliFlags, driveLocationFromCliFlags } from './drive-location.js';
 
-export const DRIVE_CLI_OPTION_SPECS: readonly [string, string][] = [
+const DRIVE_CLI_OPTION_SPECS: readonly [string, string][] = [
   ['--user <upn>', "Target user's default OneDrive (not with --drive-id or --site-id)"],
   ['--drive-id <id>', 'Explicit drive id (e.g. SharePoint document library)'],
   ['--site-id <id>', 'SharePoint site id (default site document library)'],
