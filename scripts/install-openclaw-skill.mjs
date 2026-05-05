@@ -76,6 +76,8 @@ function main() {
       process.env.npm_lifecycle_event === 'postinstall' || process.env.npm_lifecycle_event === 'prepare';
     if (!quietLifecycle) {
       console.log(`install-openclaw-skill: copied bundled skill to ${dest}`);
+    } else if (target === envDir) {
+      console.log(`\nm365-agent-cli: installed OpenClaw skill to ${dest}`);
     }
   } catch (e) {
     const msg = /** @type {Error} */ (e).message;
