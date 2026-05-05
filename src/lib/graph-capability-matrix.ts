@@ -281,7 +281,8 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'contacts.mergeSuggestions',
     area: 'Contact merge suggestions (Graph beta)',
-    detail: '`contacts merge-suggestions` get/set/delete — `/settings/contactMergeSuggestions` (see Microsoft Graph beta docs for exact permission names)',
+    detail:
+      '`contacts merge-suggestions` get/set/delete — `/settings/contactMergeSuggestions` (see Microsoft Graph beta docs for exact permission names)',
     readScopes: ['User.Read', 'User.ReadWrite', 'User.Read.All'],
     writeScopes: ['User.ReadWrite', 'User.ReadWrite.All']
   },

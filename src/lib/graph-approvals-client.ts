@@ -1,6 +1,6 @@
 import {
-  callGraphAt,
   callGraphAbsolute,
+  callGraphAt,
   fetchAllPages,
   GraphApiError,
   type GraphResponse,
@@ -148,11 +148,7 @@ export async function patchApprovalStep(
  * `DELETE /me/approvals/{id}` (beta) — remove/cancel an approval the signed-in user owns (requires `If-Match`).
  * @see https://learn.microsoft.com/graph/api/approval-delete
  */
-export async function deleteApproval(
-  token: string,
-  approvalId: string,
-  ifMatch: string
-): Promise<GraphResponse<void>> {
+export async function deleteApproval(token: string, approvalId: string, ifMatch: string): Promise<GraphResponse<void>> {
   const path = `/me/approvals/${encodeURIComponent(approvalId)}`;
   try {
     const r = await callGraphAt<void>(

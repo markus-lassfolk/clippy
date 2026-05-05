@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test';
-import { graphInvoke, graphInvokeText, graphPostBatch, parseGraphInvokeHeaders } from './graph-advanced-client.js';
+import {
+  type GraphBatchRequestBody,
+  graphInvoke,
+  graphInvokeText,
+  graphPostBatch,
+  parseGraphInvokeHeaders
+} from './graph-advanced-client.js';
 
 describe('parseGraphInvokeHeaders', () => {
   it('parses Name: value with first colon as separator', () => {
@@ -43,7 +49,7 @@ describe('graphPostBatch', () => {
   });
 
   it('rejects batch body without requests array', async () => {
-    const r = await graphPostBatch('t', {} as { requests: unknown[] });
+    const r = await graphPostBatch('t', {} as GraphBatchRequestBody);
     expect(r.ok).toBe(false);
     expect(r.error?.message).toMatch(/requests/);
   });
@@ -56,7 +62,7 @@ describe('graphPostBatch', () => {
         new Response(JSON.stringify({ responses: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const r = await graphPostBatch('tok', { requests: [{ id: '1', method: 'GET', url: '/me' }] });
       expect(r.ok).toBe(true);
       expect((r.data as { responses: unknown[] }).responses).toEqual([]);
@@ -83,7 +89,7 @@ describe('graphInvoke / graphInvokeText', () => {
         new Response(JSON.stringify({ id: 'u1' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const r = await graphInvoke('tok', { path: '/me', method: 'GET', pinAccessToken: true });
       expect(r.ok).toBe(true);
       expect((r.data as { id: string }).id).toBe('u1');
@@ -97,13 +103,13 @@ describe('graphInvoke / graphInvokeText', () => {
     let body = '';
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         body = String(init?.body ?? '');
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const r = await graphInvoke('tok', {
         path: '/me/sendMail',
         method: 'POST',
@@ -125,7 +131,7 @@ describe('graphInvoke / graphInvokeText', () => {
         new Response('plain', {
           status: 200,
           headers: { 'content-type': 'text/plain' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const r = await graphInvokeText('tok', { path: '/me', method: 'GET', pinAccessToken: true });
       expect(r.ok).toBe(true);
       expect(r.data).toBe('plain');

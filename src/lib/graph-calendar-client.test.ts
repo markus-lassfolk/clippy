@@ -24,7 +24,7 @@ describe('graph-calendar-client fetch wrappers', () => {
         new Response(JSON.stringify({ value: [{ id: 'g1', name: 'G' }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { listCalendarGroups } = await import('./graph-calendar-client.js');
       const r = await listCalendarGroups(token);
       expect(r.ok).toBe(true);
@@ -52,7 +52,7 @@ describe('graph-calendar-client fetch wrappers', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { listCalendars, getCalendar } = await import('./graph-calendar-client.js');
       const list = await listCalendars(token);
       expect(list.ok).toBe(true);
@@ -71,13 +71,13 @@ describe('graph-calendar-client fetch wrappers', () => {
     let posted = '';
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         posted = String(init?.body ?? '');
         return new Response(JSON.stringify({ id: 'ng', name: 'N' }), {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { createCalendarGroup } = await import('./graph-calendar-client.js');
       const r = await createCalendarGroup(token, '  N  ');
       expect(r.ok).toBe(true);
@@ -193,7 +193,7 @@ describe('graph-calendar-client fetch wrappers', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const cal = await import('./graph-calendar-client.js');
 

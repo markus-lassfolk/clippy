@@ -16,7 +16,7 @@ describe('graph-client drive item batch', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
         const method = (init?.method || 'GET').toUpperCase();
 
@@ -157,7 +157,7 @@ describe('graph-client drive item batch', () => {
           status: 500,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const g = await import('./graph-client.js');
 
@@ -220,7 +220,7 @@ describe('graph-client drive item batch', () => {
 
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
         const method = (init?.method || 'GET').toUpperCase();
 
@@ -241,7 +241,7 @@ describe('graph-client drive item batch', () => {
           status: 500,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const g = await import('./graph-client.js');
       const listed = await g.listFiles(token);

@@ -9,9 +9,9 @@ import {
   callGraphAbsolute,
   fetchAllPages,
   fetchGraphRaw,
-  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
+  getGraphBaseUrl,
   graphError,
   graphResult
 } from './graph-client.js';
@@ -437,7 +437,13 @@ export async function listEventInstances(
   const requestInit: RequestInit | undefined = options?.preferOutlookTimezoneUtc
     ? { headers: { Prefer: PREFER_OUTLOOK_TIMEZONE_UTC } }
     : undefined;
-  return fetchAllPages<GraphCalendarEvent>(token, path, 'Failed to list event instances', getGraphBaseUrl(), requestInit);
+  return fetchAllPages<GraphCalendarEvent>(
+    token,
+    path,
+    'Failed to list event instances',
+    getGraphBaseUrl(),
+    requestInit
+  );
 }
 
 export async function getEvent(
@@ -668,7 +674,7 @@ export async function getEventAttachment(
 }
 
 /** `POST /me/events/{id}/attachments` — file attachment on an event (draft or existing). */
-export async function addFileAttachmentToCalendarEvent(
+async function addFileAttachmentToCalendarEvent(
   token: string,
   eventId: string,
   attachment: { name: string; contentType: string; contentBytes: string },

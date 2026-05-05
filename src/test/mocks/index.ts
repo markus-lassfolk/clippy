@@ -468,7 +468,7 @@ export function createMockFetch(): any {
 
 // Setup/teardown helpers for use in tests
 export function setupMockFetch(): void {
-  globalThis.fetch = createMockFetch() as typeof fetch;
+  globalThis.fetch = createMockFetch() as unknown as typeof fetch;
 }
 
 export function teardownMockFetch(): void {

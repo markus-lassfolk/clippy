@@ -2,6 +2,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { requireGraphAuth } from '../lib/graph-auth.js';
 import {
+  deleteContactMergeSuggestions,
+  getContactMergeSuggestions,
+  patchContactMergeSuggestions
+} from '../lib/graph-contact-merge-suggestions-client.js';
+import {
   applyDeltaPageToState,
   assertDeltaScopeMatchesState,
   readDeltaStateFile,
@@ -9,13 +14,9 @@ import {
   writeDeltaStateFile
 } from '../lib/graph-delta-state-file.js';
 import {
-  deleteContactMergeSuggestions,
-  getContactMergeSuggestions,
-  patchContactMergeSuggestions
-} from '../lib/graph-contact-merge-suggestions-client.js';
-import {
   addFileAttachmentToContact,
   addReferenceAttachmentToContact,
+  type ContactExtensionLocation,
   type ContactListQuery,
   contactsDeltaPage,
   createContact,
@@ -43,8 +44,7 @@ import {
   setContactPhoto,
   updateContact,
   updateContactFolder,
-  updateContactOpenExtension,
-  type ContactExtensionLocation
+  updateContactOpenExtension
 } from '../lib/outlook-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
@@ -558,7 +558,9 @@ const contactExtensionCmd = new Command('extension').description('Open type exte
 
 contactExtensionCmd
   .command('list')
-  .description('List open extensions on a contact (default …/contacts/{id}/extensions; use --folder for contactFolders path)')
+  .description(
+    'List open extensions on a contact (default …/contacts/{id}/extensions; use --folder for contactFolders path)'
+  )
   .argument('<contactId>', 'Contact id')
   .option('-f, --folder <folderId>', 'Contact folder id (Graph …/contactFolders/{id}/contacts/{contactId}/extensions)')
   .option('--child-folder <folderId>', 'Child folder under --folder (…/childFolders/{id}/contacts/…)')

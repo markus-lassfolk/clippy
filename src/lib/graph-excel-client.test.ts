@@ -94,7 +94,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const r = await listExcelWorksheets(token, 'item-42');
       expect(r.ok).toBe(true);
@@ -117,7 +117,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const r = await getExcelRange(token, 'item-42', "Sheet'1", "A'1");
       expect(r.ok).toBe(true);
@@ -138,7 +138,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
         new Response(JSON.stringify({ error: { message: 'nope' } }), {
           status: 403,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const r = await listExcelWorksheets(token, 'item-x');
       expect(r.ok).toBe(false);
@@ -152,7 +152,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         const method = (init?.method || 'GET').toUpperCase();
         if (method === 'DELETE') {
           return new Response(null, { status: 204 });
@@ -185,7 +185,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const item = 'item-excel';
       const u1 = await getExcelUsedRange(token, item, 'Sheet1', true);
@@ -213,7 +213,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
     const originalFetch = globalThis.fetch;
     const item = 'item-meta';
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.toString();
         const method = (init?.method || 'GET').toUpperCase();
         if (url.includes('/range(address=') && url.endsWith('/clear') && method === 'POST') {
@@ -259,7 +259,7 @@ describe('listExcelWorksheets / getExcelRange', () => {
           });
         }
         return new Response(JSON.stringify({}), { status: 200, headers: { 'content-type': 'application/json' } });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const pr = await patchExcelRange(token, item, 'Sheet1', 'A1', { values: [[2]] }, 'sess');
       expect(pr.ok).toBe(true);
@@ -293,7 +293,7 @@ describe('graph-excel-client tables charts pivot session', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
         const method = (init?.method || 'GET').toUpperCase();
 
@@ -440,7 +440,7 @@ describe('graph-excel-client tables charts pivot session', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const sess = await createExcelWorkbookSession(token, item);
       expect(sess.ok).toBe(true);

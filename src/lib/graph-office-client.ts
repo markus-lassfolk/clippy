@@ -3,9 +3,9 @@ import { DEFAULT_DRIVE_LOCATION } from './drive-location.js';
 import {
   callGraphAt,
   driveItemPath,
-  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
+  getGraphBaseUrl,
   graphError,
   graphResult
 } from './graph-client.js';

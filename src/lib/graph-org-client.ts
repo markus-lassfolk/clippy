@@ -1,9 +1,9 @@
 import {
   callGraph,
   fetchAllPages,
-  getGraphBaseUrl,
   GraphApiError,
   type GraphResponse,
+  getGraphBaseUrl,
   graphError,
   graphResult
 } from './graph-client.js';

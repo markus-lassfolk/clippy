@@ -253,9 +253,42 @@ export async function downloadMediaToFile(
 /** Initial-window fields for the first page of `getAllRecordings(...)/delta`. */
 export interface MeetingRecordingsDeltaInitial {
   organizerUserId: string;
-  startDateTime: string;
-  endDateTime: string;
+  /** Optional; omit both `startDateTime` and `endDateTime` for a full initial sync (Graph delta docs). */
+  startDateTime?: string;
+  endDateTime?: string;
   top?: number;
+}
+
+function buildGetAllRecordingsDeltaFunctionSegment(init: MeetingRecordingsDeltaInitial): string | undefined {
+  const oid = init.organizerUserId?.trim();
+  if (!oid) return undefined;
+  const enc = encodeURIComponent(oid);
+  const start = init.startDateTime?.trim() ?? '';
+  const end = init.endDateTime?.trim() ?? '';
+  if (end && !start) return undefined;
+  if (start && end) {
+    return `getAllRecordings(meetingOrganizerUserId='${enc}',startDateTime=${encodeURIComponent(start)},endDateTime=${encodeURIComponent(end)})`;
+  }
+  if (start) {
+    return `getAllRecordings(meetingOrganizerUserId='${enc}',startDateTime=${encodeURIComponent(start)})`;
+  }
+  return `getAllRecordings(meetingOrganizerUserId='${enc}')`;
+}
+
+function buildGetAllTranscriptsDeltaFunctionSegment(init: MeetingTranscriptsDeltaInitial): string | undefined {
+  const oid = init.organizerUserId?.trim();
+  if (!oid) return undefined;
+  const enc = encodeURIComponent(oid);
+  const start = init.startDateTime?.trim() ?? '';
+  const end = init.endDateTime?.trim() ?? '';
+  if (end && !start) return undefined;
+  if (start && end) {
+    return `getAllTranscripts(meetingOrganizerUserId='${enc}',startDateTime=${encodeURIComponent(start)},endDateTime=${encodeURIComponent(end)})`;
+  }
+  if (start) {
+    return `getAllTranscripts(meetingOrganizerUserId='${enc}',startDateTime=${encodeURIComponent(start)})`;
+  }
+  return `getAllTranscripts(meetingOrganizerUserId='${enc}')`;
 }
 
 /** `getAllRecordings(...)/delta` — incremental sync (not per-meeting `.../recordings/delta`). */
@@ -277,17 +310,19 @@ export async function getRecordingsDeltaPage(
     }
   }
   const init = args.initial;
-  if (!init?.organizerUserId?.trim() || !init.startDateTime?.trim() || !init.endDateTime?.trim()) {
+  const fn = init ? buildGetAllRecordingsDeltaFunctionSegment(init) : undefined;
+  if (!fn) {
+    if (!init?.organizerUserId?.trim()) {
+      return graphError(
+        'Recordings delta needs a saved next/delta URL, or `meetingOrganizerUserId` for the initial `getAllRecordings(...)/delta` request.'
+      );
+    }
     return graphError(
-      'Recordings delta needs a saved next/delta URL, or organizer plus start/end for the initial `getAllRecordings(...)/delta` request.'
+      'Recordings delta: `--end` requires `--start` (or omit both for a full initial sync with the organizer only).'
     );
   }
-  const fn =
-    `getAllRecordings(meetingOrganizerUserId='${encodeURIComponent(init.organizerUserId.trim())}'` +
-    `,startDateTime=${encodeURIComponent(init.startDateTime)}` +
-    `,endDateTime=${encodeURIComponent(init.endDateTime)})`;
   let path = `${meetingsRoot(args.user)}/${fn}/delta`;
-  if (init.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
+  if (init?.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
     path += `?$top=${Math.min(999, Math.floor(init.top))}`;
   }
   try {
@@ -301,8 +336,9 @@ export async function getRecordingsDeltaPage(
 /** Initial-window fields for the first page of `getAllTranscripts(...)/delta`. */
 export interface MeetingTranscriptsDeltaInitial {
   organizerUserId: string;
-  startDateTime: string;
-  endDateTime: string;
+  /** Optional; omit both `startDateTime` and `endDateTime` for a full initial sync (Graph delta docs). */
+  startDateTime?: string;
+  endDateTime?: string;
   top?: number;
 }
 
@@ -325,17 +361,19 @@ export async function getTranscriptsDeltaPage(
     }
   }
   const init = args.initial;
-  if (!init?.organizerUserId?.trim() || !init.startDateTime?.trim() || !init.endDateTime?.trim()) {
+  const fn = init ? buildGetAllTranscriptsDeltaFunctionSegment(init) : undefined;
+  if (!fn) {
+    if (!init?.organizerUserId?.trim()) {
+      return graphError(
+        'Transcripts delta needs a saved next/delta URL, or `meetingOrganizerUserId` for the initial `getAllTranscripts(...)/delta` request.'
+      );
+    }
     return graphError(
-      'Transcripts delta needs a saved next/delta URL, or organizer plus start/end for the initial `getAllTranscripts(...)/delta` request.'
+      'Transcripts delta: `--end` requires `--start` (or omit both for a full initial sync with the organizer only).'
     );
   }
-  const fn =
-    `getAllTranscripts(meetingOrganizerUserId='${encodeURIComponent(init.organizerUserId.trim())}'` +
-    `,startDateTime=${encodeURIComponent(init.startDateTime)}` +
-    `,endDateTime=${encodeURIComponent(init.endDateTime)})`;
   let path = `${meetingsRoot(args.user)}/${fn}/delta`;
-  if (init.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
+  if (init?.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
     path += `?$top=${Math.min(999, Math.floor(init.top))}`;
   }
   try {

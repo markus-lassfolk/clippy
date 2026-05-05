@@ -8,7 +8,7 @@ describe('delegate-client', () => {
     const fetchCalls: any[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         fetchCalls.push({ input, init });
         const xml = `
           <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
@@ -33,7 +33,7 @@ describe('delegate-client', () => {
           </s:Envelope>
         `;
         return new Response(xml, { status: 200, headers: { 'content-type': 'text/xml' } });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const res = await getDelegates(token, 'me@example.com');
       expect(res.ok).toBe(true);
@@ -51,11 +51,11 @@ describe('delegate-client', () => {
     const fetchCalls: any[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         fetchCalls.push({ input, init });
         const xml = `<m:AddDelegateResponse ResponseClass="Success"></m:AddDelegateResponse>`;
         return new Response(xml, { status: 200, headers: { 'content-type': 'text/xml' } });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       await addDelegate({
         token,
@@ -98,7 +98,7 @@ describe('delegate-client', () => {
             </m:ResponseMessages>
           </m:UpdateDelegateResponse>`;
         return new Response(xml, { status: 200, headers: { 'content-type': 'text/xml' } });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const u = await updateDelegate({
         token,
@@ -117,7 +117,7 @@ describe('delegate-client', () => {
         new Response(
           `<m:RemoveDelegateResponse ResponseClass="Success" xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"/>`,
           { status: 200, headers: { 'content-type': 'text/xml' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const rm = await removeDelegate({ token, delegateEmail: 'del@example.com' });
       expect(rm.ok).toBe(true);
     } finally {
@@ -147,7 +147,7 @@ describe('delegate-client', () => {
             </s:Body>
           </s:Envelope>`;
         return new Response(xml, { status: 200, headers: { 'content-type': 'text/xml' } });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const res = await getDelegates(token);
       expect(res.ok).toBe(true);
       expect(res.data?.[0].userId).toBe('alt@example.com');

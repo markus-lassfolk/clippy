@@ -1342,7 +1342,9 @@ plannerCommand
 
 plannerCommand
   .command('delete-plan-details')
-  .description('DELETE plan details facet (`/planner/plans/{id}/details`) — destructive; labels/sharedWith data is removed')
+  .description(
+    'DELETE plan details facet (`/planner/plans/{id}/details`) — destructive; labels/sharedWith data is removed'
+  )
   .requiredOption('-p, --plan <planId>', 'Plan ID')
   .option('--confirm', 'Confirm deletion')
   .option('--json', 'Output JSON')

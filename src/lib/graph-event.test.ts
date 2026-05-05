@@ -7,7 +7,7 @@ describe('graph-event', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async () => new Response(null, { status: 202 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 202 })) as unknown as typeof fetch;
       const { forwardEvent } = await import('./graph-event.js');
       const r = await forwardEvent({
         token: 't',
@@ -25,7 +25,7 @@ describe('graph-event', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async () => new Response(null, { status: 202 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 202 })) as unknown as typeof fetch;
       const { proposeNewTime } = await import('./graph-event.js');
       const r = await proposeNewTime({
         token: 't',
@@ -44,7 +44,7 @@ describe('graph-event', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async () => new Response(null, { status: 202 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 202 })) as unknown as typeof fetch;
       const g = await import('./graph-event.js');
       expect((await g.acceptEventInvitation({ token: 't', eventId: 'e1', comment: 'ok' })).ok).toBe(true);
       expect((await g.declineEventInvitation({ token: 't', eventId: 'e1', sendResponse: false })).ok).toBe(true);

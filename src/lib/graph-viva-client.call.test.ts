@@ -9,7 +9,7 @@ describe('graph-viva-client API wrappers (stubbed fetch)', () => {
   const originalFetch = globalThis.fetch;
 
   beforeAll(async () => {
-    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
       const method = (init?.method ?? 'GET').toUpperCase();
       if (method === 'DELETE') {
         return new Response(null, { status: 204 });

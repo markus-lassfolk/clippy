@@ -11,7 +11,7 @@ describe('graph-schedule', () => {
     const bodies: string[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         urls.push(String(_input));
         bodies.push(String(init?.body ?? ''));
         const h = init?.headers;
@@ -21,7 +21,7 @@ describe('graph-schedule', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getSchedule } = await import('./graph-schedule.js');
       const r = await getSchedule(
         token,
@@ -46,13 +46,13 @@ describe('graph-schedule', () => {
     const urls: string[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input) => {
+      globalThis.fetch = (async (input: string | URL | Request) => {
         urls.push(String(input));
         return new Response(JSON.stringify({ value: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getSchedule } = await import('./graph-schedule.js');
       await getSchedule(
         token,
@@ -75,7 +75,7 @@ describe('graph-schedule', () => {
     try {
       globalThis.fetch = (async () => {
         throw new GraphApiError('throttled', 'Throttled', 429);
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getSchedule } = await import('./graph-schedule.js');
       const r = await getSchedule(token, {
         schedules: ['x'],
@@ -97,7 +97,7 @@ describe('graph-schedule', () => {
         new Response(JSON.stringify({ error: { message: 'nope' } }), {
           status: 403,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getSchedule } = await import('./graph-schedule.js');
       const r = await getSchedule(token, {
         schedules: ['x'],
@@ -119,7 +119,7 @@ describe('graph-schedule', () => {
         new Response(JSON.stringify({ meetingTimeSuggestions: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { findMeetingTimes } = await import('./graph-schedule.js');
       const ok = await findMeetingTimes(token, { timeConstraint: { timeSlots: [] } });
       expect(ok.ok).toBe(true);
@@ -130,7 +130,7 @@ describe('graph-schedule', () => {
     try {
       globalThis.fetch = (async () => {
         throw new Error('network');
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { findMeetingTimes } = await import('./graph-schedule.js');
       const bad = await findMeetingTimes(token, { timeConstraint: { timeSlots: [] } });
       expect(bad.ok).toBe(false);
@@ -144,7 +144,7 @@ describe('graph-schedule', () => {
         new Response(JSON.stringify({ error: { message: 'bad' } }), {
           status: 500,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { findMeetingTimes } = await import('./graph-schedule.js');
       const r2 = await findMeetingTimes(token, { timeConstraint: { timeSlots: [] } });
       expect(r2.ok).toBe(false);

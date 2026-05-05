@@ -1112,10 +1112,14 @@ export async function setContactOpenExtension(
   };
   let result: GraphResponse<Record<string, unknown>>;
   try {
-    result = await callGraph<Record<string, unknown>>(token, contactExtensionsPath(contactId, user, undefined, location), {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
+    result = await callGraph<Record<string, unknown>>(
+      token,
+      contactExtensionsPath(contactId, user, undefined, location),
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      }
+    );
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphError(err.message, err.code, err.status);

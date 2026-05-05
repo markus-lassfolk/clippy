@@ -29,7 +29,7 @@ describe('createPlannerPlanForSignedInUser', () => {
           }),
           { status: 201, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createPlannerPlanForSignedInUser } = await import('./planner-client.js');
       const r = await createPlannerPlanForSignedInUser('tok', 'My plan');
@@ -63,7 +63,7 @@ describe('listPlannerMyDayTasks and listPlannerRecentPlans', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listPlannerMyDayTasks, listPlannerRecentPlans } = await import('./planner-client.js');
       await listPlannerMyDayTasks('tok');
@@ -88,7 +88,7 @@ describe('listPlannerMyDayTasks and listPlannerRecentPlans', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listPlannerMyDayTasks } = await import('./planner-client.js');
       await listPlannerMyDayTasks('tok', 'alice@contoso.com');
@@ -114,7 +114,7 @@ describe('listUserTasks, listPlanBuckets, getTask, archivePlannerPlan', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listUserTasks, listPlanBuckets } = await import('./planner-client.js');
       const tasks = await listUserTasks('tok');
@@ -142,7 +142,7 @@ describe('listUserTasks, listPlanBuckets, getTask, archivePlannerPlan', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTask } = await import('./planner-client.js');
       const r = await getTask('tok', 'task-1');
@@ -163,7 +163,7 @@ describe('listUserTasks, listPlanBuckets, getTask, archivePlannerPlan', () => {
       globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: typeof input === 'string' ? input : input.toString(), init });
         return new Response(null, { status: 204 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { archivePlannerPlan } = await import('./planner-client.js');
       const r = await archivePlannerPlan('tok', 'plan-a', 'W/"1"', 'done');
@@ -195,7 +195,7 @@ describe('updatePlannerUser', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { updatePlannerUser } = await import('./planner-client.js');
       const r = await updatePlannerUser('tok', undefined, 'W/"1"', { recentPlanReferences: { p1: null } });
@@ -249,7 +249,9 @@ describe('planner batch coverage', () => {
             JSON.stringify({
               id: 'td1',
               '@odata.etag': 'W/td',
-              checklist: { ck: { '@odata.type': '#microsoft.graph.plannerChecklistItem', title: 't', isChecked: false } },
+              checklist: {
+                ck: { '@odata.type': '#microsoft.graph.plannerChecklistItem', title: 't', isChecked: false }
+              },
               references: {}
             }),
             { status: 200, headers: { 'content-type': 'application/json' } }
@@ -265,10 +267,10 @@ describe('planner batch coverage', () => {
           });
         }
         if (m === 'POST' && u.includes('/planner/tasks')) {
-          return new Response(
-            JSON.stringify({ id: 'new-task', title: 'T', '@odata.etag': 'W/n' }),
-            { status: 201, headers: { 'content-type': 'application/json' } }
-          );
+          return new Response(JSON.stringify({ id: 'new-task', title: 'T', '@odata.etag': 'W/n' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          });
         }
         if (m === 'POST' && u.includes('/planner/buckets')) {
           return new Response(JSON.stringify({ id: 'nb', name: 'B' }), {
@@ -298,7 +300,7 @@ describe('planner batch coverage', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const p = await import('./planner-client.js');
       expect((await p.listUserPlans('tok')).ok).toBe(true);
       expect((await p.listPlannerPlansForUser('tok', 'u1')).ok).toBe(true);
@@ -353,7 +355,7 @@ describe('planner batch coverage', () => {
           return new Response(null, { status: 204 });
         }
         return new Response('{}', { status: 404 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const p = await import('./planner-client.js');
       expect((await p.addPlannerChecklistItem('tok', 'task-1', 'New item', 'new-ck')).ok).toBe(true);
       expect((await p.removePlannerChecklistItem('tok', 'task-1', 'ck')).ok).toBe(true);
@@ -392,7 +394,7 @@ describe('planner batch coverage', () => {
           });
         }
         return new Response('{}', { status: 404 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const p = await import('./planner-client.js');
       expect((await p.getAssignedToTaskBoardFormat('tok', 'task-1')).ok).toBe(true);
       expect((await p.updateAssignedToTaskBoardFormat('tok', 'task-1', 'W/1', { orderHintsByAssignee: {} })).ok).toBe(
@@ -415,7 +417,7 @@ describe('planner batch coverage', () => {
         new Response(JSON.stringify({ id: 'pu', favoritePlanReferences: {} }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getPlannerUser } = await import('./planner-client.js');
       expect((await getPlannerUser('tok')).ok).toBe(true);
     } finally {

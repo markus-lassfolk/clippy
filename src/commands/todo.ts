@@ -40,9 +40,9 @@ import {
   getTodoList,
   getTodoListOpenExtension,
   getTodoLists,
-  getTodoNavigationResource,
   getTodoListsDeltaPage,
   getTodoListsPage,
+  getTodoNavigationResource,
   getTodoTasksDeltaPage,
   listAttachments,
   listTaskAttachmentSessions,
@@ -1803,10 +1803,7 @@ todoRootCommand
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user or shared mailbox (Graph delegation)')
   .action(
-    async (
-      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string },
-      cmd: any
-    ) => {
+    async (opts: { jsonFile: string; json?: boolean; token?: string; identity?: string; user?: string }, cmd: any) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success) {

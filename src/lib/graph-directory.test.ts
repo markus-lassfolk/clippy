@@ -18,7 +18,7 @@ describe('graph-directory', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const d = await import('./graph-directory.js');
       const s = await d.searchPeople(token, 'Pat');
       expect(s.ok).toBe(true);
@@ -38,7 +38,7 @@ describe('graph-directory', () => {
         new Response(JSON.stringify({ id: 'p1', displayName: 'Pat' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getPerson } = await import('./graph-directory.js');
       const r = await getPerson(token, 'p1');
       expect(r.ok).toBe(true);
@@ -60,7 +60,7 @@ describe('graph-directory', () => {
             ]
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const d = await import('./graph-directory.js');
       const u = await d.searchUsers(token, 'Ali');
       expect(u.ok).toBe(true);
@@ -91,7 +91,7 @@ describe('graph-directory', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { listPeople } = await import('./graph-directory.js');
       const r = await listPeople(token, {});
       expect(r.ok).toBe(true);
@@ -115,7 +115,7 @@ describe('graph-directory', () => {
             ]
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const { expandGroup } = await import('./graph-directory.js');
       const r = await expandGroup(token, 'g1');
       expect(r.ok).toBe(true);

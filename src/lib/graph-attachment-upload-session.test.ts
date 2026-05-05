@@ -24,7 +24,7 @@ describe('graph-attachment-upload-session', () => {
         new Response(JSON.stringify({ id: 'att-1' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const r = await uploadBufferViaGraphUploadUrl('https://u.example/x', Buffer.from([1, 2, 3]));
       expect(r.ok).toBe(true);
@@ -46,7 +46,7 @@ describe('graph-attachment-upload-session', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const r = await createMailMessageFileAttachmentUploadSession('tok', 'msg-1', 'f.bin', 100, 'application/pdf');
       expect(r.ok).toBe(true);
@@ -70,9 +70,16 @@ describe('graph-attachment-upload-session', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
-      const r = await createCalendarEventFileAttachmentUploadSession('tok', 'evt-1', 'a.png', 50, 'image/png', 'u@x.com');
+      const r = await createCalendarEventFileAttachmentUploadSession(
+        'tok',
+        'evt-1',
+        'a.png',
+        50,
+        'image/png',
+        'u@x.com'
+      );
       expect(r.ok).toBe(true);
       expect(urls[0]).toContain('/users/u%40x.com/events/evt-1/attachments/createUploadSession');
     } finally {

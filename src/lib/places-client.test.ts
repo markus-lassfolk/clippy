@@ -41,7 +41,7 @@ describe('places-client Graph helpers', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getPlace } = await import('./places-client.js');
       const r = await getPlace(token, 'place-99');
@@ -64,7 +64,7 @@ describe('places-client Graph helpers', () => {
             value: [{ showAs: 'free' }, { showAs: 'free' }]
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
 
       const { isRoomFree } = await import('./places-client.js');
       const free = await isRoomFree(token, 'room@contoso.com', '2026-05-01T10:00:00Z', '2026-05-01T11:00:00Z');
@@ -83,7 +83,7 @@ describe('places-client Graph helpers', () => {
         new Response(JSON.stringify({ value: [{ showAs: 'busy' }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const { isRoomFree } = await import('./places-client.js');
       const free = await isRoomFree(token, 'room@contoso.com', '2026-05-01T10:00:00Z', '2026-05-01T11:00:00Z');
@@ -101,7 +101,7 @@ describe('places-client Graph helpers', () => {
         new Response(JSON.stringify({ error: { message: 'x' } }), {
           status: 401,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { isRoomFree } = await import('./places-client.js');
       expect(await isRoomFree(token, 'room@contoso.com', '2026-05-01T10:00:00Z', '2026-05-01T11:00:00Z')).toBeNull();
     } finally {
@@ -113,7 +113,7 @@ describe('places-client Graph helpers', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input) => {
+      globalThis.fetch = (async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
         if (u.includes('/places/microsoft.graph.roomList')) {
           return new Response(JSON.stringify({ value: [{ id: 'rl1', displayName: 'Building' }] }), {
@@ -141,7 +141,7 @@ describe('places-client Graph helpers', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listPlaceRoomLists, listRoomsInRoomList, findRooms } = await import('./places-client.js');
       const lists = await listPlaceRoomLists({ token });

@@ -313,8 +313,14 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
     'Tenant-wide / per-organizer recordings (`getAllRecordings(...)`). With `--delta`, uses `getAllRecordings(...)/delta` and supports `--state-file`. Requires `OnlineMeetingRecording.Read.All`.'
   )
   .option('--organizer <upn-or-id>', 'Meeting organizer (defaults to the signed-in user)')
-  .option('--start <iso>', 'Start window (required unless --delta)')
-  .option('--end <iso>', 'End window (required unless --delta)')
+  .option(
+    '--start <iso>',
+    'Start window (required for non-delta unless --next). With --delta, optional — omit both --start and --end for a full initial sync (organizer only).'
+  )
+  .option(
+    '--end <iso>',
+    'End window (required for non-delta unless --next). With --delta, optional — if set, --start is required.'
+  )
   .option('--next <url>', 'Follow `@odata.nextLink` from a previous page')
   .option('--delta', 'Use `getAllRecordings(...)/delta` for incremental sync')
   .option('--state-file <path>', '(With --delta) read/write JSON delta cursor (kind: meetingRecordings)')
@@ -339,13 +345,6 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
       const accessToken = auth.token;
       if (opts.delta) {
         const existingForCont = opts.stateFile?.trim() ? await readDeltaStateFile(opts.stateFile.trim()) : null;
-        const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.next, state: existingForCont });
-        if (!continueUrl && (!opts.start?.trim() || !opts.end?.trim())) {
-          console.error(
-            'Error: --delta requires --start and --end for the initial sync (or pass --next / use a state file with a saved URL).'
-          );
-          process.exit(1);
-        }
         const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
         if (!organizerUserId) {
           console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');
@@ -499,8 +498,14 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
     'Tenant-wide / per-organizer transcripts (`getAllTranscripts(...)`). With `--delta`, uses `getAllTranscripts(...)/delta` + `--state-file`. Requires `OnlineMeetingTranscript.Read.All`.'
   )
   .option('--organizer <upn-or-id>', 'Meeting organizer (defaults to the signed-in user)')
-  .option('--start <iso>', 'Start window (required unless --delta)')
-  .option('--end <iso>', 'End window (required unless --delta)')
+  .option(
+    '--start <iso>',
+    'Start window (required for non-delta unless --next). With --delta, optional — omit both --start and --end for a full initial sync (organizer only).'
+  )
+  .option(
+    '--end <iso>',
+    'End window (required for non-delta unless --next). With --delta, optional — if set, --start is required.'
+  )
   .option('--next <url>', 'Follow `@odata.nextLink` from a previous page')
   .option('--delta', 'Use `getAllTranscripts(...)/delta` for incremental sync')
   .option('--state-file <path>', '(With --delta) read/write JSON delta cursor (kind: meetingTranscripts)')
@@ -525,13 +530,6 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
       const accessToken = auth.token;
       if (opts.delta) {
         const existingForCont = opts.stateFile?.trim() ? await readDeltaStateFile(opts.stateFile.trim()) : null;
-        const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.next, state: existingForCont });
-        if (!continueUrl && (!opts.start?.trim() || !opts.end?.trim())) {
-          console.error(
-            'Error: --delta requires --start and --end for the initial sync (or pass --next / use a state file with a saved URL).'
-          );
-          process.exit(1);
-        }
         const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
         if (!organizerUserId) {
           console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');

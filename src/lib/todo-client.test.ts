@@ -62,7 +62,7 @@ describe('getTasks query options', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTasks } = await import('./todo-client.js');
       const r = await getTasks(token, 'list-1', {
@@ -101,7 +101,7 @@ describe('getTask $select', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTask } = await import('./todo-client.js');
       const r = await getTask(token, 'list-1', 'task-1', undefined, { select: 'id,title' });
@@ -130,7 +130,7 @@ describe('getTodoLists / getTodoList', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTodoLists } = await import('./todo-client.js');
       const r = await getTodoLists(token);
@@ -153,7 +153,7 @@ describe('getTodoLists / getTodoList', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTodoList } = await import('./todo-client.js');
       const r = await getTodoList(token, 'l2');
@@ -179,7 +179,7 @@ describe('getTasks string filter (paging)', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTasks } = await import('./todo-client.js');
       const r = await getTasks(token, 'list-1', "status eq 'completed'");
@@ -210,7 +210,7 @@ describe('createTask', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createTask } = await import('./todo-client.js');
       const r = await createTask(token, 'list-x', {
@@ -263,7 +263,7 @@ describe('getChecklistItem', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getChecklistItem } = await import('./todo-client.js');
       const r = await getChecklistItem(token, 'list-1', 'task-1', 'ck1');
@@ -287,7 +287,7 @@ describe('getTaskAttachmentContent', () => {
         const u = typeof input === 'string' ? input : input.toString();
         expect(u).toContain('$value');
         return new Response(new Uint8Array([7, 8, 9]), { status: 200 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTaskAttachmentContent } = await import('./todo-client.js');
       const r = await getTaskAttachmentContent(token, 'list-1', 'task-1', 'att-1');
@@ -316,7 +316,7 @@ describe('createTask', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createTask } = await import('./todo-client.js');
       const r = await createTask(token, 'list-99', {
@@ -352,7 +352,7 @@ describe('getTodoListsDeltaPage', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTodoListsDeltaPage } = await import('./todo-client.js');
       const r = await getTodoListsDeltaPage(token, undefined, undefined);
@@ -377,7 +377,7 @@ describe('attachment sessions and todo root', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listTaskAttachmentSessions } = await import('./todo-client.js');
       const r = await listTaskAttachmentSessions(token, 'list-1', 'task-1');
@@ -401,7 +401,7 @@ describe('attachment sessions and todo root', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getTodoNavigationResource } = await import('./todo-client.js');
       const r = await getTodoNavigationResource(token);
@@ -423,7 +423,7 @@ describe('todo lists CRUD and paging', () => {
         new Response(JSON.stringify({ id: 'nl', displayName: 'New', wellknownListName: 'none' }), {
           status: 201,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { createTodoList } = await import('./todo-client.js');
       const r = await createTodoList(token, 'New');
       expect(r.ok).toBe(true);
@@ -441,9 +441,9 @@ describe('todo lists CRUD and paging', () => {
         new Response(JSON.stringify({ id: 'l1', displayName: 'Ren' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { updateTodoList } = await import('./todo-client.js');
-      const r = await updateTodoList(token, 'l1', { displayName: 'Ren' });
+      const r = await updateTodoList(token, 'l1', 'Ren');
       expect(r.ok).toBe(true);
     } finally {
       globalThis.fetch = originalFetch;
@@ -454,7 +454,7 @@ describe('todo lists CRUD and paging', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
       const { deleteTodoList } = await import('./todo-client.js');
       const r = await deleteTodoList(token, 'l-del');
       expect(r.ok).toBe(true);
@@ -474,7 +474,7 @@ describe('todo lists CRUD and paging', () => {
             '@odata.nextLink': `${baseUrl}/me/todo/lists?$skip=1`
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const { getTodoListsPage } = await import('./todo-client.js');
       const r = await getTodoListsPage(token, undefined, { top: 5, count: true });
       expect(r.ok).toBe(true);
@@ -494,7 +494,7 @@ describe('todo tasks update/delete and checklist', () => {
         new Response(JSON.stringify({ id: 't1', title: 'Up', status: 'notStarted' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { updateTask } = await import('./todo-client.js');
       const r = await updateTask(token, 'l1', 't1', { title: 'Up' });
       expect(r.ok).toBe(true);
@@ -507,7 +507,7 @@ describe('todo tasks update/delete and checklist', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
       const { deleteTask } = await import('./todo-client.js');
       const r = await deleteTask(token, 'l1', 't1');
       expect(r.ok).toBe(true);
@@ -529,7 +529,7 @@ describe('todo tasks update/delete and checklist', () => {
             createdDateTime: '2026-01-01T00:00:00Z'
           }),
           { status: 201, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const { addChecklistItem } = await import('./todo-client.js');
       const r = await addChecklistItem(token, 'l1', 't1', 'Item');
       expect(r.ok).toBe(true);
@@ -557,7 +557,7 @@ describe('todo tasks update/delete and checklist', () => {
           );
         }
         return new Response(null, { status: 204 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { updateChecklistItem, deleteChecklistItem } = await import('./todo-client.js');
       const u = await updateChecklistItem(token, 'l1', 't1', 'ck1', { isChecked: true });
       expect(u.ok).toBe(true);
@@ -573,10 +573,13 @@ describe('todo tasks update/delete and checklist', () => {
     const originalFetch = globalThis.fetch;
     try {
       globalThis.fetch = (async () =>
-        new Response(JSON.stringify({ value: [{ id: 'c1', displayName: 'A', isChecked: false, createdDateTime: 't' }] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        new Response(
+          JSON.stringify({ value: [{ id: 'c1', displayName: 'A', isChecked: false, createdDateTime: 't' }] }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )) as unknown as typeof fetch;
       const { listTaskChecklistItems } = await import('./todo-client.js');
       const r = await listTaskChecklistItems(token, 'l1', 't1');
       expect(r.ok).toBe(true);
@@ -614,7 +617,7 @@ describe('todo attachments and linked resources', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const list = await t.listAttachments(token, 'l1', 't1');
       expect(list.ok).toBe(true);
@@ -661,7 +664,7 @@ describe('todo attachments and linked resources', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const li = await t.listTaskLinkedResources(token, 'l1', 't1');
       expect(li.ok).toBe(true);
@@ -682,9 +685,9 @@ describe('todo attachments and linked resources', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      let n = 0;
+      let _n = 0;
       globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
-        n += 1;
+        _n += 1;
         const m = (init?.method || 'GET').toUpperCase();
         if (m === 'GET') {
           return new Response(
@@ -701,7 +704,7 @@ describe('todo attachments and linked resources', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { addLinkedResource } = await import('./todo-client.js');
       const r = await addLinkedResource(token, 'l1', 't1', { displayName: 'L', webUrl: 'https://x.com' });
       expect(r.ok).toBe(true);
@@ -734,7 +737,7 @@ describe('todo attachments and linked resources', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { removeLinkedResourceByWebUrl } = await import('./todo-client.js');
       const r = await removeLinkedResourceByWebUrl(token, 'l1', 't1', 'https://drop.me');
       expect(r.ok).toBe(true);
@@ -775,7 +778,7 @@ describe('todo attachment sessions and navigation', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const g = await t.getTaskAttachmentSession(token, 'l1', 't1', 's1');
       expect(g.ok).toBe(true);
@@ -798,16 +801,16 @@ describe('todo attachment sessions and navigation', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     const originalFetch = globalThis.fetch;
     try {
-      let n = 0;
+      let _n = 0;
       globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
-        n += 1;
+        _n += 1;
         const m = (init?.method || 'GET').toUpperCase();
         if (m === 'DELETE') return new Response(null, { status: 204 });
         return new Response(JSON.stringify({ id: 'todo' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const p = await t.patchTodoNavigationResource(token, { isDefaultListVisible: true });
       expect(p.ok).toBe(true);
@@ -846,7 +849,7 @@ describe('todo open extensions and delta URLs', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const l = await t.listTodoListOpenExtensions(token, 'l1');
       expect(l.ok).toBe(true);
@@ -889,7 +892,7 @@ describe('todo open extensions and delta URLs', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const t = await import('./todo-client.js');
       const l = await t.listTaskOpenExtensions(token, 'l1', 't1');
       expect(l.ok).toBe(true);
@@ -914,7 +917,7 @@ describe('todo open extensions and delta URLs', () => {
         new Response(JSON.stringify({ value: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getTodoTasksDeltaPage } = await import('./todo-client.js');
       const r = await getTodoTasksDeltaPage(token, 'l1', `${baseUrl}/me/todo/lists/l1/tasks/delta?token=x`);
       expect(r.ok).toBe(true);
@@ -931,7 +934,7 @@ describe('todo open extensions and delta URLs', () => {
         new Response(JSON.stringify({ value: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getTodoListsDeltaPage } = await import('./todo-client.js');
       const r = await getTodoListsDeltaPage(token, `${baseUrl}/me/todo/lists/delta()?token=y`);
       expect(r.ok).toBe(true);

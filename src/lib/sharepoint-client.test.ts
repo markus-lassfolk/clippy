@@ -23,7 +23,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getSiteByGraphPath } = await import('./sharepoint-client.js');
       const r = await getSiteByGraphPath(token, 'contoso.sharepoint.com:/sites/T1');
@@ -55,7 +55,7 @@ describe('sharepoint-client', () => {
             ]
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
 
       const { getLists } = await import('./sharepoint-client.js');
       const r = await getLists(token, 'site-guid');
@@ -78,7 +78,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getSiteDefaultDriveId } = await import('./sharepoint-client.js');
       const r = await getSiteDefaultDriveId(token, 'site-1');
@@ -98,7 +98,7 @@ describe('sharepoint-client', () => {
         new Response(JSON.stringify({}), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getLists } = await import('./sharepoint-client.js');
       const r = await getLists(token, 'site-guid');
       expect(r.ok).toBe(false);
@@ -119,7 +119,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getSiteById } = await import('./sharepoint-client.js');
       const r = await getSiteById(token, 'contoso.sharepoint.com,x,y');
       expect(r.ok).toBe(true);
@@ -150,7 +150,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getSiteDrives } = await import('./sharepoint-client.js');
       const r = await getSiteDrives(token, 's1');
       expect(r.ok).toBe(true);
@@ -176,7 +176,7 @@ describe('sharepoint-client', () => {
             webUrl: 'https://w'
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
       const { getListMetadata } = await import('./sharepoint-client.js');
       const r = await getListMetadata(token, 'site', 'list');
       expect(r.ok).toBe(true);
@@ -197,7 +197,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getListItemsPage } = await import('./sharepoint-client.js');
       const a = await getListItemsPage(token, 's', 'l', {
         filter: "fields/Title eq 'x'",
@@ -241,7 +241,7 @@ describe('sharepoint-client', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getAllListItemsPages } = await import('./sharepoint-client.js');
       const r = await getAllListItemsPages(token, 's', 'l', { top: 10 });
       expect(r.ok).toBe(true);
@@ -256,7 +256,7 @@ describe('sharepoint-client', () => {
     let body = '';
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         body = String(init?.body ?? '');
         return new Response(
           JSON.stringify({
@@ -268,7 +268,7 @@ describe('sharepoint-client', () => {
           }),
           { status: 201, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { createListItem } = await import('./sharepoint-client.js');
       const r = await createListItem(token, 's', 'l', { Title: 'x' });
       expect(r.ok).toBe(true);
@@ -286,7 +286,7 @@ describe('sharepoint-client', () => {
         new Response(JSON.stringify({ Title: 'y' }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { updateListItem } = await import('./sharepoint-client.js');
       const r = await updateListItem(token, 's', 'l', 'item-1', { Title: 'y' });
       expect(r.ok).toBe(true);
@@ -312,7 +312,7 @@ describe('sharepoint-client', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getListItem } = await import('./sharepoint-client.js');
       const r = await getListItem(token, 's', 'l', 'item-1');
       expect(r.ok).toBe(true);
@@ -327,10 +327,10 @@ describe('sharepoint-client', () => {
     let method = '';
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (_input, init) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         method = init?.method ?? '';
         return new Response(null, { status: 204 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { deleteListItem } = await import('./sharepoint-client.js');
       const r = await deleteListItem(token, 's', 'l', 'item-1');
       expect(r.ok).toBe(true);
@@ -351,7 +351,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getListItemsDeltaPage } = await import('./sharepoint-client.js');
       const link = `${baseUrl}/sites/s/lists/l/items/delta?token=1`;
       const r = await getListItemsDeltaPage(token, 's', 'l', link);
@@ -370,7 +370,7 @@ describe('sharepoint-client', () => {
         new Response(JSON.stringify({ value: [{ id: 'p1' }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getSitePermissions } = await import('./sharepoint-client.js');
       const r = await getSitePermissions(token, 's1');
       expect(r.ok).toBe(true);
@@ -388,7 +388,7 @@ describe('sharepoint-client', () => {
         new Response(JSON.stringify({ value: [{ name: 'Title', id: '1' }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { getListColumns, getListItems } = await import('./sharepoint-client.js');
       const c = await getListColumns(token, 's', 'l');
       expect(c.ok).toBe(true);
@@ -411,7 +411,7 @@ describe('sharepoint-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
       const { getListItemsDeltaPage } = await import('./sharepoint-client.js');
       const r = await getListItemsDeltaPage(token, 's', 'l');
       expect(r.ok).toBe(true);
@@ -429,7 +429,7 @@ describe('sharepoint-client', () => {
         new Response(JSON.stringify({ id: 'p1', roles: ['owner'] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
       const { updateSitePermission } = await import('./sharepoint-client.js');
       const r = await updateSitePermission(token, 's1', 'p1', { roles: ['owner'] });
       expect(r.ok).toBe(true);

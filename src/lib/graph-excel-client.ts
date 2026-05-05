@@ -21,6 +21,7 @@ export interface ExcelTable {
 }
 
 export interface ExcelNamedItem {
+  id?: string;
   name?: string;
   type?: string;
   value?: unknown;

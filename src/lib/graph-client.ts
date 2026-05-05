@@ -432,16 +432,8 @@ async function callGraphUrlWithRetries<T>(
       }
       const bodyInit = fetchInit.body;
       const isFormData =
-        bodyInit !== null &&
-        bodyInit !== undefined &&
-        typeof FormData !== 'undefined' &&
-        bodyInit instanceof FormData;
-      if (
-        bodyInit &&
-        !(bodyInit instanceof Uint8Array) &&
-        !(bodyInit instanceof ArrayBuffer) &&
-        !isFormData
-      ) {
+        bodyInit !== null && bodyInit !== undefined && typeof FormData !== 'undefined' && bodyInit instanceof FormData;
+      if (bodyInit && !(bodyInit instanceof Uint8Array) && !(bodyInit instanceof ArrayBuffer) && !isFormData) {
         headers.set('Content-Type', 'application/json');
       }
       if (existingHeaders) {

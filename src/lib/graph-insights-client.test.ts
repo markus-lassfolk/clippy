@@ -16,7 +16,7 @@ describe('graph-insights-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listInsights } = await import('./graph-insights-client.js');
       const r = await listInsights(token, 'trending', { top: 999 });
@@ -40,7 +40,7 @@ describe('graph-insights-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listDriveItemActivities } = await import('./graph-insights-client.js');
       const r = await listDriveItemActivities(token, { kind: 'me' }, 'item-1', { top: 5 });
@@ -58,13 +58,13 @@ describe('graph-insights-client', () => {
     const originalFetch = globalThis.fetch;
 
     try {
-      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
         if (init?.body && typeof init.body === 'string') bodies.push(init.body);
         return new Response(JSON.stringify({ getUrl: 'https://preview' }), {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createDriveItemPreview } = await import('./graph-insights-client.js');
       const r = await createDriveItemPreview(token, { kind: 'me' }, 'it', {
@@ -95,7 +95,7 @@ describe('graph-insights-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listFollowedSites, followSites } = await import('./graph-insights-client.js');
       await listFollowedSites(token);
@@ -125,7 +125,7 @@ describe('graph-insights-client', () => {
             value: [{ id: 's1', error: { message: 'nope' } }]
           }),
           { status: 207, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
 
       const { unfollowSites } = await import('./graph-insights-client.js');
       const r = await unfollowSites(token, ['s1']);

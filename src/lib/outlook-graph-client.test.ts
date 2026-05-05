@@ -18,7 +18,7 @@ describe('listMailFolders', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listMailFolders } = await import('./outlook-graph-client.js');
       const r = await listMailFolders(token);
@@ -45,7 +45,7 @@ describe('getMessage', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getMessage } = await import('./outlook-graph-client.js');
       const r = await getMessage(token, 'msg-1', undefined, 'subject,isRead');
@@ -73,7 +73,7 @@ describe('listMailboxMessages', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listMailboxMessages } = await import('./outlook-graph-client.js');
       const r = await listMailboxMessages(token, undefined, { top: 10 });
@@ -105,7 +105,7 @@ describe('listMailboxMessages', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listMailboxMessages } = await import('./outlook-graph-client.js');
       const r = await listMailboxMessages(token, undefined, { top: 5, search: 'budget' });
@@ -131,7 +131,7 @@ describe('sendMail', () => {
         urls.push(typeof input === 'string' ? input : input.toString());
         if (init?.body && typeof init.body === 'string') bodies.push(init.body);
         return new Response(null, { status: 202 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { sendMail } = await import('./outlook-graph-client.js');
       const r = await sendMail(token, {
@@ -163,7 +163,7 @@ describe('createDraftMessage', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createDraftMessage } = await import('./outlook-graph-client.js');
       const r = await createDraftMessage(token, {
@@ -197,7 +197,7 @@ describe('mailMessagesDeltaPage', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { mailMessagesDeltaPage } = await import('./outlook-graph-client.js');
       const r = await mailMessagesDeltaPage(token, {});
@@ -222,7 +222,7 @@ describe('mailMessagesDeltaPage', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { mailMessagesDeltaPage } = await import('./outlook-graph-client.js');
       const r = await mailMessagesDeltaPage(token, { folderId: 'inbox' });
@@ -248,7 +248,7 @@ describe('mail folders for delegated user', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listMailFolders } = await import('./outlook-graph-client.js');
       const r = await listMailFolders(token, 'shared@contoso.com');
@@ -272,7 +272,7 @@ describe('mail folders for delegated user', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getMailFolder } = await import('./outlook-graph-client.js');
       const r = await getMailFolder(token, 'fld-1', 'u@contoso.com');
@@ -297,7 +297,7 @@ describe('mail folders for delegated user', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listMailboxMessages } = await import('./outlook-graph-client.js');
       const r = await listMailboxMessages(token, 'delegate@contoso.com', { top: 3 });
@@ -324,7 +324,7 @@ describe('listContacts structured query', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listContacts } = await import('./outlook-graph-client.js');
       const r = await listContacts(token, undefined, { orderby: 'displayName asc' });
@@ -352,7 +352,7 @@ describe('contact open extensions (folder paths)', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listContactOpenExtensions } = await import('./outlook-graph-client.js');
       const r = await listContactOpenExtensions(token, 'c-1', undefined, { folderId: 'folder-1' });
@@ -375,7 +375,7 @@ describe('contact open extensions (folder paths)', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { listContactOpenExtensions } = await import('./outlook-graph-client.js');
       const r = await listContactOpenExtensions(token, 'c-2', undefined, {
@@ -400,7 +400,7 @@ describe('outlook mail folders and messages batch', () => {
   it('listChildMailFolders, create/update/delete mail folder', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-      const u = typeof input === 'string' ? input : input.toString();
+      const _u = typeof input === 'string' ? input : input.toString();
       const m = (init?.method || 'GET').toUpperCase();
       if (m === 'DELETE') return new Response(null, { status: 204 });
       if (m === 'POST' || m === 'PATCH') {
@@ -413,13 +413,13 @@ describe('outlook mail folders and messages batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const ch = await o.listChildMailFolders(token, 'parent-f');
     expect(ch.ok).toBe(true);
     const cr = await o.createMailFolder(token, 'Sub', 'parent-f');
     expect(cr.ok).toBe(true);
-    const up = await o.updateMailFolder(token, 'nf', { displayName: 'X' });
+    const up = await o.updateMailFolder(token, 'nf', 'X');
     expect(up.ok).toBe(true);
     const del = await o.deleteMailFolder(token, 'nf');
     expect(del.ok).toBe(true);
@@ -449,7 +449,7 @@ describe('outlook mail folders and messages batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const li = await o.listMessagesInFolder(token, 'inbox');
     expect(li.ok).toBe(true);
@@ -467,7 +467,7 @@ describe('outlook mail folders and messages batch', () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const u = typeof input === 'string' ? input : input.toString();
-      const m = (init?.method || 'GET').toUpperCase();
+      const _m = (init?.method || 'GET').toUpperCase();
       if (u.includes('/$value')) {
         return new Response(new Uint8Array([1, 2]), { status: 200 });
       }
@@ -481,7 +481,7 @@ describe('outlook mail folders and messages batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const l = await o.listMailMessageAttachments(token, 'm1');
     expect(l.ok).toBe(true);
@@ -498,7 +498,7 @@ describe('outlook mail folders and messages batch', () => {
       new Response(JSON.stringify({ id: 'dr', isDraft: true }), {
         status: 201,
         headers: { 'content-type': 'application/json' }
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const r = await o.createMailReplyDraft(token, 'm1', undefined, 'c');
     expect(r.ok).toBe(true);
@@ -519,7 +519,7 @@ describe('outlook contacts batch', () => {
   it('contact folders CRUD and child folders', async () => {
     process.env.GRAPH_BASE_URL = baseUrl;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-      const u = typeof input === 'string' ? input : input.toString();
+      const _u = typeof input === 'string' ? input : input.toString();
       const m = (init?.method || 'GET').toUpperCase();
       if (m === 'DELETE') return new Response(null, { status: 204 });
       if (m === 'POST' || m === 'PATCH') {
@@ -532,7 +532,7 @@ describe('outlook contacts batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const lf = await o.listContactFolders(token);
     expect(lf.ok).toBe(true);
@@ -570,7 +570,7 @@ describe('outlook contacts batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const inf = await o.listContactsInFolder(token, 'folder-1');
     expect(inf.ok).toBe(true);
@@ -619,7 +619,7 @@ describe('outlook contacts batch', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const o = await import('./outlook-graph-client.js');
     const ph = await o.getContactPhotoBytes(token, 'c1');
     expect(ph.ok).toBe(true);

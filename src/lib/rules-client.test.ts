@@ -15,7 +15,7 @@ describe('rules-client', () => {
             value: [{ id: 'r1', displayName: 'R1', priority: 1, isEnabled: true }]
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
-        )) as typeof fetch;
+        )) as unknown as typeof fetch;
 
       const { listMessageRules } = await import('./rules-client.js');
       const r = await listMessageRules(token);
@@ -38,7 +38,7 @@ describe('rules-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { getMessageRule } = await import('./rules-client.js');
       const r = await getMessageRule(token, 'r2', 'delegate@contoso.com');
@@ -61,7 +61,7 @@ describe('rules-client', () => {
           status: 201,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { createMessageRule } = await import('./rules-client.js');
       const r = await createMessageRule(token, {
@@ -87,11 +87,11 @@ describe('rules-client', () => {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const { updateMessageRule, deleteMessageRule } = await import('./rules-client.js');
       await updateMessageRule(token, 'r', { displayName: 'U' });
-      globalThis.fetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
       const d = await deleteMessageRule(token, 'r');
       expect(d.ok).toBe(true);
       expect(methods[0]).toBe('PATCH');

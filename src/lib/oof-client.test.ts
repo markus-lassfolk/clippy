@@ -8,13 +8,13 @@ describe('oof-client', () => {
     const fetchCalls: any[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         fetchCalls.push({ input, init });
         return new Response(JSON.stringify({ automaticRepliesSetting: { status: 'disabled' } }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const res = await getMailboxSettings(token);
       expect(res.ok).toBe(true);
@@ -30,10 +30,10 @@ describe('oof-client', () => {
     const fetchCalls: any[] = [];
     const originalFetch = globalThis.fetch;
     try {
-      globalThis.fetch = (async (input, init) => {
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
         fetchCalls.push({ input, init });
         return new Response('', { status: 204 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const res = await setMailboxSettings(token, {
         status: 'scheduled',

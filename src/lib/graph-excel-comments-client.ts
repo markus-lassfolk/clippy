@@ -44,7 +44,11 @@ export async function getExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, commentItemPath(location, itemId, commentId));
+    return await callGraphAt<WorkbookCommentJson>(
+      getGraphBetaUrl(),
+      token,
+      commentItemPath(location, itemId, commentId)
+    );
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to get workbook comment');
@@ -95,10 +99,15 @@ export async function patchExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(getGraphBetaUrl(), token, commentItemPath(location, itemId, commentId), {
-      method: 'PATCH',
-      body: JSON.stringify(body)
-    });
+    return await callGraphAt<WorkbookCommentJson>(
+      getGraphBetaUrl(),
+      token,
+      commentItemPath(location, itemId, commentId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify(body)
+      }
+    );
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to patch workbook comment');

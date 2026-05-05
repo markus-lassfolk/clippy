@@ -53,11 +53,7 @@ export async function patchContactMergeSuggestions(
       true
     );
     if (!r.ok || !r.data) {
-      return graphError(
-        r.error?.message || 'Failed to patch contactMergeSuggestions',
-        r.error?.code,
-        r.error?.status
-      );
+      return graphError(r.error?.message || 'Failed to patch contactMergeSuggestions', r.error?.code, r.error?.status);
     }
     return graphResult(r.data);
   } catch (err) {
@@ -81,11 +77,7 @@ export async function deleteContactMergeSuggestions(
       false
     );
     if (!r.ok) {
-      return graphError(
-        r.error?.message || 'Failed to delete contactMergeSuggestions',
-        r.error?.code,
-        r.error?.status
-      );
+      return graphError(r.error?.message || 'Failed to delete contactMergeSuggestions', r.error?.code, r.error?.status);
     }
     return graphResult(undefined as undefined);
   } catch (err) {

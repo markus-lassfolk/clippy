@@ -306,7 +306,7 @@ describe('copilot package zip fetch paths', () => {
       new Response(new Uint8Array([1, 2, 3]), {
         status: 200,
         headers: { 'content-type': 'application/octet-stream' }
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
 
     const mod = await import(`./copilot-graph-client.js?zipDl2=${Date.now()}`);
     const r = await mod.copilotPackageZipDownload('tok', 'pkg-1');
@@ -320,7 +320,7 @@ describe('copilot package zip fetch paths', () => {
       new Response(JSON.stringify({ error: { message: 'bad' } }), {
         status: 400,
         headers: { 'content-type': 'application/json' }
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
 
     const mod = await import(`./copilot-graph-client.js?zipDl3=${Date.now()}`);
     const r = await mod.copilotPackageZipDownload('tok', 'pkg-1');
@@ -340,7 +340,7 @@ describe('copilot package zip fetch paths', () => {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const mod = await import(`./copilot-graph-client.js?zipUl=${Date.now()}`);
     const a = await mod.copilotPackageZipUpload('tok', 'p', new Uint8Array([9]), 'application/octet-stream');
