@@ -4,6 +4,7 @@ import { resolveGraphAuth } from '../lib/graph-auth.js';
 import type { GraphResponse } from '../lib/graph-client.js';
 import {
   applyDeltaPageToState,
+  assertDeltaScopeMatchesState,
   type DeltaScopeFields,
   type DeltaStateFileV1,
   readDeltaStateFile,
@@ -351,6 +352,16 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
           process.exit(1);
         }
         const topParsed = parseOptionalRecordingsTop(opts.top);
+        const rollupStart = (opts.start?.trim() || existingForCont?.meetingRollupStart || '').trim();
+        const rollupEnd = (opts.end?.trim() || existingForCont?.meetingRollupEnd || '').trim();
+        const rollupTop = topParsed ?? existingForCont?.meetingRollupTop;
+        const meetingDeltaScope: DeltaScopeFields = {
+          user: opts.user,
+          meetingOrganizerUserId: organizerUserId,
+          meetingRollupStart: rollupStart,
+          meetingRollupEnd: rollupEnd,
+          ...(rollupTop !== undefined ? { meetingRollupTop: rollupTop } : {})
+        };
         await runMeetingDelta({
           auth: accessToken,
           kind: 'meetingRecordings',
@@ -365,13 +376,13 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
                 ? undefined
                 : {
                     organizerUserId,
-                    startDateTime: opts.start ?? '',
-                    endDateTime: opts.end ?? '',
-                    top: topParsed
+                    startDateTime: rollupStart,
+                    endDateTime: rollupEnd,
+                    top: rollupTop
                   }
             }),
           renderItem: (it: CallRecording) => renderRecording(it),
-          scope: { user: opts.user }
+          scope: meetingDeltaScope
         });
         return;
       }
@@ -527,6 +538,16 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
           process.exit(1);
         }
         const topParsed = parseOptionalRecordingsTop(opts.top);
+        const rollupStart = (opts.start?.trim() || existingForCont?.meetingRollupStart || '').trim();
+        const rollupEnd = (opts.end?.trim() || existingForCont?.meetingRollupEnd || '').trim();
+        const rollupTop = topParsed ?? existingForCont?.meetingRollupTop;
+        const meetingDeltaScope: DeltaScopeFields = {
+          user: opts.user,
+          meetingOrganizerUserId: organizerUserId,
+          meetingRollupStart: rollupStart,
+          meetingRollupEnd: rollupEnd,
+          ...(rollupTop !== undefined ? { meetingRollupTop: rollupTop } : {})
+        };
         await runMeetingDelta({
           auth: accessToken,
           kind: 'meetingTranscripts',
@@ -541,13 +562,13 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
                 ? undefined
                 : {
                     organizerUserId,
-                    startDateTime: opts.start ?? '',
-                    endDateTime: opts.end ?? '',
-                    top: topParsed
+                    startDateTime: rollupStart,
+                    endDateTime: rollupEnd,
+                    top: rollupTop
                   }
             }),
           renderItem: (it: CallTranscript) => renderTranscript(it),
-          scope: { user: opts.user }
+          scope: meetingDeltaScope
         });
         return;
       }
@@ -623,6 +644,14 @@ async function runMeetingDelta<T>(args: MeetingDeltaArgs<T>): Promise<void> {
   if (existing && existing.kind !== args.kind) {
     console.error(`Error: state file kind '${existing.kind}' does not match expected '${args.kind}'`);
     process.exit(1);
+  }
+  if (existing) {
+    try {
+      assertDeltaScopeMatchesState(existing, args.scope);
+    } catch (e) {
+      console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
   }
   const continueUrl = resolveDeltaContinuationUrl({ explicitNext: args.explicitNext, state: existing });
   const r = await args.fetchPage(continueUrl);

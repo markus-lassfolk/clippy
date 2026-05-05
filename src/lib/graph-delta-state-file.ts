@@ -54,6 +54,11 @@ export interface DeltaStateFileV1 {
   /** `sharepoint items-delta` */
   sharePointSiteId?: string;
   sharePointListId?: string;
+  /** `meeting recordings-all --delta` / `transcripts-all --delta` — must match before reusing cursor */
+  meetingOrganizerUserId?: string;
+  meetingRollupStart?: string;
+  meetingRollupEnd?: string;
+  meetingRollupTop?: number;
 }
 
 export function parseDeltaStateJson(raw: string): DeltaStateFileV1 | null {
@@ -96,6 +101,10 @@ export interface DeltaScopeFields {
   driveFolderItemId?: string;
   sharePointSiteId?: string;
   sharePointListId?: string;
+  meetingOrganizerUserId?: string;
+  meetingRollupStart?: string;
+  meetingRollupEnd?: string;
+  meetingRollupTop?: number;
 }
 
 /** Merge a delta page response into persisted state. */
@@ -119,7 +128,11 @@ export function applyDeltaPageToState(
     ...(scope.driveLocLibraryDriveId !== undefined ? { driveLocLibraryDriveId: scope.driveLocLibraryDriveId } : {}),
     ...(scope.driveFolderItemId !== undefined ? { driveFolderItemId: scope.driveFolderItemId } : {}),
     ...(scope.sharePointSiteId !== undefined ? { sharePointSiteId: scope.sharePointSiteId } : {}),
-    ...(scope.sharePointListId !== undefined ? { sharePointListId: scope.sharePointListId } : {})
+    ...(scope.sharePointListId !== undefined ? { sharePointListId: scope.sharePointListId } : {}),
+    ...(scope.meetingOrganizerUserId !== undefined ? { meetingOrganizerUserId: scope.meetingOrganizerUserId } : {}),
+    ...(scope.meetingRollupStart !== undefined ? { meetingRollupStart: scope.meetingRollupStart } : {}),
+    ...(scope.meetingRollupEnd !== undefined ? { meetingRollupEnd: scope.meetingRollupEnd } : {}),
+    ...(scope.meetingRollupTop !== undefined ? { meetingRollupTop: scope.meetingRollupTop } : {})
   };
   if (deltaLink) {
     return {
@@ -223,6 +236,36 @@ export function assertDeltaScopeMatchesState(state: DeltaStateFileV1, scope: Del
   }
 
   if (state.kind === 'todoLists') {
+    if (norm(state.user) !== norm(scope.user)) {
+      throw new Error(`State file user "${state.user ?? ''}" does not match --user "${scope.user ?? '(none)'}"`);
+    }
+    return;
+  }
+
+  if (state.kind === 'meetingRecordings' || state.kind === 'meetingTranscripts') {
+    const trimEq = (a: string | undefined, b: string | undefined) => (a ?? '').trim() === (b ?? '').trim();
+    if (!trimEq(state.meetingOrganizerUserId, scope.meetingOrganizerUserId)) {
+      throw new Error(
+        `State file meeting organizer "${state.meetingOrganizerUserId ?? ''}" does not match current "${scope.meetingOrganizerUserId ?? '(none)'}"`
+      );
+    }
+    if (!trimEq(state.meetingRollupStart, scope.meetingRollupStart)) {
+      throw new Error(
+        `State file --start "${state.meetingRollupStart ?? ''}" does not match current "${scope.meetingRollupStart ?? '(none)'}"`
+      );
+    }
+    if (!trimEq(state.meetingRollupEnd, scope.meetingRollupEnd)) {
+      throw new Error(
+        `State file --end "${state.meetingRollupEnd ?? ''}" does not match current "${scope.meetingRollupEnd ?? '(none)'}"`
+      );
+    }
+    if (
+      state.meetingRollupTop !== undefined &&
+      scope.meetingRollupTop !== undefined &&
+      state.meetingRollupTop !== scope.meetingRollupTop
+    ) {
+      throw new Error(`State file --top ${state.meetingRollupTop} does not match current ${scope.meetingRollupTop}`);
+    }
     if (norm(state.user) !== norm(scope.user)) {
       throw new Error(`State file user "${state.user ?? ''}" does not match --user "${scope.user ?? '(none)'}"`);
     }

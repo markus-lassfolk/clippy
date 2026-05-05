@@ -151,6 +151,11 @@ export interface FollowedSitesResponse {
   '@odata.nextLink'?: string;
 }
 
+/** `POST /me/followedSites/remove` may return **207** with per-site errors ([unfollow site](https://learn.microsoft.com/graph/api/site-unfollow)). */
+export interface FollowedSitesRemoveMultiStatusBody {
+  value?: Array<{ id?: string; error?: { code?: string; message?: string; '@odata.type'?: string } }>;
+}
+
 /** `GET /me/followedSites` — sites the user follows. */
 export async function listFollowedSites(
   token: string,
@@ -196,13 +201,27 @@ export async function unfollowSites(
   }
   const body = { value: siteIds.map((id) => ({ id })) };
   try {
-    return await callGraphAt<void>(
+    const r = await callGraphAt<FollowedSitesRemoveMultiStatusBody | undefined>(
       graphBaseUrl,
       token,
       '/me/followedSites/remove',
       { method: 'POST', body: JSON.stringify(body) },
-      false
+      true
     );
+    if (!r.ok) {
+      return graphError(r.error?.message || 'Failed to unfollow site', r.error?.code, r.error?.status);
+    }
+    const entries = r.data?.value;
+    if (Array.isArray(entries) && entries.length > 0) {
+      const failed = entries.filter((item) => item?.error);
+      if (failed.length > 0) {
+        const msg = failed
+          .map((item) => `${item.id ?? '(unknown)'}: ${item.error?.message ?? item.error?.code ?? 'error'}`)
+          .join('; ');
+        return graphError(`Unfollow failed for ${failed.length} site(s): ${msg}`, undefined, 207);
+      }
+    }
+    return graphResult(undefined);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to unfollow site');
