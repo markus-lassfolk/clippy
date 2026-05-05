@@ -1,7 +1,7 @@
 {
   "version": 1,
   "description": "Graph path patterns from static analysis of callGraph*, graphInvoke*, fetchAllPages, fetchGraphRaw, graphPostBatch. Regenerate: npm run graph:inventory",
-  "generatedAt": "2026-05-05T10:28:28.969Z",
+  "generatedAt": "2026-05-05T10:57:09.742Z",
   "entryCount": 702,
   "entries": [
     {
@@ -2015,21 +2015,21 @@
     },
     {
       "file": "src/lib/graph-insights-client.ts",
-      "line": 160,
+      "line": 165,
       "callee": "callGraphAt",
       "pattern": "/me/followedSites",
       "kind": "literal"
     },
     {
       "file": "src/lib/graph-insights-client.ts",
-      "line": 178,
+      "line": 183,
       "callee": "callGraphAt",
       "pattern": "/me/followedSites/add",
       "kind": "literal"
     },
     {
       "file": "src/lib/graph-insights-client.ts",
-      "line": 199,
+      "line": 204,
       "callee": "callGraphAt",
       "pattern": "/me/followedSites/remove",
       "kind": "literal"

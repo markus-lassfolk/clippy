@@ -53,8 +53,6 @@
 | `update-event` | `src/commands/update-event.ts` | yes | yes |
 | `update` | `src/commands/update.ts` | no | no |
 | `verify-token` | `src/commands/verify-token.ts` | yes | no |
-| `viva-extra-subcommands` | `src/commands/viva-extra-subcommands.ts` | yes | yes |
-| `viva-tenant-subcommands` | `src/commands/viva-tenant-subcommands.ts` | yes | yes |
 | `viva` | `src/commands/viva.ts` | yes | yes |
 | `whoami` | `src/commands/whoami.ts` | yes | no |
 | `word` | `src/commands/word.ts` | yes | yes |
