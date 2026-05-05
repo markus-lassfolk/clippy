@@ -15,8 +15,10 @@ import {
 import type { GraphInvokeOptions } from './graph-advanced-client.js';
 import { GraphApiError } from './graph-client.js';
 
+/** Capture before any test replaces `globalThis.fetch`. */
+const platformFetch = globalThis.fetch;
+
 const graphAdvancedReal = await import('./graph-advanced-client.js');
-const graphClientReal = await import('./graph-client.js');
 
 /** Uses top-level import so this runs before mock.module in the invoke suite. */
 describe('copilot-graph-client build helpers', () => {
@@ -106,16 +108,10 @@ function applyCopilotGraphStubs() {
     graphInvoke,
     graphInvokeText
   }));
-
-  mock.module('./graph-client.js', () => ({
-    ...graphClientReal,
-    callGraphAbsolute: async () => ({ ok: true as const, data: { via: 'absolute' } })
-  }));
 }
 
 function restoreCopilotGraphModules() {
   mock.module('./graph-advanced-client.js', () => graphAdvancedReal);
-  mock.module('./graph-client.js', () => graphClientReal);
 }
 
 describe('copilot-graph-client invoke wrappers', () => {
@@ -123,10 +119,18 @@ describe('copilot-graph-client invoke wrappers', () => {
 
   beforeAll(async () => {
     applyCopilotGraphStubs();
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const u = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (u.startsWith('https://graph.microsoft.com')) {
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return platformFetch(input as URL | RequestInfo, init);
+    }) as typeof fetch;
     c = await import(`./copilot-graph-client.js?copilotMocked=${Date.now()}`);
   });
 
   afterAll(() => {
+    globalThis.fetch = platformFetch;
     restoreCopilotGraphModules();
   });
 
@@ -257,45 +261,35 @@ describe('copilot-graph-client invoke wrappers', () => {
   });
 
   it('copilotSearchNextPage maps GraphApiError to error response', async () => {
-    mock.module('./graph-client.js', () => ({
-      ...graphClientReal,
-      callGraphAbsolute: async () => {
-        throw new graphClientReal.GraphApiError('nope', 'X', 403);
-      }
-    }));
+    const wrap = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: { code: 'X', message: 'nope' } }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' }
+      })) as unknown as typeof fetch;
     const mod = await import(`./copilot-graph-client.js?copilotErr=${Date.now()}`);
     const r = await mod.copilotSearchNextPage(t, 'https://graph.microsoft.com/beta/page2');
     expect(r.ok).toBe(false);
     expect(r.error?.message).toContain('nope');
-    mock.module('./graph-client.js', () => ({
-      ...graphClientReal,
-      callGraphAbsolute: async () => ({ ok: true as const, data: {} })
-    }));
+    globalThis.fetch = wrap;
   });
 
   it('copilotSearchNextPage maps generic errors', async () => {
-    mock.module('./graph-client.js', () => ({
-      ...graphClientReal,
-      callGraphAbsolute: async () => {
-        throw new Error('boom');
-      }
-    }));
+    const wrap = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error('boom');
+    }) as unknown as typeof fetch;
     const mod = await import(`./copilot-graph-client.js?copilotErr2=${Date.now()}`);
     const r = await mod.copilotSearchNextPage(t, 'https://graph.microsoft.com/beta/page2');
     expect(r.ok).toBe(false);
     expect(r.error?.message).toContain('boom');
-    mock.module('./graph-client.js', () => ({
-      ...graphClientReal,
-      callGraphAbsolute: async () => ({ ok: true as const, data: {} })
-    }));
+    globalThis.fetch = wrap;
   });
 });
 
 describe('copilot package zip fetch paths', () => {
-  const originalFetch = globalThis.fetch;
-
   afterAll(() => {
-    globalThis.fetch = originalFetch;
+    globalThis.fetch = platformFetch;
     restoreCopilotGraphModules();
   });
 

@@ -3,7 +3,6 @@
  * Run the Bun test CLI. Prefer a `bun` on PATH (CI / local installs); fall back to
  * the same Bun minor line as CI (see .github/workflows/ci.yml) via npx.
  * Callers should pass `--isolate` for suites that stub `globalThis.fetch` / env (see `test` / `test:coverage` in package.json).
- * CI `test:coverage` also uses `--parallel=1` so test files run sequentially in one worker, avoiding `fetch` races when multiple files stub `globalThis.fetch` concurrently.
  */
 import { spawnSync } from 'node:child_process';
 
