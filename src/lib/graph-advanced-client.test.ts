@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import type { GraphBatchRequestBody } from './graph-advanced-client.js';
 
-/** Bypasses `mock.module('./graph-advanced-client.js', …)` used in copilot invoke tests (same specifier = mocked). */
-const ga = await import(new URL('./graph-advanced-client.js?contractTest=1', import.meta.url).href);
+/** Bypasses `mock.module('./graph-advanced-client.js', …)` used in copilot invoke tests (relative `?query` only; absolute file URLs still resolve to the mock). */
+// @ts-expect-error Bun accepts a query on the import specifier; tsc only types the bare `.js` path.
+const ga = await import('./graph-advanced-client.js?contractTest=1');
 const { graphInvoke, graphInvokeText, graphPostBatch, parseGraphInvokeHeaders } = ga;
 
 describe('parseGraphInvokeHeaders', () => {
