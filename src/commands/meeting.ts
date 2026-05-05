@@ -255,32 +255,26 @@ recordingsBaseFlags(meetingCommand.command('recording-download <meetingId> <reco
     'Download a meeting recording (`GET /me/onlineMeetings/{id}/recordings/{id}/content`). Streams to disk; follows a single redirect into Microsoft Stream/SharePoint.'
   )
   .option('--out <path>', 'Output file path (default ./<recordingId>.mp4)')
-  .action(
-    async (
-      meetingId: string,
-      recordingId: string,
-      opts: RecordingsBaseOpts & { out?: string }
-    ) => {
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const path = recordingContentPath(meetingId, recordingId, opts.user);
-      const out = opts.out?.trim() || `./${recordingId}.mp4`;
-      const r = await downloadMediaToFile(auth.token, path, out);
-      if (!r.ok || !r.data) {
-        console.error(`Error: ${r.error?.message ?? 'download failed'}`);
-        process.exit(1);
-      }
-      if (opts.json) {
-        console.log(JSON.stringify(r.data, null, 2));
-        return;
-      }
-      console.log(`✓ Downloaded ${r.data.bytes} bytes`);
-      console.log(`  Saved to: ${r.data.path}`);
+  .action(async (meetingId: string, recordingId: string, opts: RecordingsBaseOpts & { out?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    const path = recordingContentPath(meetingId, recordingId, opts.user);
+    const out = opts.out?.trim() || `./${recordingId}.mp4`;
+    const r = await downloadMediaToFile(auth.token, path, out);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message ?? 'download failed'}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data, null, 2));
+      return;
+    }
+    console.log(`✓ Downloaded ${r.data.bytes} bytes`);
+    console.log(`  Saved to: ${r.data.path}`);
+  });
 
 recordingsBaseFlags(meetingCommand.command('recordings-all'))
   .description(
@@ -397,11 +391,7 @@ recordingsBaseFlags(meetingCommand.command('transcript-download <meetingId> <tra
         process.exit(1);
       }
       const out = opts.out?.trim() || `./${transcriptId}.vtt`;
-      const r = await downloadMediaToFile(
-        auth.token,
-        transcriptContentPath(meetingId, transcriptId, opts.user),
-        out
-      );
+      const r = await downloadMediaToFile(auth.token, transcriptContentPath(meetingId, transcriptId, opts.user), out);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message ?? 'transcript download failed'}`);
         process.exit(1);
@@ -532,13 +522,9 @@ interface MeetingDeltaArgs<T> {
 }
 
 async function runMeetingDelta<T>(args: MeetingDeltaArgs<T>): Promise<void> {
-  const existing: DeltaStateFileV1 | null = args.stateFile
-    ? await readDeltaStateFile(args.stateFile)
-    : null;
+  const existing: DeltaStateFileV1 | null = args.stateFile ? await readDeltaStateFile(args.stateFile) : null;
   if (existing && existing.kind !== args.kind) {
-    console.error(
-      `Error: state file kind '${existing.kind}' does not match expected '${args.kind}'`
-    );
+    console.error(`Error: state file kind '${existing.kind}' does not match expected '${args.kind}'`);
     process.exit(1);
   }
   const continueUrl = resolveDeltaContinuationUrl({ explicitNext: args.explicitNext, state: existing });

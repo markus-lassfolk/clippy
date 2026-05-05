@@ -2,9 +2,9 @@ import type { DriveLocation } from './drive-location.js';
 import { DEFAULT_DRIVE_LOCATION } from './drive-location.js';
 import {
   callGraph,
+  driveItemPath,
   GraphApiError,
   type GraphResponse,
-  driveItemPath,
   graphError,
   graphResult
 } from './graph-client.js';

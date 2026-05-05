@@ -1,3 +1,4 @@
+import { resolveGraphAuth } from './graph-auth.js';
 import {
   callGraphAt,
   callGraphAtText,
@@ -8,7 +9,6 @@ import {
   graphErrorFromApiError
 } from './graph-client.js';
 import { GRAPH_BASE_URL, GRAPH_BETA_URL } from './graph-constants.js';
-import { resolveGraphAuth } from './graph-auth.js';
 
 /** Parse repeatable CLI `--header "Name: value"` lines (first colon separates name from value). */
 export function parseGraphInvokeHeaders(headerLines: string[]): Record<string, string> {

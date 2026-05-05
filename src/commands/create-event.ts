@@ -18,6 +18,7 @@ import {
 } from '../lib/ews-client.js';
 import { getExchangeBackend } from '../lib/exchange-backend.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import type { GraphCreateEventRequest } from '../lib/graph-calendar-client.js';
 import {
   findFirstAvailableRoomGraph,
   listGraphRooms,
@@ -49,6 +50,15 @@ export const createEventCommand = new Command('create-event')
   .option('--room <room>', 'Meeting room (use --list-rooms to see available)')
   .option('--teams', 'Create as Teams meeting')
   .option('--category <name>', 'Category label (repeatable)', (v, acc) => [...acc, v], [] as string[])
+  .option(
+    '--show-as <status>',
+    'Microsoft Graph only: event free/busy line (free, tentative, busy, oof, workingElsewhere, unknown)'
+  )
+  .option('--focus-time', 'Calendar focus block: busy + category "Focus time" (Graph-oriented)')
+  .option(
+    '--locations-json <path>',
+    'Microsoft Graph only: JSON array of event Location objects; combined with --room when set'
+  )
   .option('--all-day', 'Create as an all-day event (no time slots)')
   .option('--sensitivity <level>', 'Sensitivity: normal, personal, private, confidential')
   .option('--list-rooms', 'List available meeting rooms')
@@ -100,6 +110,9 @@ export const createEventCommand = new Command('create-event')
         mailbox?: string;
         calendar?: string;
         category?: string[];
+        showAs?: string;
+        focusTime?: boolean;
+        locationsJson?: string;
         attach?: string;
         attachLink?: string[];
       },
@@ -580,6 +593,75 @@ export const createEventCommand = new Command('create-event')
         }
       }
 
+      if (backend === 'ews' && (options.showAs?.trim() || options.locationsJson?.trim())) {
+        const msg =
+          'Options --show-as and --locations-json require Microsoft Graph. Set M365_EXCHANGE_BACKEND=graph or auto.';
+        if (options.json) {
+          console.log(JSON.stringify({ error: msg }, null, 2));
+        } else {
+          console.error(`Error: ${msg}`);
+        }
+        process.exit(1);
+      }
+
+      const categoryList = [...(options.category ?? [])];
+      if (options.focusTime && !categoryList.includes('Focus time')) {
+        categoryList.push('Focus time');
+      }
+
+      const showAsAllowed = new Set(['free', 'tentative', 'busy', 'oof', 'workingelsewhere', 'unknown']);
+      let showAsGraph: GraphCreateEventRequest['showAs'] | undefined;
+      if (options.showAs?.trim()) {
+        const key = options.showAs.trim().toLowerCase();
+        if (!showAsAllowed.has(key)) {
+          const msg = `Invalid --show-as "${options.showAs}". Use: free, tentative, busy, oof, workingElsewhere, unknown.`;
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(1);
+        }
+        const map: Record<string, GraphCreateEventRequest['showAs']> = {
+          free: 'free',
+          tentative: 'tentative',
+          busy: 'busy',
+          oof: 'oof',
+          workingelsewhere: 'workingElsewhere',
+          unknown: 'unknown'
+        };
+        showAsGraph = map[key];
+      } else if (options.focusTime) {
+        showAsGraph = 'busy';
+      }
+
+      let graphLocations: GraphCreateEventRequest['locations'] | undefined;
+      if (options.locationsJson?.trim()) {
+        try {
+          const raw = JSON.parse(await readFile(options.locationsJson.trim(), 'utf8')) as unknown;
+          if (!Array.isArray(raw)) {
+            throw new Error('--locations-json must be a JSON array of location objects');
+          }
+          graphLocations = raw as GraphCreateEventRequest['locations'];
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Invalid --locations-json file';
+          if (options.json) {
+            console.log(JSON.stringify({ error: msg }, null, 2));
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(1);
+        }
+      }
+      if (roomEmail && (backend === 'graph' || backend === 'auto')) {
+        const roomLoc = {
+          displayName: (roomName ?? roomEmail).trim(),
+          locationEmailAddress: roomEmail.trim(),
+          locationType: 'conferenceRoom' as const
+        };
+        graphLocations = graphLocations ? [roomLoc, ...graphLocations] : [roomLoc];
+      }
+
       const tryGraphFirst = backend === 'graph' || backend === 'auto';
 
       if (tryGraphFirst) {
@@ -600,10 +682,12 @@ export const createEventCommand = new Command('create-event')
             timezoneName: options.timezone,
             attendees,
             teams: options.teams ?? false,
-            locationDisplay: roomName,
+            locationDisplay: graphLocations?.length ? undefined : roomName,
+            graphLocations,
             sensitivity,
-            categories: options.category && options.category.length > 0 ? options.category : undefined,
+            categories: categoryList.length > 0 ? categoryList : undefined,
             recurrence,
+            showAs: showAsGraph,
             fileAttachments,
             referenceAttachments: referenceAttachments?.map((a) => ({ name: a.name, sourceUrl: a.url }))
           });
@@ -783,7 +867,7 @@ export const createEventCommand = new Command('create-event')
         recurrence,
         mailbox: options.mailbox,
         timezone: options.timezone,
-        categories: options.category && options.category.length > 0 ? options.category : undefined,
+        categories: categoryList.length > 0 ? categoryList : undefined,
         fileAttachments,
         referenceAttachments
       });

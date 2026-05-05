@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
-  DEFAULT_DRIVE_LOCATION,
   buildDriveFolderOrRootPath,
+  DEFAULT_DRIVE_LOCATION,
   driveDeltaStartPath,
   driveItemPath,
   driveLocationFromCliFlags,
@@ -29,9 +29,9 @@ describe('driveRootPrefix', () => {
   });
 
   it('uses site plus library drive id', () => {
-    expect(
-      driveRootPrefix({ kind: 'site', siteId: 'site1', libraryDriveId: 'libDrive99' })
-    ).toBe('/sites/site1/drives/libDrive99');
+    expect(driveRootPrefix({ kind: 'site', siteId: 'site1', libraryDriveId: 'libDrive99' })).toBe(
+      '/sites/site1/drives/libDrive99'
+    );
   });
 });
 

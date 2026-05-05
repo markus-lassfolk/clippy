@@ -172,9 +172,11 @@ function buildGraphCreateEventRequest(opts: {
   attendees: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   teams: boolean;
   locationDisplay?: string;
+  graphLocations?: GraphCreateEventRequest['locations'];
   sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   categories?: string[];
   recurrence?: Recurrence;
+  showAs?: GraphCreateEventRequest['showAs'];
 }): GraphCreateEventRequest {
   const { start, end } = graphStartEnd({
     start: opts.start,
@@ -193,17 +195,33 @@ function buildGraphCreateEventRequest(opts: {
     };
   });
 
+  const locs = (opts.graphLocations ?? []).filter(
+    (l) => l && (l.displayName?.trim() || l.locationEmailAddress?.trim())
+  );
+  const primaryLoc =
+    locs.length > 0
+      ? {
+          displayName: (locs[0].displayName?.trim() || locs[0].locationEmailAddress || 'Location').trim(),
+          ...(locs[0].locationEmailAddress?.trim()
+            ? { locationEmailAddress: locs[0].locationEmailAddress.trim() }
+            : {}),
+          ...(locs[0].locationType?.trim() ? { locationType: locs[0].locationType.trim() } : {})
+        }
+      : undefined;
+
   const body: GraphCreateEventRequest = {
     subject: opts.subject,
     start,
     end,
     ...(opts.body?.trim() ? { body: { contentType: 'text' as const, content: opts.body.trim() } } : {}),
-    ...(opts.locationDisplay?.trim() ? { location: { displayName: opts.locationDisplay.trim() } } : {}),
+    ...(primaryLoc ? { location: primaryLoc, locations: locs } : {}),
+    ...(!primaryLoc && opts.locationDisplay?.trim() ? { location: { displayName: opts.locationDisplay.trim() } } : {}),
     ...(attendees.length > 0 ? { attendees } : {}),
     ...(opts.allDay ? { isAllDay: true } : {}),
     ...(opts.sensitivity ? { sensitivity: mapSensitivity(opts.sensitivity) } : {}),
     ...(opts.categories && opts.categories.length > 0 ? { categories: opts.categories } : {}),
-    ...(opts.teams ? { isOnlineMeeting: true, onlineMeetingProvider: 'teamsForBusiness' as const } : {})
+    ...(opts.teams ? { isOnlineMeeting: true, onlineMeetingProvider: 'teamsForBusiness' as const } : {}),
+    ...(opts.showAs ? { showAs: opts.showAs } : {})
   };
 
   if (opts.recurrence) {
@@ -233,9 +251,11 @@ export async function createEventViaGraph(opts: {
   attendees: Array<{ email: string; name?: string; type?: 'Required' | 'Optional' | 'Resource' }>;
   teams: boolean;
   locationDisplay?: string;
+  graphLocations?: GraphCreateEventRequest['locations'];
   sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
   categories?: string[];
   recurrence?: Recurrence;
+  showAs?: GraphCreateEventRequest['showAs'];
   fileAttachments?: Array<{ name: string; contentType: string; contentBytes: string }>;
   referenceAttachments?: Array<{ name: string; sourceUrl: string }>;
   /** Graph calendar id; omit for default calendar */

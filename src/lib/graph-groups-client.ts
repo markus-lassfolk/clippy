@@ -1,10 +1,4 @@
-import {
-  callGraph,
-  GraphApiError,
-  type GraphResponse,
-  graphError,
-  graphErrorFromApiError
-} from './graph-client.js';
+import { callGraph, GraphApiError, type GraphResponse, graphError, graphErrorFromApiError } from './graph-client.js';
 
 /** Microsoft 365 (Outlook) group surface. Subset of `microsoft.graph.group`. */
 export interface GraphGroup {
@@ -100,8 +94,7 @@ export async function listConversationThreads(
   options: { top?: number } = {}
 ): Promise<GraphResponse<ThreadsListResponse>> {
   const top = options.top && options.top > 0 ? `?$top=${Math.min(Math.max(1, options.top), 200)}` : '';
-  const path =
-    `/groups/${encodeURIComponent(groupId)}/conversations/${encodeURIComponent(conversationId)}/threads${top}`;
+  const path = `/groups/${encodeURIComponent(groupId)}/conversations/${encodeURIComponent(conversationId)}/threads${top}`;
   try {
     return await callGraph<ThreadsListResponse>(token, path);
   } catch (err) {
@@ -166,12 +159,7 @@ export async function replyToPost(
     }
   };
   try {
-    return await callGraph<void>(
-      token,
-      path,
-      { method: 'POST', body: JSON.stringify(payload) },
-      false
-    );
+    return await callGraph<void>(token, path, { method: 'POST', body: JSON.stringify(payload) }, false);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to reply to post');

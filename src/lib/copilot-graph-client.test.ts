@@ -73,6 +73,8 @@ describe('buildCopilotRetrievalBody', () => {
     });
   });
   test('rejects invalid dataSource', () => {
-    expect(() => buildCopilotRetrievalBody({ queryString: 'x', dataSource: 'invalid' })).toThrow(/dataSource must be one of/);
+    expect(() => buildCopilotRetrievalBody({ queryString: 'x', dataSource: 'invalid' })).toThrow(
+      /dataSource must be one of/
+    );
   });
 });

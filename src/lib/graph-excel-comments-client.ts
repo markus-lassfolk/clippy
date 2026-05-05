@@ -4,15 +4,15 @@
  */
 import type { DriveLocation } from './drive-location.js';
 import { DEFAULT_DRIVE_LOCATION, driveRootPrefix } from './drive-location.js';
-import { GRAPH_BETA_URL } from './graph-constants.js';
 import {
   callGraphAt,
   fetchAllPages,
   GraphApiError,
+  type GraphResponse,
   graphError,
-  graphErrorFromApiError,
-  type GraphResponse
+  graphErrorFromApiError
 } from './graph-client.js';
+import { GRAPH_BETA_URL } from './graph-constants.js';
 
 export type WorkbookCommentJson = Record<string, unknown>;
 
@@ -44,11 +44,7 @@ export async function getExcelWorkbookComment(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<WorkbookCommentJson>> {
   try {
-    return await callGraphAt<WorkbookCommentJson>(
-      GRAPH_BETA_URL,
-      token,
-      commentItemPath(location, itemId, commentId)
-    );
+    return await callGraphAt<WorkbookCommentJson>(GRAPH_BETA_URL, token, commentItemPath(location, itemId, commentId));
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to get workbook comment');

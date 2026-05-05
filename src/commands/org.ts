@@ -36,9 +36,7 @@ orgCommand
 
 orgCommand
   .command('direct-reports')
-  .description(
-    'List direct reports for /me or another user (GET /me/directReports or GET /users/{id}/directReports)'
-  )
+  .description('List direct reports for /me or another user (GET /me/directReports or GET /users/{id}/directReports)')
   .option('--user <upn-or-id>', 'User object id or UPN (omit for your own reports)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Graph access token')

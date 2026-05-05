@@ -69,9 +69,7 @@ describe('evaluateGraphCapabilities', () => {
   });
 
   test('copilot.retrieval: typical Files+Sites read scopes satisfy read', () => {
-    const ev = evaluateGraphCapabilities(
-      new Set(['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read'])
-    );
+    const ev = evaluateGraphCapabilities(new Set(['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read']));
     const row = ev.find((r) => r.id === 'copilot.retrieval');
     expect(row?.readOk).toBe(true);
     expect(row?.writeOk).toBe(false);

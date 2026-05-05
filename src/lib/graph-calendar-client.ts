@@ -58,7 +58,9 @@ export interface GraphCalendarEvent {
     emailAddress?: { name?: string; address?: string };
     status?: { response?: string };
   }>;
-  location?: { displayName?: string };
+  location?: { displayName?: string; locationEmailAddress?: string; locationType?: string };
+  locations?: Array<{ displayName?: string; locationEmailAddress?: string; locationType?: string }>;
+  showAs?: string;
   webLink?: string;
   /** Teams / Skype meeting details when `isOnlineMeeting` is true ([onlineMeetingInfo](https://learn.microsoft.com/en-us/graph/api/resources/onlinemeetinginfo)). */
   onlineMeeting?: {
@@ -90,7 +92,14 @@ export interface GraphCreateEventRequest {
   body?: { contentType: 'text' | 'html'; content: string };
   start: { dateTime: string; timeZone: string };
   end: { dateTime: string; timeZone: string };
-  location?: { displayName: string };
+  location?: { displayName: string; locationEmailAddress?: string; locationType?: string };
+  locations?: Array<{
+    displayName?: string;
+    locationEmailAddress?: string;
+    locationType?: string;
+    uniqueId?: string;
+    uniqueIdType?: string;
+  }>;
   attendees?: Array<{
     emailAddress: { address: string; name?: string };
     type: 'required' | 'optional' | 'resource';
@@ -101,6 +110,7 @@ export interface GraphCreateEventRequest {
   sensitivity?: 'normal' | 'personal' | 'private' | 'confidential';
   categories?: string[];
   recurrence?: GraphPatternedRecurrence;
+  showAs?: 'free' | 'tentative' | 'busy' | 'oof' | 'workingElsewhere' | 'unknown';
 }
 
 /** [patternedRecurrence](https://learn.microsoft.com/en-us/graph/api/resources/patternedrecurrence) (subset). */

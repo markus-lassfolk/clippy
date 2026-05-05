@@ -245,15 +245,10 @@ export async function getTasks(
       return graphError(err instanceof Error ? err.message : 'Failed to get tasks');
     }
     if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || 'Failed to get tasks',
-        result.error?.code,
-        result.error?.status,
-        {
-          requestId: result.error?.requestId,
-          innerError: result.error?.innerError
-        }
-      );
+      return graphError(result.error?.message || 'Failed to get tasks', result.error?.code, result.error?.status, {
+        requestId: result.error?.requestId,
+        innerError: result.error?.innerError
+      });
     }
     return graphResult(result.data.value);
   }

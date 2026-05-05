@@ -87,9 +87,7 @@ describe('listDriveItemThumbnails', () => {
       expect(r.ok).toBe(true);
       expect(r.data?.length).toBe(1);
       expect(fetchCalls).toHaveLength(1);
-      expect(fetchCalls[0]).toContain(
-        '/sites/contoso.sharepoint.com%2Ca1%2Cb1/drives/lib1/items/item-99/thumbnails'
-      );
+      expect(fetchCalls[0]).toContain('/sites/contoso.sharepoint.com%2Ca1%2Cb1/drives/lib1/items/item-99/thumbnails');
     } finally {
       globalThis.fetch = originalFetch;
     }

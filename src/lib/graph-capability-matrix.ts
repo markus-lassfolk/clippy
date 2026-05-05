@@ -184,14 +184,27 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
     id: 'insights',
     area: 'Discovery / Insights',
     detail: '`insights trending|used|shared`, `files recent`, `files activities`, `files preview`',
-    readScopes: ['Sites.Read.All', 'Sites.ReadWrite.All', 'Files.Read', 'Files.Read.All', 'Files.ReadWrite', 'Files.ReadWrite.All'],
+    readScopes: [
+      'Sites.Read.All',
+      'Sites.ReadWrite.All',
+      'Files.Read',
+      'Files.Read.All',
+      'Files.ReadWrite',
+      'Files.ReadWrite.All'
+    ],
     writeScopes: []
   },
   {
     id: 'approvals',
     area: 'Approvals',
-    detail: '`approvals list|get|steps|respond` — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite`',
-    readScopes: ['ApprovalSolution.Read.All', 'ApprovalSolution.ReadWrite', 'ApprovalSolution.ReadWrite.All', 'ApprovalSolutionResponse.ReadWrite'],
+    detail:
+      '`approvals list|get|steps|respond` — Teams Approvals + Power Automate (beta `/me/approvals`); `ApprovalSolution.ReadWrite` (canonical) or narrower `ApprovalSolutionResponse.ReadWrite`',
+    readScopes: [
+      'ApprovalSolution.Read.All',
+      'ApprovalSolution.ReadWrite',
+      'ApprovalSolution.ReadWrite.All',
+      'ApprovalSolutionResponse.ReadWrite'
+    ],
     writeScopes: ['ApprovalSolution.ReadWrite', 'ApprovalSolutionResponse.ReadWrite']
   },
   {
@@ -239,7 +252,8 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'meetings.recordings',
     area: 'Meeting recordings',
-    detail: '`meeting recordings`, `recording-download`, `recordings-all` (+ `--delta`) — tenant Stream/Teams policy applies',
+    detail:
+      '`meeting recordings`, `recording-download`, `recordings-all` (+ `--delta`) — tenant Stream/Teams policy applies',
     readScopes: ['OnlineMeetingRecording.Read.All'],
     writeScopes: []
   },
@@ -290,7 +304,8 @@ export const GRAPH_CAPABILITY_MATRIX: readonly CapabilityMatrixRow[] = [
   {
     id: 'teams.activity',
     area: 'Teams activity feed',
-    detail: '`teams activity-notify` — POST /me/teamwork/sendActivityNotification or /chats/{id}/sendActivityNotification',
+    detail:
+      '`teams activity-notify` — POST /me/teamwork/sendActivityNotification or /chats/{id}/sendActivityNotification',
     readScopes: [],
     writeScopes: ['TeamsActivity.Send'],
     readColumnDash: true

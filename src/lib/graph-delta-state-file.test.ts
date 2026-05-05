@@ -98,9 +98,7 @@ describe('graph-delta-state-file', () => {
   });
 
   test('driveDeltaScopeFromLocation maps site + library', () => {
-    expect(
-      driveDeltaScopeFromLocation({ kind: 'site', siteId: 's1', libraryDriveId: 'l1' }, undefined)
-    ).toEqual({
+    expect(driveDeltaScopeFromLocation({ kind: 'site', siteId: 's1', libraryDriveId: 'l1' }, undefined)).toEqual({
       driveLocKind: 'site',
       driveLocSiteId: 's1',
       driveLocLibraryDriveId: 'l1'

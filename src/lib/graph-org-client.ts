@@ -1,4 +1,11 @@
-import { callGraph, GraphApiError, fetchAllPages, type GraphResponse, graphError, graphResult } from './graph-client.js';
+import {
+  callGraph,
+  fetchAllPages,
+  GraphApiError,
+  type GraphResponse,
+  graphError,
+  graphResult
+} from './graph-client.js';
 import { graphUserPath } from './graph-user-path.js';
 
 /** User or group returned as directoryObject for manager / directReports (common fields). */
@@ -32,10 +39,7 @@ export async function getManager(token: string, forUser?: string): Promise<Graph
 /**
  * List direct reports for /me or another user (GET …/directReports). Paginated.
  */
-export async function listDirectReports(
-  token: string,
-  forUser?: string
-): Promise<GraphResponse<OrgDirectoryObject[]>> {
+export async function listDirectReports(token: string, forUser?: string): Promise<GraphResponse<OrgDirectoryObject[]>> {
   const path = graphUserPath(forUser, 'directReports');
   return fetchAllPages<OrgDirectoryObject>(token, path, 'Failed to list direct reports');
 }

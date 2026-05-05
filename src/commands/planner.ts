@@ -56,9 +56,9 @@ import {
   removePlannerRosterMember,
   type UpdatePlannerPlanDetailsParams,
   type UpdatePlannerTaskDetailsParams,
+  unarchivePlannerPlan,
   updateAssignedToTaskBoardFormat,
   updateBucketTaskBoardFormat,
-  unarchivePlannerPlan,
   updatePlannerBucket,
   updatePlannerChecklistItem,
   updatePlannerPlan,
@@ -866,65 +866,77 @@ plannerCommand
   .option('--json', 'Output JSON confirmation')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const pr = await getPlannerPlan(auth.token!, opts.plan);
+      if (!pr.ok || !pr.data) {
+        console.error(`Error: ${pr.error?.message}`);
+        process.exit(1);
+      }
+      const etag = pr.data['@odata.etag'];
+      if (!etag) {
+        console.error('Plan missing ETag');
+        process.exit(1);
+      }
+      const r = await archivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify({ archived: opts.plan }, null, 2));
+      else console.log(`Archived plan: ${opts.plan}`);
     }
-    const pr = await getPlannerPlan(auth.token!, opts.plan);
-    if (!pr.ok || !pr.data) {
-      console.error(`Error: ${pr.error?.message}`);
-      process.exit(1);
-    }
-    const etag = pr.data['@odata.etag'];
-    if (!etag) {
-      console.error('Plan missing ETag');
-      process.exit(1);
-    }
-    const r = await archivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify({ archived: opts.plan }, null, 2));
-    else console.log(`Archived plan: ${opts.plan}`);
-  });
+  );
 
 plannerCommand
   .command('plan-unarchive')
-  .description('Unarchive a plan (Graph **beta**: POST /planner/plans/{id}/unarchive). Requires ETag and justification.')
+  .description(
+    'Unarchive a plan (Graph **beta**: POST /planner/plans/{id}/unarchive). Requires ETag and justification.'
+  )
   .requiredOption('-p, --plan <planId>', 'Plan ID')
   .requiredOption('-j, --justification <text>', 'Reason (required by Graph)')
   .option('--json', 'Output JSON confirmation')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { plan: string; justification: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const pr = await getPlannerPlan(auth.token!, opts.plan);
+      if (!pr.ok || !pr.data) {
+        console.error(`Error: ${pr.error?.message}`);
+        process.exit(1);
+      }
+      const etag = pr.data['@odata.etag'];
+      if (!etag) {
+        console.error('Plan missing ETag');
+        process.exit(1);
+      }
+      const r = await unarchivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      if (opts.json) console.log(JSON.stringify({ unarchived: opts.plan }, null, 2));
+      else console.log(`Unarchived plan: ${opts.plan}`);
     }
-    const pr = await getPlannerPlan(auth.token!, opts.plan);
-    if (!pr.ok || !pr.data) {
-      console.error(`Error: ${pr.error?.message}`);
-      process.exit(1);
-    }
-    const etag = pr.data['@odata.etag'];
-    if (!etag) {
-      console.error('Plan missing ETag');
-      process.exit(1);
-    }
-    const r = await unarchivePlannerPlan(auth.token!, opts.plan, etag, opts.justification);
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    if (opts.json) console.log(JSON.stringify({ unarchived: opts.plan }, null, 2));
-    else console.log(`Unarchived plan: ${opts.plan}`);
-  });
+  );
 
 plannerCommand
   .command('create-bucket')

@@ -713,10 +713,15 @@ export async function sendMeTeamworkActivityNotification(
   body: Record<string, unknown>
 ): Promise<GraphResponse<void>> {
   try {
-    const r = await callGraph<void>(token, '/me/teamwork/sendActivityNotification', {
-      method: 'POST',
-      body: JSON.stringify(body)
-    }, false);
+    const r = await callGraph<void>(
+      token,
+      '/me/teamwork/sendActivityNotification',
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to send activity notification', r.error?.code, r.error?.status);
     }
@@ -735,12 +740,21 @@ export async function sendChatActivityNotification(
 ): Promise<GraphResponse<void>> {
   try {
     const c = encodeURIComponent(chatId.trim());
-    const r = await callGraph<void>(token, `/chats/${c}/sendActivityNotification`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    }, false);
+    const r = await callGraph<void>(
+      token,
+      `/chats/${c}/sendActivityNotification`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
     if (!r.ok) {
-      return graphError(r.error?.message || 'Failed to send chat activity notification', r.error?.code, r.error?.status);
+      return graphError(
+        r.error?.message || 'Failed to send chat activity notification',
+        r.error?.code,
+        r.error?.status
+      );
     }
     return graphResult(undefined);
   } catch (err) {
@@ -1184,7 +1198,11 @@ export async function undoSoftDeleteChatMessageReply(
       ? await callGraphAt<void>(GRAPH_BETA_URL, token, path, { method: 'POST' }, false)
       : await callGraph<void>(token, path, { method: 'POST' }, false);
     if (!res.ok) {
-      return graphError(res.error?.message || 'Failed to undo soft-delete chat reply', res.error?.code, res.error?.status);
+      return graphError(
+        res.error?.message || 'Failed to undo soft-delete chat reply',
+        res.error?.code,
+        res.error?.status
+      );
     }
     return graphResult(undefined);
   } catch (err) {

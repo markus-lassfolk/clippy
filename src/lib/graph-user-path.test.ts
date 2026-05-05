@@ -9,13 +9,9 @@ describe('graphUserPath', () => {
   });
 
   it('encodes UPN in /users/ path for joined teams, manager, directReports', () => {
-    expect(graphUserPath('manager@contoso.com', 'joinedTeams')).toBe(
-      '/users/manager%40contoso.com/joinedTeams'
-    );
+    expect(graphUserPath('manager@contoso.com', 'joinedTeams')).toBe('/users/manager%40contoso.com/joinedTeams');
     expect(graphUserPath('manager@contoso.com', 'manager')).toBe('/users/manager%40contoso.com/manager');
-    expect(graphUserPath('manager@contoso.com', 'directReports')).toBe(
-      '/users/manager%40contoso.com/directReports'
-    );
+    expect(graphUserPath('manager@contoso.com', 'directReports')).toBe('/users/manager%40contoso.com/directReports');
   });
 
   it('strips leading slash from suffix', () => {

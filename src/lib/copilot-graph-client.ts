@@ -3,8 +3,8 @@
  * @see https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/copilot-apis-overview
  */
 
-import { callGraphAbsolute, GraphApiError, type GraphResponse } from './graph-client.js';
 import { graphInvoke, graphInvokeText } from './graph-advanced-client.js';
+import { callGraphAbsolute, GraphApiError, type GraphResponse } from './graph-client.js';
 
 export const COPILOT_REPORT_PERIODS = ['D7', 'D30', 'D90', 'D180', 'ALL'] as const;
 export type CopilotReportPeriod = (typeof COPILOT_REPORT_PERIODS)[number];
@@ -68,11 +68,7 @@ export async function copilotRetrieval(
 export function assertCopilotReportPeriod(period: string): CopilotReportPeriod {
   const p = period.trim() as CopilotReportPeriod;
   if (!(COPILOT_REPORT_PERIODS as readonly string[]).includes(p)) {
-    throw new GraphApiError(
-      `period must be one of: ${COPILOT_REPORT_PERIODS.join(', ')}`,
-      'InvalidPeriod',
-      400
-    );
+    throw new GraphApiError(`period must be one of: ${COPILOT_REPORT_PERIODS.join(', ')}`, 'InvalidPeriod', 400);
   }
   return p;
 }
@@ -142,10 +138,7 @@ export async function copilotSearchNextPage(token: string, nextLink: string): Pr
   }
 }
 
-export async function copilotConversationCreate(
-  token: string,
-  beta: boolean = true
-): Promise<GraphResponse<unknown>> {
+export async function copilotConversationCreate(token: string, beta: boolean = true): Promise<GraphResponse<unknown>> {
   return graphInvoke(token, { method: 'POST', path: '/copilot/conversations', body: {}, beta });
 }
 

@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   type Approval,
   type ApprovalStep,
@@ -8,6 +7,7 @@ import {
   listMyApprovals,
   patchApprovalStep
 } from '../lib/graph-approvals-client.js';
+import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 export const approvalsCommand = new Command('approvals').description(
@@ -151,7 +151,9 @@ function renderApproval(a: Approval): void {
     for (const s of a.steps) {
       const tag = s.assignedToMe ? '*' : ' ';
       const reviewed = s.reviewResult ? ` ${s.reviewResult}` : '';
-      console.log(`  ${tag} step ${s.id} status=${s.status ?? '?'}${reviewed}${s.displayName ? ` "${s.displayName}"` : ''}`);
+      console.log(
+        `  ${tag} step ${s.id} status=${s.status ?? '?'}${reviewed}${s.displayName ? ` "${s.displayName}"` : ''}`
+      );
     }
   }
 }

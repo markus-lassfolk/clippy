@@ -1,10 +1,6 @@
-import type { Command } from 'commander';
 import process from 'node:process';
-import {
-  driveLocationFromCliFlags,
-  type DriveLocation,
-  type DriveLocationCliFlags
-} from './drive-location.js';
+import type { Command } from 'commander';
+import { type DriveLocation, type DriveLocationCliFlags, driveLocationFromCliFlags } from './drive-location.js';
 
 export const DRIVE_CLI_OPTION_SPECS: readonly [string, string][] = [
   ['--user <upn>', "Target user's default OneDrive (not with --drive-id or --site-id)"],

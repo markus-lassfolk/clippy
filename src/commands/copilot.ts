@@ -5,6 +5,7 @@ import {
   assertCopilotReportPeriod,
   buildCopilotRetrievalBody,
   buildCopilotSearchBody,
+  COPILOT_RETRIEVAL_DATA_SOURCES,
   copilotConversationChat,
   copilotConversationChatOverStream,
   copilotConversationCreate,
@@ -20,8 +21,7 @@ import {
   copilotReportGet,
   copilotRetrieval,
   copilotSearch,
-  copilotSearchNextPage,
-  COPILOT_RETRIEVAL_DATA_SOURCES
+  copilotSearchNextPage
 } from '../lib/copilot-graph-client.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import { checkReadOnly } from '../lib/utils.js';
@@ -54,7 +54,10 @@ function exitGraphError(prefix: string, message: string | undefined): never {
 copilotCommand
   .command('retrieval')
   .description('POST /copilot/retrieval — grounding extracts (SharePoint, OneDrive, connectors)')
-  .option('-q, --query <text>', 'Natural language query (max 1500 chars; required with --data-source unless --json-file)')
+  .option(
+    '-q, --query <text>',
+    'Natural language query (max 1500 chars; required with --data-source unless --json-file)'
+  )
   .option('-s, --data-source <source>', `With --query: ${COPILOT_RETRIEVAL_DATA_SOURCES.join(' | ')}`)
   .option('--filter-expression <kql>', 'Optional KQL filterExpression')
   .option('--max <n>', 'maximumNumberOfResults (1–25)', (v) => parseInt(String(v), 10))
@@ -188,7 +191,10 @@ copilotCommand
   .description('POST /copilot/conversations/{id}/chat — synchronous Copilot message (requires locationHint)')
   .argument('<conversationId>', 'Conversation id from conversation-create')
   .option('-m, --message <text>', 'User message text (required unless --json-file)')
-  .option('-z, --timezone <iana>', 'locationHint.timeZone (e.g. America/New_York; required with --message unless --json-file)')
+  .option(
+    '-z, --timezone <iana>',
+    'locationHint.timeZone (e.g. America/New_York; required with --message unless --json-file)'
+  )
   .option('-f, --json-file <path>', 'Full JSON body (message, locationHint, contextualResources, …)')
   .option('--v1', 'Use Graph v1.0 (default is beta)')
   .option('--token <token>', 'Graph access token')
@@ -307,7 +313,14 @@ copilotCommand
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
   .action(
-    async (opts: { user: string; meeting: string; odata?: string; beta?: boolean; token?: string; identity?: string }) => {
+    async (opts: {
+      user: string;
+      meeting: string;
+      odata?: string;
+      beta?: boolean;
+      token?: string;
+      identity?: string;
+    }) => {
       const token = await resolveTokenOrExit(opts);
       const r = await copilotMeetingInsightsList(token, opts.user, opts.meeting, opts.odata, Boolean(opts.beta));
       if (!r.ok) exitGraphError('Error: ', r.error?.message);
@@ -526,7 +539,9 @@ copilotCommand.addCommand(packagesCmd);
 
 copilotCommand
   .command('notify-help')
-  .description('Print Copilot change-notification resource paths (use `subscribe` with --url and a JSON file for encrypted payloads)')
+  .description(
+    'Print Copilot change-notification resource paths (use `subscribe` with --url and a JSON file for encrypted payloads)'
+  )
   .action(() => {
     console.log(`Copilot AI interactions (per-user, delegated AiEnterpriseInteraction.Read — include resource data needs encryption):
   /copilot/users/{user-id}/interactionHistory/getAllEnterpriseInteractions

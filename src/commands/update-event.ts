@@ -32,6 +32,7 @@ import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   addCalendarEventAttachmentsGraph,
   type GraphCalendarEvent,
+  type GraphCreateEventRequest,
   getEvent,
   listCalendarView,
   updateCalendarEvent
@@ -83,6 +84,8 @@ export const updateEventCommand = new Command('update-event')
   )
   .option('--room <room>', 'Set/change meeting room (name or email)')
   .option('--location <text>', 'Set location text')
+  .option('--show-as <status>', 'Microsoft Graph: free, tentative, busy, oof, workingElsewhere, unknown')
+  .option('--locations-json <path>', 'Microsoft Graph: JSON array of event Location objects')
   .option('--timezone <timezone>', 'Timezone for the event (e.g., "Pacific Standard Time")')
   .option('--occurrence <index>', 'Update only the Nth occurrence of a recurring event')
   .option('--instance <date>', 'Update only the occurrence on a specific date (YYYY-MM-DD)')
@@ -120,6 +123,8 @@ export const updateEventCommand = new Command('update-event')
         removeAttendee: string[];
         room?: string;
         location?: string;
+        showAs?: string;
+        locationsJson?: string;
         occurrence?: string;
         instance?: string;
         teams?: boolean;
@@ -813,6 +818,49 @@ export const updateEventCommand = new Command('update-event')
                 }
               }
 
+              let graphLocationsPatch: GraphCreateEventRequest['locations'] | undefined;
+              if (options.locationsJson?.trim()) {
+                try {
+                  const raw = JSON.parse(await readFile(options.locationsJson.trim(), 'utf8')) as unknown;
+                  if (!Array.isArray(raw)) {
+                    throw new Error('--locations-json must be a JSON array of location objects');
+                  }
+                  graphLocationsPatch = raw as GraphCreateEventRequest['locations'];
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Invalid --locations-json file';
+                  if (options.json) {
+                    console.log(JSON.stringify({ error: message }, null, 2));
+                  } else {
+                    console.error(`Error: ${message}`);
+                  }
+                  process.exit(1);
+                }
+              }
+
+              const showAsAllowed = new Set(['free', 'tentative', 'busy', 'oof', 'workingelsewhere', 'unknown']);
+              let showAsPatch: GraphCreateEventRequest['showAs'] | undefined;
+              if (options.showAs?.trim()) {
+                const key = options.showAs.trim().toLowerCase();
+                if (!showAsAllowed.has(key)) {
+                  const msg = `Invalid --show-as "${options.showAs}". Use: free, tentative, busy, oof, workingElsewhere, unknown.`;
+                  if (options.json) {
+                    console.log(JSON.stringify({ error: msg }, null, 2));
+                  } else {
+                    console.error(`Error: ${msg}`);
+                  }
+                  process.exit(1);
+                }
+                const map: Record<string, GraphCreateEventRequest['showAs']> = {
+                  free: 'free',
+                  tentative: 'tentative',
+                  busy: 'busy',
+                  oof: 'oof',
+                  workingelsewhere: 'workingElsewhere',
+                  unknown: 'unknown'
+                };
+                showAsPatch = map[key];
+              }
+
               const patch = buildGraphUpdatePatch({
                 display: gd,
                 title: options.title,
@@ -820,7 +868,9 @@ export const updateEventCommand = new Command('update-event')
                 newStart: newStart && newEnd ? newStart : undefined,
                 newEnd: newStart && newEnd ? newEnd : undefined,
                 timezone: options.timezone,
-                location: locationText,
+                location: graphLocationsPatch?.length ? undefined : locationText,
+                graphLocations: graphLocationsPatch,
+                showAs: showAsPatch,
                 allDay: options.allDay,
                 sensitivity: sensitivityEws,
                 categories: options.category && options.category.length > 0 ? options.category : undefined,

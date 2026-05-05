@@ -2,23 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import type { DriveLocation } from '../lib/drive-location.js';
 import { registerDriveLocationCliOptions, resolveDriveLocationForCli } from '../lib/drive-location-cli.js';
-import {
-  applyDeltaPageToState,
-  assertDeltaScopeMatchesState,
-  driveDeltaScopeFromLocation,
-  readDeltaStateFile,
-  resolveDeltaContinuationUrl,
-  writeDeltaStateFile
-} from '../lib/graph-delta-state-file.js';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
 import {
   callGraph,
   checkinFile,
   createOfficeCollaborationLink,
-  deleteDriveItemPermission,
   type DriveItem,
   type DriveItemReference,
   defaultDownloadPath,
+  deleteDriveItemPermission,
   deleteFile,
   downloadConvertedFile,
   downloadFile,
@@ -42,10 +34,14 @@ import {
   uploadLargeFile
 } from '../lib/graph-client.js';
 import {
-  createDriveItemPreview,
-  type ItemActivity,
-  listDriveItemActivities
-} from '../lib/graph-insights-client.js';
+  applyDeltaPageToState,
+  assertDeltaScopeMatchesState,
+  driveDeltaScopeFromLocation,
+  readDeltaStateFile,
+  resolveDeltaContinuationUrl,
+  writeDeltaStateFile
+} from '../lib/graph-delta-state-file.js';
+import { createDriveItemPreview, type ItemActivity, listDriveItemActivities } from '../lib/graph-insights-client.js';
 import { checkReadOnly } from '../lib/utils.js';
 
 /** CLI flags shared by all `files` subcommands that hit a drive root. */
@@ -106,9 +102,7 @@ withDriveOptions(filesCommand.command('list'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (
-      options: FilesDriveCliFlags & { folder?: string; json?: boolean; token?: string; identity?: string }
-    ) => {
+    async (options: FilesDriveCliFlags & { folder?: string; json?: boolean; token?: string; identity?: string }) => {
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success) {
         console.error(`Error: ${auth.error}`);
@@ -206,91 +200,97 @@ withDriveOptions(filesCommand.command('search <query>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (query: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (query: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await searchFiles(auth.token!, query, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to search files'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await searchFiles(auth.token!, query, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to search files'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ items: result.data }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ items: result.data }, null, 2));
+        return;
+      }
 
-    renderItems(result.data);
-  });
+      renderItems(result.data);
+    }
+  );
 
 withDriveOptions(filesCommand.command('meta <fileId>'))
   .description('Get file metadata')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await getFileMetadata(auth.token!, fileId, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to fetch metadata'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await getFileMetadata(auth.token!, fileId, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to fetch metadata'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    renderItems([result.data]);
-  });
+      renderItems([result.data]);
+    }
+  );
 
 withDriveOptions(filesCommand.command('thumbnails <fileId>'))
   .description('List thumbnail sets for a drive item (GET …/thumbnails — small/medium/large URLs per Graph)')
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
-    const loc = parseDriveLocation(options);
-    const result = await listDriveItemThumbnails(auth.token, fileId, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to list thumbnails'}`);
-      process.exit(1);
-    }
-    if (options.json) {
-      console.log(JSON.stringify({ thumbnails: result.data }, null, 2));
-      return;
-    }
-    if (result.data.length === 0) {
-      console.log('No thumbnails returned (Graph may not have generated any yet).');
-      return;
-    }
-    for (const set of result.data) {
-      const id = set.id ?? '(set)';
-      console.log(`thumbnailSet ${id}`);
-      for (const size of ['small', 'medium', 'large'] as const) {
-        const info = set[size];
-        if (info?.url) {
-          console.log(`  ${size}: ${info.width ?? '?'}x${info.height ?? '?'}  ${info.url}`);
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
+      const loc = parseDriveLocation(options);
+      const result = await listDriveItemThumbnails(auth.token, fileId, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to list thumbnails'}`);
+        process.exit(1);
+      }
+      if (options.json) {
+        console.log(JSON.stringify({ thumbnails: result.data }, null, 2));
+        return;
+      }
+      if (result.data.length === 0) {
+        console.log('No thumbnails returned (Graph may not have generated any yet).');
+        return;
+      }
+      for (const set of result.data) {
+        const id = set.id ?? '(set)';
+        console.log(`thumbnailSet ${id}`);
+        for (const size of ['small', 'medium', 'large'] as const) {
+          const info = set[size];
+          if (info?.url) {
+            console.log(`  ${size}: ${info.width ?? '?'}x${info.height ?? '?'}  ${info.url}`);
+          }
         }
       }
     }
-  });
+  );
 
 withDriveOptions(filesCommand.command('upload <path>'))
   .description('Upload a file up to 250MB')
@@ -379,7 +379,10 @@ withDriveOptions(filesCommand.command('download <fileId>'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (fileId: string, options: FilesDriveCliFlags & { out?: string; json?: boolean; token?: string; identity?: string }) => {
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { out?: string; json?: boolean; token?: string; identity?: string }
+    ) => {
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success) {
         console.error(`Error: ${auth.error}`);
@@ -416,28 +419,34 @@ withDriveOptions(filesCommand.command('delete <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await deleteFile(auth.token!, fileId, loc);
-    if (!result.ok) {
-      console.error(`Error: ${result.error?.message || 'Delete failed'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await deleteFile(auth.token!, fileId, loc);
+      if (!result.ok) {
+        console.error(`Error: ${result.error?.message || 'Delete failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ success: true, id: fileId }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ success: true, id: fileId }, null, 2));
+        return;
+      }
 
-    console.log(`✓ Deleted file: ${fileId}`);
-  });
+      console.log(`✓ Deleted file: ${fileId}`);
+    }
+  );
 
 withDriveOptions(filesCommand.command('share <fileId>'))
   .description('Create a sharing link or Office Online collaboration handoff')
@@ -525,7 +534,11 @@ withDriveOptions(filesCommand.command('invite <fileId>'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (fileId: string, options: FilesDriveCliFlags & { body: string; json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { body: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success) {
@@ -573,36 +586,38 @@ withDriveOptions(filesCommand.command('permissions <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await listDriveItemPermissions(auth.token!, fileId, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to list permissions'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await listDriveItemPermissions(auth.token!, fileId, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to list permissions'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ permissions: result.data }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ permissions: result.data }, null, 2));
+        return;
+      }
 
-    if (result.data.length === 0) {
-      console.log('No permissions returned.');
-      return;
-    }
+      if (result.data.length === 0) {
+        console.log('No permissions returned.');
+        return;
+      }
 
-    for (const p of result.data) {
-      const id = typeof p.id === 'string' ? p.id : '';
-      const roles = Array.isArray(p.roles) ? (p.roles as string[]).join(',') : '';
-      console.log(`${id}\t${roles}`);
+      for (const p of result.data) {
+        const id = typeof p.id === 'string' ? p.id : '';
+        const roles = Array.isArray(p.roles) ? (p.roles as string[]).join(',') : '';
+        console.log(`${id}\t${roles}`);
+      }
     }
-  });
+  );
 
 withDriveOptions(filesCommand.command('permission-remove <fileId> <permissionId>'))
   .description('DELETE a permission from a drive item (revoke access granted by that permission)')
@@ -846,37 +861,39 @@ withDriveOptions(filesCommand.command('versions <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await listFileVersions(auth.token!, fileId, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to list versions'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await listFileVersions(auth.token!, fileId, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to list versions'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify({ versions: result.data }, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify({ versions: result.data }, null, 2));
+        return;
+      }
 
-    if (result.data.length === 0) {
-      console.log('No versions found.');
-      return;
-    }
+      if (result.data.length === 0) {
+        console.log('No versions found.');
+        return;
+      }
 
-    for (const v of result.data) {
-      console.log(`VERSION  ${v.id}`);
-      if (v.lastModifiedDateTime) console.log(`      Modified: ${v.lastModifiedDateTime}`);
-      if (v.size !== undefined) console.log(`      Size:     ${formatBytes(v.size)}`);
-      if (v.lastModifiedBy?.user?.displayName) console.log(`      By:       ${v.lastModifiedBy.user.displayName}`);
+      for (const v of result.data) {
+        console.log(`VERSION  ${v.id}`);
+        if (v.lastModifiedDateTime) console.log(`      Modified: ${v.lastModifiedDateTime}`);
+        if (v.size !== undefined) console.log(`      Size:     ${formatBytes(v.size)}`);
+        if (v.lastModifiedBy?.user?.displayName) console.log(`      By:       ${v.lastModifiedBy.user.displayName}`);
+      }
     }
-  });
+  );
 
 withDriveOptions(filesCommand.command('restore <fileId> <versionId>'))
   .description('Restore a specific version of a file')
@@ -991,41 +1008,43 @@ withDriveOptions(filesCommand.command('analytics <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const loc = parseDriveLocation(options);
-    const result = await getFileAnalytics(auth.token!, fileId, loc);
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Failed to get file analytics'}`);
-      process.exit(1);
-    }
+      const loc = parseDriveLocation(options);
+      const result = await getFileAnalytics(auth.token!, fileId, loc);
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Failed to get file analytics'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log(`✓ Analytics for ${fileId}:`);
-    if (result.data.allTime?.access) {
-      console.log('  All Time:');
-      console.log(`    Actions: ${result.data.allTime.access.actionCount || 0}`);
-      console.log(`    Actors:  ${result.data.allTime.access.actorCount || 0}`);
-    }
-    if (result.data.lastSevenDays?.access) {
-      console.log('  Last 7 Days:');
-      console.log(`    Actions: ${result.data.lastSevenDays.access.actionCount || 0}`);
-      console.log(`    Actors:  ${result.data.lastSevenDays.access.actorCount || 0}`);
-    }
+      console.log(`✓ Analytics for ${fileId}:`);
+      if (result.data.allTime?.access) {
+        console.log('  All Time:');
+        console.log(`    Actions: ${result.data.allTime.access.actionCount || 0}`);
+        console.log(`    Actors:  ${result.data.allTime.access.actorCount || 0}`);
+      }
+      if (result.data.lastSevenDays?.access) {
+        console.log('  Last 7 Days:');
+        console.log(`    Actions: ${result.data.lastSevenDays.access.actionCount || 0}`);
+        console.log(`    Actors:  ${result.data.lastSevenDays.access.actorCount || 0}`);
+      }
 
-    if (!result.data.allTime?.access && !result.data.lastSevenDays?.access) {
-      console.log('  No analytics data available.');
+      if (!result.data.allTime?.access && !result.data.lastSevenDays?.access) {
+        console.log('  No analytics data available.');
+      }
     }
-  });
+  );
 
 filesCommand
   .command('recent')
@@ -1037,45 +1056,35 @@ filesCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(
-    async (opts: {
-      user?: string;
-      top?: string;
-      json?: boolean;
-      token?: string;
-      identity?: string;
-    }) => {
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Error: ${auth.error}`);
-        process.exit(1);
-      }
-      const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
-      if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
-        console.error('Error: --top must be a positive integer');
-        process.exit(1);
-      }
-      const base = opts.user?.trim()
-        ? `/users/${encodeURIComponent(opts.user.trim())}/drive`
-        : '/me/drive';
-      const query = top ? `?$top=${Math.min(top, 200)}` : '';
-      const r = await callGraph<{ value?: DriveItem[] }>(auth.token, `${base}/recent${query}`);
-      if (!r.ok || !r.data) {
-        console.error(`Error: ${r.error?.message ?? '/drive/recent failed'}`);
-        process.exit(1);
-      }
-      const items = r.data.value ?? [];
-      if (opts.json) {
-        console.log(JSON.stringify({ value: items }, null, 2));
-        return;
-      }
-      if (items.length === 0) {
-        console.log('No recent items.');
-        return;
-      }
-      renderItems(items);
+  .action(async (opts: { user?: string; top?: string; json?: boolean; token?: string; identity?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
+    if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
+      console.error('Error: --top must be a positive integer');
+      process.exit(1);
+    }
+    const base = opts.user?.trim() ? `/users/${encodeURIComponent(opts.user.trim())}/drive` : '/me/drive';
+    const query = top ? `?$top=${Math.min(top, 200)}` : '';
+    const r = await callGraph<{ value?: DriveItem[] }>(auth.token, `${base}/recent${query}`);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message ?? '/drive/recent failed'}`);
+      process.exit(1);
+    }
+    const items = r.data.value ?? [];
+    if (opts.json) {
+      console.log(JSON.stringify({ value: items }, null, 2));
+      return;
+    }
+    if (items.length === 0) {
+      console.log('No recent items.');
+      return;
+    }
+    renderItems(items);
+  });
 
 withDriveOptions(filesCommand.command('activities <fileId>'))
   .description(

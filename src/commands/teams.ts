@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import type { GraphResponse } from '../lib/graph-client.js';
 import {
   addChannelMember,
   addChatMember,
@@ -1073,25 +1074,23 @@ teamsCommand
   .option('--chat-id <id>', 'If set, notify in chat scope; otherwise notify the signed-in user')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(
-    async (opts: { jsonFile: string; chatId?: string; token?: string; identity?: string }, cmd: Command) => {
-      checkReadOnly(cmd);
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-      const r = opts.chatId?.trim()
-        ? await sendChatActivityNotification(auth.token, opts.chatId.trim(), body)
-        : await sendMeTeamworkActivityNotification(auth.token, body);
-      if (!r.ok) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-      console.log('Activity notification sent (204).');
+  .action(async (opts: { jsonFile: string; chatId?: string; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+    const r = opts.chatId?.trim()
+      ? await sendChatActivityNotification(auth.token, opts.chatId.trim(), body)
+      : await sendMeTeamworkActivityNotification(auth.token, body);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Activity notification sent (204).');
+  });
 
 teamsCommand
   .command('channel-message-patch')
@@ -1129,15 +1128,7 @@ teamsCommand
       const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
       const useBeta = !!opts.beta;
       const r = opts.parent?.trim()
-        ? await updateChannelMessageReply(
-            auth.token,
-            teamId,
-            channelId,
-            opts.parent.trim(),
-            messageId,
-            body,
-            useBeta
-          )
+        ? await updateChannelMessageReply(auth.token, teamId, channelId, opts.parent.trim(), messageId, body, useBeta)
         : await updateChannelMessage(auth.token, teamId, channelId, messageId, body, useBeta);
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message}`);
@@ -1186,26 +1177,12 @@ teamsCommand
       }
       const useBeta = !!opts.beta;
       const parent = opts.parent?.trim();
-      let r;
+      let r: GraphResponse<void>;
       if (parent) {
         if (opts.hard) {
-          r = await deleteChannelMessageReplyHard(
-            auth.token,
-            teamId,
-            channelId,
-            parent,
-            messageId,
-            opts.ifMatch
-          );
+          r = await deleteChannelMessageReplyHard(auth.token, teamId, channelId, parent, messageId, opts.ifMatch);
         } else if (opts.undoSoft) {
-          r = await undoSoftDeleteChannelMessageReply(
-            auth.token,
-            teamId,
-            channelId,
-            parent,
-            messageId,
-            useBeta
-          );
+          r = await undoSoftDeleteChannelMessageReply(auth.token, teamId, channelId, parent, messageId, useBeta);
         } else {
           r = await softDeleteChannelMessageReply(auth.token, teamId, channelId, parent, messageId, useBeta);
         }
@@ -1329,7 +1306,7 @@ teamsCommand
       }
       const useBeta = !!opts.beta;
       const parent = opts.parent?.trim();
-      let r;
+      let r: GraphResponse<void>;
       if (parent) {
         if (opts.hard) {
           r = await deleteChatMessageReplyHard(auth.token, chatId, parent, messageId, opts.ifMatch);
@@ -1385,45 +1362,59 @@ teamsCommand
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (chatId: string, opts: { jsonFile: string; json?: boolean; token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      chatId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await addChatMember(auth.token, chatId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
     }
-    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-    const r = await addChatMember(auth.token, chatId, body);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
-  });
+  );
 
 teamsCommand
   .command('team-member-add')
-  .description('Add a member to a team (`POST /teams/{id}/members`). Body from --json-file. Requires elevated team membership permissions.')
+  .description(
+    'Add a member to a team (`POST /teams/{id}/members`). Body from --json-file. Requires elevated team membership permissions.'
+  )
   .argument('<teamId>', 'Team id')
   .requiredOption('--json-file <path>', 'JSON body (conversationMember)')
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (teamId: string, opts: { jsonFile: string; json?: boolean; token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      teamId: string,
+      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+      const r = await addTeamMember(auth.token, teamId, body);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
     }
-    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-    const r = await addTeamMember(auth.token, teamId, body);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? ''}\t${r.data.displayName ?? ''}`);
-  });
+  );
 
 teamsCommand
   .command('channel-member-add')
@@ -1466,19 +1457,26 @@ teamsCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (teamId: string, channelId: string, tabId: string, opts: { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      tabId: string,
+      opts: { json?: boolean; token?: string; identity?: string }
+    ) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await getChannelTab(auth.token, teamId, channelId, tabId);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id ?? ''}`);
     }
-    const r = await getChannelTab(auth.token, teamId, channelId, tabId);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id ?? ''}`);
-  });
+  );
 
 teamsCommand
   .command('tab-create')
@@ -1554,20 +1552,28 @@ teamsCommand
   .argument('<tabId>', 'Tab id')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(async (teamId: string, channelId: string, tabId: string, opts: { token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (
+      teamId: string,
+      channelId: string,
+      tabId: string,
+      opts: { token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const r = await deleteChannelTab(auth.token, teamId, channelId, tabId);
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message}`);
+        process.exit(1);
+      }
+      console.log('Tab deleted.');
     }
-    const r = await deleteChannelTab(auth.token, teamId, channelId, tabId);
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message}`);
-      process.exit(1);
-    }
-    console.log('Tab deleted.');
-  });
+  );
 
 teamsCommand
   .command('channel-message-react')

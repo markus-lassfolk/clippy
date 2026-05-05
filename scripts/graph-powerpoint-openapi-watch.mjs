@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
 /**
  * Optional maintenance: query the local Microsoft Graph OpenAPI index (msgraph Cursor skill)
  * for drive-item + presentation-related paths. If the skill is missing, prints manual steps.
@@ -8,7 +9,6 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 const SKILL_RUN = join(homedir(), '.cursor/skills/msgraph/scripts/run.sh');
 

@@ -85,7 +85,13 @@ sharepointCommand
     const drive = await getSiteDefaultDriveId(auth.token, site.data.id);
     const driveId = drive.ok && drive.data?.id ? drive.data.id : '';
     if (opts.json) {
-      console.log(JSON.stringify({ site: site.data, defaultDriveId: driveId || null, driveError: drive.ok ? null : drive.error }, null, 2));
+      console.log(
+        JSON.stringify(
+          { site: site.data, defaultDriveId: driveId || null, driveError: drive.ok ? null : drive.error },
+          null,
+          2
+        )
+      );
       return;
     }
     console.log(`siteId:\t${site.data.id}`);
@@ -173,7 +179,9 @@ sharepointCommand
 
 sharepointCommand
   .command('create-item')
-  .description('Create an item in a SharePoint list (--fields JSON string or --json-file with field object or { "fields": { … } })')
+  .description(
+    'Create an item in a SharePoint list (--fields JSON string or --json-file with field object or { "fields": { … } })'
+  )
   .requiredOption('--site-id <id>', 'SharePoint Site ID')
   .requiredOption('--list-id <id>', 'SharePoint List ID')
   .option('--fields <json>', 'JSON string of fields (e.g. \'{"Title": "My Item"}\')')
@@ -222,7 +230,9 @@ sharepointCommand
 
 sharepointCommand
   .command('update-item')
-  .description('Update an item in a SharePoint list (--fields or --json-file; file may be { "fields": { … } } or flat fields)')
+  .description(
+    'Update an item in a SharePoint list (--fields or --json-file; file may be { "fields": { … } } or flat fields)'
+  )
   .requiredOption('--site-id <id>', 'SharePoint Site ID')
   .requiredOption('--list-id <id>', 'SharePoint List ID')
   .requiredOption('--item-id <id>', 'SharePoint List Item ID')
@@ -280,30 +290,39 @@ sharepointCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { siteId: string; listId: string; itemId: string; json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-      process.exit(1);
-    }
-    const res = await getListItem(auth.token, opts.siteId, opts.listId, opts.itemId);
-    if (!res.ok || !res.data) {
-      console.error(`Error: ${res.error?.message || 'Unknown error'}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify(res.data, null, 2));
-      return;
-    }
-    console.log(`Item ID: ${res.data.id}`);
-    if (res.data.fields) {
-      for (const [key, val] of Object.entries(res.data.fields)) {
-        if (!key.startsWith('@odata')) {
-          console.log(`  ${key}: ${val}`);
+  .action(
+    async (opts: {
+      siteId: string;
+      listId: string;
+      itemId: string;
+      json?: boolean;
+      token?: string;
+      identity?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const res = await getListItem(auth.token, opts.siteId, opts.listId, opts.itemId);
+      if (!res.ok || !res.data) {
+        console.error(`Error: ${res.error?.message || 'Unknown error'}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(res.data, null, 2));
+        return;
+      }
+      console.log(`Item ID: ${res.data.id}`);
+      if (res.data.fields) {
+        for (const [key, val] of Object.entries(res.data.fields)) {
+          if (!key.startsWith('@odata')) {
+            console.log(`  ${key}: ${val}`);
+          }
         }
       }
     }
-  });
+  );
 
 sharepointCommand
   .command('delete-item')
@@ -314,24 +333,29 @@ sharepointCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { siteId: string; listId: string; itemId: string; json?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-      process.exit(1);
+  .action(
+    async (
+      opts: { siteId: string; listId: string; itemId: string; json?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const res = await deleteListItem(auth.token, opts.siteId, opts.listId, opts.itemId);
+      if (!res.ok) {
+        console.error(`Error: ${res.error?.message || 'Unknown error'}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify({ success: true, itemId: opts.itemId }, null, 2));
+        return;
+      }
+      console.log(`Deleted item ${opts.itemId}`);
     }
-    const res = await deleteListItem(auth.token, opts.siteId, opts.listId, opts.itemId);
-    if (!res.ok) {
-      console.error(`Error: ${res.error?.message || 'Unknown error'}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify({ success: true, itemId: opts.itemId }, null, 2));
-      return;
-    }
-    console.log(`Deleted item ${opts.itemId}`);
-  });
+  );
 
 sharepointCommand
   .command('items-delta')
@@ -436,36 +460,34 @@ sharepointCommand
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(
-    async (siteIds: string[], opts: { json?: boolean; token?: string; identity?: string }, cmd: any) => {
-      checkReadOnly(cmd);
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-        process.exit(1);
-      }
-      const ids = siteIds.map((s) => s.trim()).filter(Boolean);
-      if (ids.length === 0) {
-        console.error('Error: provide at least one site id');
-        process.exit(1);
-      }
-      const r = await followSites(auth.token, ids);
-      if (!r.ok) {
-        console.error(`Error: ${r.error?.message || 'follow failed'}`);
-        process.exit(1);
-      }
-      if (opts.json) {
-        console.log(JSON.stringify(r.data ?? { value: [] }, null, 2));
-        return;
-      }
-      const items = r.data?.value ?? [];
-      console.log(`✓ Following ${items.length} site(s)`);
-      for (const s of items) {
-        const name = s.displayName ?? s.name ?? '(no name)';
-        console.log(`  ${s.id ?? ''}\t${name}`);
-      }
+  .action(async (siteIds: string[], opts: { json?: boolean; token?: string; identity?: string }, cmd: any) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+      process.exit(1);
     }
-  );
+    const ids = siteIds.map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      console.error('Error: provide at least one site id');
+      process.exit(1);
+    }
+    const r = await followSites(auth.token, ids);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message || 'follow failed'}`);
+      process.exit(1);
+    }
+    if (opts.json) {
+      console.log(JSON.stringify(r.data ?? { value: [] }, null, 2));
+      return;
+    }
+    const items = r.data?.value ?? [];
+    console.log(`✓ Following ${items.length} site(s)`);
+    for (const s of items) {
+      const name = s.displayName ?? s.name ?? '(no name)';
+      console.log(`  ${s.id ?? ''}\t${name}`);
+    }
+  });
 
 sharepointCommand
   .command('unfollow <siteId...>')

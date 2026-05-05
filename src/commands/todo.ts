@@ -1467,49 +1467,47 @@ todoCommand
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .option('--user <email>', 'Target user (first page only; --url encodes scope)')
-  .action(
-    async (opts: { url?: string; stateFile?: string; token?: string; identity?: string; user?: string }) => {
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
-      if (existingState && existingState.kind !== 'todoLists') {
-        console.error('Error: state file is not for todo lists delta (kind must be todoLists).');
-        process.exit(1);
-      }
-
-      const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.url, state: existingState });
-
-      if (existingState && continueUrl) {
-        try {
-          assertDeltaScopeMatchesState(existingState, { user: opts.user });
-        } catch (err) {
-          console.error(err instanceof Error ? err.message : err);
-          process.exit(1);
-        }
-      }
-
-      const r = continueUrl
-        ? await getTodoListsDeltaPage(auth.token!, continueUrl, opts.user)
-        : await getTodoListsDeltaPage(auth.token!, undefined, opts.user);
-
-      if (!r.ok || !r.data) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-
-      if (opts.stateFile && r.data) {
-        const merged = applyDeltaPageToState(existingState, 'todoLists', r.data, {
-          user: opts.user
-        });
-        await writeDeltaStateFile(opts.stateFile, merged);
-      }
-
-      console.log(JSON.stringify(r.data, null, 2));
+  .action(async (opts: { url?: string; stateFile?: string; token?: string; identity?: string; user?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    const existingState = opts.stateFile ? await readDeltaStateFile(opts.stateFile) : null;
+    if (existingState && existingState.kind !== 'todoLists') {
+      console.error('Error: state file is not for todo lists delta (kind must be todoLists).');
+      process.exit(1);
+    }
+
+    const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.url, state: existingState });
+
+    if (existingState && continueUrl) {
+      try {
+        assertDeltaScopeMatchesState(existingState, { user: opts.user });
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+    }
+
+    const r = continueUrl
+      ? await getTodoListsDeltaPage(auth.token!, continueUrl, opts.user)
+      : await getTodoListsDeltaPage(auth.token!, undefined, opts.user);
+
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+
+    if (opts.stateFile && r.data) {
+      const merged = applyDeltaPageToState(existingState, 'todoLists', r.data, {
+        user: opts.user
+      });
+      await writeDeltaStateFile(opts.stateFile, merged);
+    }
+
+    console.log(JSON.stringify(r.data, null, 2));
+  });
 
 todoCommand
   .command('list-checklist-items')
