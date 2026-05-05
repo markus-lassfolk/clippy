@@ -4,7 +4,7 @@
  */
 import { mkdir, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { atomicWriteUtf8File } from './atomic-write.js';
 
 /**
@@ -16,7 +16,7 @@ import { atomicWriteUtf8File } from './atomic-write.js';
 function configDir(): string {
   const dirOverride = process.env.M365_AGENT_CLI_CONFIG_DIR?.trim();
   if (dirOverride) {
-    return dirOverride;
+    return resolve(dirOverride);
   }
   const xdg = process.env.XDG_CONFIG_HOME?.trim();
   if (xdg) {

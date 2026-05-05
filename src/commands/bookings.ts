@@ -18,8 +18,8 @@ import {
   getBookingAppointment,
   getBookingBusiness,
   getBookingCurrency,
-  getBookingCustomQuestion,
   getBookingCustomer,
+  getBookingCustomQuestion,
   getBookingService,
   getBookingStaffAvailability,
   getBookingStaffMember,
@@ -104,26 +104,21 @@ bookingsCommand
   .option('--json', 'Print response JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(
-    async (
-      opts: { jsonFile: string; json?: boolean; token?: string; identity?: string },
-      cmd: Command
-    ) => {
-      checkReadOnly(cmd);
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-      const r = await createBookingBusiness(auth.token, body);
-      if (!r.ok || !r.data) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-      console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id}`);
+  .action(async (opts: { jsonFile: string; json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    const body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+    const r = await createBookingBusiness(auth.token, body);
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.displayName ?? ''}\t${r.data.id}`);
+  });
 
 bookingsCommand
   .command('business-delete')
@@ -132,60 +127,50 @@ bookingsCommand
   .option('--confirm', 'Required to perform delete', false)
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(
-    async (
-      businessId: string,
-      opts: { confirm?: boolean; token?: string; identity?: string },
-      cmd: Command
-    ) => {
-      checkReadOnly(cmd);
-      if (!opts.confirm) {
-        console.error('Error: pass --confirm to delete a booking business.');
-        process.exit(1);
-      }
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const r = await deleteBookingBusiness(auth.token, businessId);
-      if (!r.ok) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-      console.log('Deleted.');
+  .action(async (businessId: string, opts: { confirm?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    if (!opts.confirm) {
+      console.error('Error: pass --confirm to delete a booking business.');
+      process.exit(1);
     }
-  );
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const r = await deleteBookingBusiness(auth.token, businessId);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Deleted.');
+  });
 
 bookingsCommand
   .command('business-publish')
-  .description(
-    'POST …/publish — make the scheduling page available (sets isPublished; optional body via --json-file)'
-  )
+  .description('POST …/publish — make the scheduling page available (sets isPublished; optional body via --json-file)')
   .argument('<businessId>', 'Booking business id')
   .option('--json-file <path>', 'Optional POST body JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(
-    async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
-      checkReadOnly(cmd);
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      let body: Record<string, unknown> = {};
-      if (opts.jsonFile?.trim()) {
-        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-      }
-      const r = await publishBookingBusiness(auth.token, businessId, body);
-      if (!r.ok) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-      console.log('Published.');
+  .action(async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    let body: Record<string, unknown> = {};
+    if (opts.jsonFile?.trim()) {
+      body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+    }
+    const r = await publishBookingBusiness(auth.token, businessId, body);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Published.');
+  });
 
 bookingsCommand
   .command('business-unpublish')
@@ -194,26 +179,24 @@ bookingsCommand
   .option('--json-file <path>', 'Optional POST body JSON')
   .option('--token <token>', 'Graph access token')
   .option('--identity <name>', 'Graph token cache identity')
-  .action(
-    async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
-      checkReadOnly(cmd);
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      let body: Record<string, unknown> = {};
-      if (opts.jsonFile?.trim()) {
-        body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
-      }
-      const r = await unpublishBookingBusiness(auth.token, businessId, body);
-      if (!r.ok) {
-        console.error(`Error: ${r.error?.message}`);
-        process.exit(1);
-      }
-      console.log('Unpublished.');
+  .action(async (businessId: string, opts: { jsonFile?: string; token?: string; identity?: string }, cmd: Command) => {
+    checkReadOnly(cmd);
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
     }
-  );
+    let body: Record<string, unknown> = {};
+    if (opts.jsonFile?.trim()) {
+      body = JSON.parse(await readFile(opts.jsonFile.trim(), 'utf-8')) as Record<string, unknown>;
+    }
+    const r = await unpublishBookingBusiness(auth.token, businessId, body);
+    if (!r.ok) {
+      console.error(`Error: ${r.error?.message}`);
+      process.exit(1);
+    }
+    console.log('Unpublished.');
+  });
 
 bookingsCommand
   .command('currencies')
@@ -259,11 +242,7 @@ bookingsCommand
       console.error(`Error: ${r.error?.message}`);
       process.exit(1);
     }
-    console.log(
-      opts.json
-        ? JSON.stringify(r.data, null, 2)
-        : `${r.data.id ?? currencyId}\t${r.data.symbol ?? ''}`
-    );
+    console.log(opts.json ? JSON.stringify(r.data, null, 2) : `${r.data.id ?? currencyId}\t${r.data.symbol ?? ''}`);
   });
 
 bookingsCommand

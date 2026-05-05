@@ -7,11 +7,11 @@
 - **`m365-agent-cli`** on `PATH` (e.g. `npm install -g m365-agent-cli`) and a completed **`m365-agent-cli login`** for the same user environment the MCP host runs under.
 - **Node.js 18+**
 
-Override the binary:
+Override the binary (must be the **`m365-agent-cli`** executable, or a wrapper that forwards argv to it):
 
 ```bash
-export M365_AGENT_CLI_BIN=/path/to/bun
-# then e.g. exec /path/to/bun run /path/to/m365-agent-cli/src/cli.ts
+export M365_AGENT_CLI_BIN=/path/to/m365-agent-cli
+# or a small wrapper script that runs e.g. `bun run /path/to/m365-agent-cli/src/cli.ts "$@"`
 ```
 
 ## Install (this package)

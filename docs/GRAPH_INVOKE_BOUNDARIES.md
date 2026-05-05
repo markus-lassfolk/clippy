@@ -12,18 +12,18 @@ Do **not** expect copy-paste examples to work without tenant policy and admin co
 
 ### Example `graph invoke` recipes (adjust tenant paths and ids)
 
-Replace `$TOKEN` with a bearer token that has the listed permission (often **application** permission + admin consent). Paths use **v1.0** relative to `https://graph.microsoft.com`.
+Replace `$TOKEN` with a bearer token that has the listed permission (often **application** permission + admin consent). Paths are **relative to `GRAPH_BASE_URL`** (already includes `/v1.0`).
 
 **List call records (requires CallRecords.Read.All or equivalent)**
 
 ```bash
-m365-agent-cli graph invoke --token "$TOKEN" GET "/v1.0/communications/callRecords?\$top=5"
+m365-agent-cli graph invoke --token "$TOKEN" -X GET "/communications/callRecords?\$top=5"
 ```
 
 **Get PSTN call session id / debugging** — follow Microsoft docs for the exact resource; pattern:
 
 ```bash
-m365-agent-cli graph invoke --token "$TOKEN" GET "/v1.0/communications/<resource-from-docs>"
+m365-agent-cli graph invoke --token "$TOKEN" -X GET "/communications/<resource-from-docs>"
 ```
 
 Prefer **Teams admin center** or **tenant-approved** automation for PSTN policy changes.
@@ -37,7 +37,7 @@ For delegated chat/channel scenarios already covered, use **`teams`**. To script
 ### Example (application permission — illustrative only)
 
 ```bash
-m365-agent-cli graph invoke --token "$APP_TOKEN" GET "/v1.0/groups?\$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&\$top=5"
+m365-agent-cli graph invoke --token "$APP_TOKEN" -X GET "/groups?\$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&\$top=5"
 ```
 
 Confirm **`Group.Read.All`** (or **Group.ReadWrite.All**) on the app registration and admin consent.
@@ -57,7 +57,7 @@ Other workflow surfaces (PIM, access-package approvals, identity governance) liv
 Pattern (use only after confirming docs for your scenario):
 
 ```bash
-m365-agent-cli graph invoke --token "$TOKEN" --beta GET "/beta/identityGovernance/entitlementManagement/accessPackageAssignmentApprovals?\$expand=steps&\$top=5"
+m365-agent-cli graph invoke --token "$TOKEN" --beta -X GET "/identityGovernance/entitlementManagement/accessPackageAssignmentApprovals?\$expand=steps&\$top=5"
 ```
 
 Prefer **Power Automate** / **Approvals** in-product UX for policy-heavy workflows; use **`graph invoke`** only when your tenant has approved the exact API and scopes.
@@ -67,7 +67,7 @@ Prefer **Power Automate** / **Approvals** in-product UX for policy-heavy workflo
 `teams activity-notify` wraps the **delegated** **`POST /me/teamwork/sendActivityNotification`** and **`POST /chats/{id}/sendActivityNotification`** flows (scope **`TeamsActivity.Send`**). The **app-only** **`POST /users/{id}/teamwork/sendActivityNotification`** path requires a different consent flow and is intentionally not wrapped — call it via **`graph invoke`** with an application token:
 
 ```bash
-m365-agent-cli graph invoke --token "$APP_TOKEN" POST "/v1.0/users/$USER_ID/teamwork/sendActivityNotification" --json-file ./notify.json
+m365-agent-cli graph invoke --token "$APP_TOKEN" -X POST "/users/$USER_ID/teamwork/sendActivityNotification" --json-file ./notify.json
 ```
 
 ## Word / PowerPoint on drive items (beta experiments)
@@ -82,13 +82,13 @@ Illustrative patterns (adjust ids, use delegated token from **`m365-agent-cli lo
 
 ```bash
 # List children of the signed-in user's drive root (sanity check)
-m365-agent-cli graph invoke GET "/v1.0/me/drive/root/children?\$top=5"
+m365-agent-cli graph invoke -X GET "/me/drive/root/children?\$top=5"
 
 # Beta: always confirm the path in Microsoft Graph docs for your tenant/version
-m365-agent-cli graph invoke --beta GET "/beta/me/drive/items/{driveItem-id}"
+m365-agent-cli graph invoke --beta -X GET "/me/drive/items/{driveItem-id}"
 
 # Example only — extraction / sensitivity APIs vary by license and Graph version; confirm docs
-# m365-agent-cli graph invoke --beta POST "/beta/me/drive/items/{driveItem-id}/extractSensitivityLabels"
+# m365-agent-cli graph invoke --beta -X POST "/me/drive/items/{driveItem-id}/extractSensitivityLabels"
 ```
 
 For **agent-friendly** editing without unsupported Graph write APIs, prefer **`word download`** / **`powerpoint download`** → local edit → **`files upload`** (see **[`docs/AGENT_WORKFLOWS.md`](./AGENT_WORKFLOWS.md)** § Word / PowerPoint).
@@ -141,12 +141,12 @@ This section is **not** sourced from the parity matrix. It reflects a **static r
 #   m365-agent-cli planner create-plan --me -t "My plan"
 
 # Beta: same create via raw invoke (only if you need a non-default body)
-m365-agent-cli graph invoke --beta POST "/beta/me/planner/plans" --json-file ./new-personal-plan.json
+m365-agent-cli graph invoke --beta -X POST "/me/planner/plans" --json-file ./new-personal-plan.json
 
 # Beta: same move/getUsageRights as first-class commands, but via /me/... if needed
-m365-agent-cli graph invoke --beta POST "/beta/me/planner/plans/{plan-id}/moveToContainer" \
+m365-agent-cli graph invoke --beta -X POST "/me/planner/plans/{plan-id}/moveToContainer" \
   --header "If-Match: W/\"etag\"" --json-file ./move-plan.json
-m365-agent-cli graph invoke --beta GET "/beta/me/planner/plans/{plan-id}/getUsageRights()"
+m365-agent-cli graph invoke --beta -X GET "/me/planner/plans/{plan-id}/getUsageRights()"
 ```
 
 ## Cross-links

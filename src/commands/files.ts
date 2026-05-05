@@ -549,7 +549,13 @@ withDriveOptions(filesCommand.command('share <fileId>'))
       const loc = parseDriveLocation(options);
 
       if (options.collab) {
-        const result = await createOfficeCollaborationLink(auth.token!, fileId, { lock: options.lock }, loc, graphRoot(options));
+        const result = await createOfficeCollaborationLink(
+          auth.token!,
+          fileId,
+          { lock: options.lock },
+          loc,
+          graphRoot(options)
+        );
         if (!result.ok || !result.data) {
           console.error(`Error: ${result.error?.message || 'Collaboration link creation failed'}`);
           process.exit(1);
@@ -1070,24 +1076,26 @@ withDriveOptions(filesCommand.command('list-item <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
-    const loc = parseDriveLocation(options);
-    const r = await getDriveItemListItem(auth.token, fileId, loc, graphRoot(options));
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message || 'listItem failed'}`);
-      process.exit(1);
-    }
-    if (options.json) {
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
+      const loc = parseDriveLocation(options);
+      const r = await getDriveItemListItem(auth.token, fileId, loc, graphRoot(options));
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message || 'listItem failed'}`);
+        process.exit(1);
+      }
+      if (options.json) {
+        console.log(JSON.stringify(r.data, null, 2));
+        return;
+      }
       console.log(JSON.stringify(r.data, null, 2));
-      return;
     }
-    console.log(JSON.stringify(r.data, null, 2));
-  });
+  );
 
 withDriveOptions(filesCommand.command('follow <fileId>'))
   .description('Follow a drive item (OneDrive for Business — POST …/follow)')
@@ -1095,7 +1103,11 @@ withDriveOptions(filesCommand.command('follow <fileId>'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success || !auth.token) {
@@ -1122,7 +1134,11 @@ withDriveOptions(filesCommand.command('unfollow <fileId>'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success || !auth.token) {
@@ -1195,24 +1211,26 @@ withDriveOptions(filesCommand.command('sensitivity-extract <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
-    const loc = parseDriveLocation(options);
-    const r = await extractDriveItemSensitivityLabels(auth.token, fileId, loc, graphRoot(options));
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message || 'extractSensitivityLabels failed'}`);
-      process.exit(1);
-    }
-    if (options.json) {
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
+      const loc = parseDriveLocation(options);
+      const r = await extractDriveItemSensitivityLabels(auth.token, fileId, loc, graphRoot(options));
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message || 'extractSensitivityLabels failed'}`);
+        process.exit(1);
+      }
+      if (options.json) {
+        console.log(JSON.stringify(r.data ?? null, null, 2));
+        return;
+      }
       console.log(JSON.stringify(r.data ?? null, null, 2));
-      return;
     }
-    console.log(JSON.stringify(r.data ?? null, null, 2));
-  });
+  );
 
 withDriveOptions(filesCommand.command('permanent-delete <fileId>'))
   .description('POST permanentDelete — irreversible; bypasses recycle bin where permitted')
@@ -1220,7 +1238,11 @@ withDriveOptions(filesCommand.command('permanent-delete <fileId>'))
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
   .action(
-    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
       if (!auth.success || !auth.token) {
@@ -1246,20 +1268,22 @@ withDriveOptions(filesCommand.command('retention-label <fileId>'))
   .option('--json', 'Output as JSON')
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (fileId: string, options: FilesDriveCliFlags & { json?: boolean; token?: string; identity?: string }) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
+      const loc = parseDriveLocation(options);
+      const r = await getDriveItemRetentionLabel(auth.token, fileId, loc, graphRoot(options));
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message || 'getRetentionLabel failed'}`);
+        process.exit(1);
+      }
+      console.log(options.json ? JSON.stringify(r.data, null, 2) : JSON.stringify(r.data, null, 2));
     }
-    const loc = parseDriveLocation(options);
-    const r = await getDriveItemRetentionLabel(auth.token, fileId, loc, graphRoot(options));
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message || 'getRetentionLabel failed'}`);
-      process.exit(1);
-    }
-    console.log(options.json ? JSON.stringify(r.data, null, 2) : JSON.stringify(r.data, null, 2));
-  });
+  );
 
 withDriveOptions(filesCommand.command('retention-label-remove <fileId>'))
   .description('DELETE retention label from item (`…/retentionLabel`)')
@@ -1312,7 +1336,14 @@ withDriveOptions(filesCommand.command('convert <fileId>'))
       }
 
       const loc = parseDriveLocation(options);
-      const result = await downloadConvertedFile(auth.token!, fileId, options.format, options.out, loc, graphRoot(options));
+      const result = await downloadConvertedFile(
+        auth.token!,
+        fileId,
+        options.format,
+        options.out,
+        loc,
+        graphRoot(options)
+      );
       if (!result.ok || !result.data) {
         console.error(`Error: ${result.error?.message || 'Conversion download failed'}`);
         process.exit(1);
@@ -1382,35 +1413,44 @@ filesCommand
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { user?: string; top?: string; json?: boolean; beta?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
+  .action(
+    async (opts: {
+      user?: string;
+      top?: string;
+      json?: boolean;
+      beta?: boolean;
+      token?: string;
+      identity?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
+      const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
+      if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
+        console.error('Error: --top must be a positive integer');
+        process.exit(1);
+      }
+      const base = opts.user?.trim() ? `/users/${encodeURIComponent(opts.user.trim())}/drive` : '/me/drive';
+      const query = top ? `?$top=${Math.min(top, 200)}` : '';
+      const r = await callGraphAt<{ value?: DriveItem[] }>(graphRoot(opts), auth.token, `${base}/recent${query}`);
+      if (!r.ok || !r.data) {
+        console.error(`Error: ${r.error?.message ?? '/drive/recent failed'}`);
+        process.exit(1);
+      }
+      const items = r.data.value ?? [];
+      if (opts.json) {
+        console.log(JSON.stringify({ value: items }, null, 2));
+        return;
+      }
+      if (items.length === 0) {
+        console.log('No recent items.');
+        return;
+      }
+      renderItems(items);
     }
-    const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
-    if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
-      console.error('Error: --top must be a positive integer');
-      process.exit(1);
-    }
-    const base = opts.user?.trim() ? `/users/${encodeURIComponent(opts.user.trim())}/drive` : '/me/drive';
-    const query = top ? `?$top=${Math.min(top, 200)}` : '';
-    const r = await callGraphAt<{ value?: DriveItem[] }>(graphRoot(opts), auth.token, `${base}/recent${query}`);
-    if (!r.ok || !r.data) {
-      console.error(`Error: ${r.error?.message ?? '/drive/recent failed'}`);
-      process.exit(1);
-    }
-    const items = r.data.value ?? [];
-    if (opts.json) {
-      console.log(JSON.stringify({ value: items }, null, 2));
-      return;
-    }
-    if (items.length === 0) {
-      console.log('No recent items.');
-      return;
-    }
-    renderItems(items);
-  });
+  );
 
 withDriveOptions(filesCommand.command('activities <fileId>'))
   .description(

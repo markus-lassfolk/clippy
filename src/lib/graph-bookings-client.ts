@@ -307,10 +307,7 @@ export async function getBookingCustomQuestion(
   try {
     const b = encodeURIComponent(businessId);
     const q = encodeURIComponent(questionId);
-    const r = await callGraph<BookingCustomQuestion>(
-      token,
-      `/solutions/bookingBusinesses/${b}/customQuestions/${q}`
-    );
+    const r = await callGraph<BookingCustomQuestion>(token, `/solutions/bookingBusinesses/${b}/customQuestions/${q}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get custom question', r.error?.code, r.error?.status);
     }
@@ -340,15 +337,9 @@ export async function listBookingCurrencies(token: string): Promise<GraphRespons
   }
 }
 
-export async function getBookingCurrency(
-  token: string,
-  currencyId: string
-): Promise<GraphResponse<BookingCurrency>> {
+export async function getBookingCurrency(token: string, currencyId: string): Promise<GraphResponse<BookingCurrency>> {
   try {
-    const r = await callGraph<BookingCurrency>(
-      token,
-      `/solutions/bookingCurrencies/${encodeURIComponent(currencyId)}`
-    );
+    const r = await callGraph<BookingCurrency>(token, `/solutions/bookingCurrencies/${encodeURIComponent(currencyId)}`);
     if (!r.ok || !r.data) {
       return graphError(r.error?.message || 'Failed to get booking currency', r.error?.code, r.error?.status);
     }
@@ -730,10 +721,15 @@ export async function publishBookingBusiness(
   body: Record<string, unknown> = {}
 ): Promise<GraphResponse<void>> {
   try {
-    const r = await callGraph<void>(token, `${businessPath(businessId)}/publish`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    }, false);
+    const r = await callGraph<void>(
+      token,
+      `${businessPath(businessId)}/publish`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to publish booking business', r.error?.code, r.error?.status);
     }
@@ -751,10 +747,15 @@ export async function unpublishBookingBusiness(
   body: Record<string, unknown> = {}
 ): Promise<GraphResponse<void>> {
   try {
-    const r = await callGraph<void>(token, `${businessPath(businessId)}/unpublish`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    }, false);
+    const r = await callGraph<void>(
+      token,
+      `${businessPath(businessId)}/unpublish`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
     if (!r.ok) {
       return graphError(r.error?.message || 'Failed to unpublish booking business', r.error?.code, r.error?.status);
     }

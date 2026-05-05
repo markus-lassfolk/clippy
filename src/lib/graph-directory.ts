@@ -1,8 +1,8 @@
 import {
   callGraph,
   fetchAllPages,
-  GraphApiError,
   GRAPH_BASE_URL,
+  GraphApiError,
   type GraphResponse,
   graphError,
   graphResult
@@ -98,11 +98,7 @@ export async function listPeople(
 }
 
 /** GET /me/people/{id} or /users/{id}/people/{personId}. */
-export async function getPerson(
-  token: string,
-  personId: string,
-  forUser?: string
-): Promise<GraphResponse<Person>> {
+export async function getPerson(token: string, personId: string, forUser?: string): Promise<GraphResponse<Person>> {
   const base = peopleCollectionPath(forUser);
   const path = `${base}/${encodeURIComponent(personId)}`;
   try {

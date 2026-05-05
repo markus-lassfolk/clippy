@@ -1171,9 +1171,7 @@ describe('read-only mode', () => {
   });
 
   test('--read-only blocks mutating command (calendar create)', async () => {
-    const result = await runM365AgentCli(
-      '--read-only calendar create "Test" 10:00 11:00 --token test-token-12345'
-    );
+    const result = await runM365AgentCli('--read-only calendar create "Test" 10:00 11:00 --token test-token-12345');
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('read-only mode');
   });

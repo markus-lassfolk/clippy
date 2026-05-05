@@ -14,8 +14,6 @@ import {
 } from './drive-location.js';
 import { GRAPH_BASE_URL } from './graph-constants.js';
 
-export { GRAPH_BETA_URL, graphApiRoot } from './graph-constants.js';
-
 export type { DriveLocation } from './drive-location.js';
 export {
   buildDriveFolderOrRootPath,
@@ -26,6 +24,7 @@ export {
   driveRootPrefix,
   driveRootSearchPath
 } from './drive-location.js';
+export { GRAPH_BETA_URL, graphApiRoot } from './graph-constants.js';
 export { GRAPH_BASE_URL };
 
 /** Default 60s; override with `GRAPH_TIMEOUT_MS` (milliseconds). */
@@ -567,6 +566,45 @@ function validateGraphUrl(absoluteUrl: string): { valid: boolean; error?: string
   }
 
   return { valid: true };
+}
+
+/**
+ * Drive `copy` async monitor URLs often point at SharePoint / OneDrive hosts, not `graph.microsoft.com`.
+ * Same HTTPS + bearer constraints as Graph polling; host allowlist avoids open SSRF from untrusted URLs.
+ */
+function validateAsyncCopyMonitorUrl(absoluteUrl: string): { valid: boolean; error?: string } {
+  let url: URL;
+  try {
+    url = new URL(absoluteUrl);
+  } catch {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+  if (url.protocol !== 'https:') {
+    return { valid: false, error: 'Only HTTPS URLs are allowed' };
+  }
+  const graphCheck = validateGraphUrl(absoluteUrl);
+  if (graphCheck.valid) {
+    return { valid: true };
+  }
+  const h = url.hostname.toLowerCase();
+  const roots = [
+    'sharepoint.com',
+    'sharepoint.us',
+    'sharepoint.de',
+    'sharepoint.cn',
+    'sharepoint-mil.us',
+    'onedrive.com',
+    '1drv.com'
+  ];
+  for (const root of roots) {
+    if (h === root || h.endsWith(`.${root}`)) {
+      return { valid: true };
+    }
+  }
+  if (h.endsWith('.1drv.com')) {
+    return { valid: true };
+  }
+  return { valid: false, error: `URL hostname '${url.hostname}' is not allowed for async copy monitor polling` };
 }
 
 /** GET/PATCH a full Graph URL (e.g. `@odata.nextLink` / `@odata.deltaLink`). */
@@ -1126,11 +1164,7 @@ export async function getDriveItemListItem(
   graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<DriveItemListItem>> {
   try {
-    return await callGraphAt<DriveItemListItem>(
-      graphBaseUrl,
-      token,
-      `${driveItemPath(location, itemId)}/listItem`
-    );
+    return await callGraphAt<DriveItemListItem>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/listItem`);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'Failed to get listItem');
@@ -1187,11 +1221,16 @@ export async function assignDriveItemSensitivityLabel(
   graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/assignSensitivityLabel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    return await callGraphAt<unknown>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/assignSensitivityLabel`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }
+    );
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'assignSensitivityLabel failed');
@@ -1206,11 +1245,16 @@ export async function extractDriveItemSensitivityLabels(
   graphBaseUrl: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<unknown>> {
   try {
-    return await callGraphAt<unknown>(graphBaseUrl, token, `${driveItemPath(location, itemId)}/extractSensitivityLabels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}'
-    });
+    return await callGraphAt<unknown>(
+      graphBaseUrl,
+      token,
+      `${driveItemPath(location, itemId)}/extractSensitivityLabels`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      }
+    );
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
     return graphError(err instanceof Error ? err.message : 'extractSensitivityLabels failed');
@@ -1770,7 +1814,7 @@ export async function pollGraphAsyncJob(
 ): Promise<GraphResponse<AsyncJobStatus>> {
   const max = options.maxAttempts ?? 45;
   const delayMs = options.delayMs ?? 2000;
-  const validation = validateGraphUrl(monitorUrl);
+  const validation = validateAsyncCopyMonitorUrl(monitorUrl);
   if (!validation.valid) {
     return graphError(validation.error || 'Invalid monitor URL');
   }

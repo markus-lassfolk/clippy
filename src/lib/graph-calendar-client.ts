@@ -1,3 +1,4 @@
+import { decodeGraphFileAttachmentBase64 } from './graph-attachment-base64.js';
 import {
   createCalendarEventFileAttachmentUploadSession,
   GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES,
@@ -673,10 +674,8 @@ export async function addFileAttachmentToCalendarEvent(
   attachment: { name: string; contentType: string; contentBytes: string },
   user?: string
 ): Promise<GraphResponse<GraphEventAttachment>> {
-  let raw: Buffer;
-  try {
-    raw = Buffer.from(attachment.contentBytes, 'base64');
-  } catch {
+  const raw = decodeGraphFileAttachmentBase64(attachment.contentBytes);
+  if (!raw) {
     return graphError('Invalid base64 in attachment contentBytes', undefined, 400);
   }
   if (raw.byteLength > GRAPH_OUTLOOK_ATTACHMENT_SESSION_THRESHOLD_BYTES) {

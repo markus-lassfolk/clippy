@@ -30,6 +30,9 @@ function shouldNoopWhenNoTargetDir() {
   const agent = process.env.npm_config_user_agent || '';
   if (agent.includes('bun')) return true;
   if (process.versions.bun) return true;
+  // postinstall is invoked with `node` even under `bun install`; Bun's Node may live under a bun path.
+  const execPath = `${process.env.npm_node_execpath || ''}${process.execPath || ''}`.toLowerCase();
+  if (execPath.includes('bun')) return true;
   return false;
 }
 

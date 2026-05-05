@@ -1,11 +1,6 @@
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
-import {
-  getManager,
-  getUserProfile,
-  listDirectReports,
-  listTransitiveReports
-} from '../lib/graph-org-client.js';
+import { getManager, getUserProfile, listDirectReports, listTransitiveReports } from '../lib/graph-org-client.js';
 
 export const orgCommand = new Command('org').description(
   'Organization directory: user profile, manager, direct reports, transitive reports (Microsoft Graph; see GRAPH_SCOPES.md)'

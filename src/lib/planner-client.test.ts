@@ -112,10 +112,10 @@ describe('updatePlannerUser', () => {
           url: typeof input === 'string' ? input : input.toString(),
           init
         });
-        return new Response(
-          JSON.stringify({ id: 'pu1', '@odata.etag': 'W/"2"', favoritePlanReferences: {} }),
-          { status: 200, headers: { 'content-type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ id: 'pu1', '@odata.etag': 'W/"2"', favoritePlanReferences: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
       }) as typeof fetch;
 
       const { updatePlannerUser } = await import('./planner-client.js');

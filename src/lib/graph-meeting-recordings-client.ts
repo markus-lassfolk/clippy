@@ -104,7 +104,7 @@ export function transcriptMetadataContentPath(meetingId: string, transcriptId: s
  */
 export async function getAllRecordings(
   token: string,
-  args: { organizerUserId: string; start: string; end: string; user?: string; pageUrl?: string }
+  args: { organizerUserId: string; start: string; end: string; user?: string; pageUrl?: string; top?: number }
 ): Promise<GraphResponse<CallRecordingListResponse>> {
   if (args.pageUrl?.trim()) {
     try {
@@ -118,7 +118,10 @@ export async function getAllRecordings(
     `getAllRecordings(meetingOrganizerUserId='${encodeURIComponent(args.organizerUserId)}'` +
     `,startDateTime=${encodeURIComponent(args.start)}` +
     `,endDateTime=${encodeURIComponent(args.end)})`;
-  const path = `${meetingsRoot(args.user)}/${fn}`;
+  let path = `${meetingsRoot(args.user)}/${fn}`;
+  if (args.top !== undefined && Number.isFinite(args.top) && args.top > 0) {
+    path += `?$top=${Math.min(999, Math.floor(args.top))}`;
+  }
   try {
     return await callGraph<CallRecordingListResponse>(token, path);
   } catch (err) {
@@ -132,7 +135,7 @@ export async function getAllRecordings(
  */
 export async function getAllTranscripts(
   token: string,
-  args: { organizerUserId: string; start: string; end: string; user?: string; pageUrl?: string }
+  args: { organizerUserId: string; start: string; end: string; user?: string; pageUrl?: string; top?: number }
 ): Promise<GraphResponse<CallTranscriptListResponse>> {
   if (args.pageUrl?.trim()) {
     try {
@@ -146,7 +149,10 @@ export async function getAllTranscripts(
     `getAllTranscripts(meetingOrganizerUserId='${encodeURIComponent(args.organizerUserId)}'` +
     `,startDateTime=${encodeURIComponent(args.start)}` +
     `,endDateTime=${encodeURIComponent(args.end)})`;
-  const path = `${meetingsRoot(args.user)}/${fn}`;
+  let path = `${meetingsRoot(args.user)}/${fn}`;
+  if (args.top !== undefined && Number.isFinite(args.top) && args.top > 0) {
+    path += `?$top=${Math.min(999, Math.floor(args.top))}`;
+  }
   try {
     return await callGraph<CallTranscriptListResponse>(token, path);
   } catch (err) {
@@ -244,48 +250,98 @@ export async function downloadMediaToFile(
   }
 }
 
-/** `recordings/delta()` — incremental sync of recordings for the signed-in user's meetings (beta). */
+/** Initial-window fields for the first page of `getAllRecordings(...)/delta`. */
+export interface MeetingRecordingsDeltaInitial {
+  organizerUserId: string;
+  startDateTime: string;
+  endDateTime: string;
+  top?: number;
+}
+
+/** `getAllRecordings(...)/delta` — incremental sync (not per-meeting `.../recordings/delta`). */
 export async function getRecordingsDeltaPage(
   token: string,
-  pageUrl?: string,
-  user?: string
+  args: {
+    pageUrl?: string;
+    user?: string;
+    initial?: MeetingRecordingsDeltaInitial;
+  }
 ): Promise<GraphResponse<CallRecordingListResponse>> {
-  if (pageUrl?.trim()) {
+  const pageUrl = args.pageUrl?.trim();
+  if (pageUrl) {
     try {
-      return await callGraphAbsolute<CallRecordingListResponse>(token, pageUrl.trim());
+      return await callGraphAbsolute<CallRecordingListResponse>(token, pageUrl);
     } catch (err) {
       if (err instanceof GraphApiError) return graphErrorFromApiError(err);
       return graphError(err instanceof Error ? err.message : 'Failed to follow recordings delta page');
     }
   }
-  const path = `${meetingsRoot(user)}/recordings/delta`;
+  const init = args.initial;
+  if (!init?.organizerUserId?.trim() || !init.startDateTime?.trim() || !init.endDateTime?.trim()) {
+    return graphError(
+      'Recordings delta needs a saved next/delta URL, or organizer plus start/end for the initial `getAllRecordings(...)/delta` request.'
+    );
+  }
+  const fn =
+    `getAllRecordings(meetingOrganizerUserId='${encodeURIComponent(init.organizerUserId.trim())}'` +
+    `,startDateTime=${encodeURIComponent(init.startDateTime)}` +
+    `,endDateTime=${encodeURIComponent(init.endDateTime)})`;
+  let path = `${meetingsRoot(args.user)}/${fn}/delta`;
+  if (init.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
+    path += `?$top=${Math.min(999, Math.floor(init.top))}`;
+  }
   try {
     return await callGraph<CallRecordingListResponse>(token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
-    return graphError(err instanceof Error ? err.message : 'Failed to call recordings/delta');
+    return graphError(err instanceof Error ? err.message : 'Failed to call getAllRecordings delta');
   }
 }
 
-/** `transcripts/delta()` — incremental sync of transcripts (beta). */
+/** Initial-window fields for the first page of `getAllTranscripts(...)/delta`. */
+export interface MeetingTranscriptsDeltaInitial {
+  organizerUserId: string;
+  startDateTime: string;
+  endDateTime: string;
+  top?: number;
+}
+
+/** `getAllTranscripts(...)/delta` — incremental sync (not per-meeting `.../transcripts/delta`). */
 export async function getTranscriptsDeltaPage(
   token: string,
-  pageUrl?: string,
-  user?: string
+  args: {
+    pageUrl?: string;
+    user?: string;
+    initial?: MeetingTranscriptsDeltaInitial;
+  }
 ): Promise<GraphResponse<CallTranscriptListResponse>> {
-  if (pageUrl?.trim()) {
+  const pageUrl = args.pageUrl?.trim();
+  if (pageUrl) {
     try {
-      return await callGraphAbsolute<CallTranscriptListResponse>(token, pageUrl.trim());
+      return await callGraphAbsolute<CallTranscriptListResponse>(token, pageUrl);
     } catch (err) {
       if (err instanceof GraphApiError) return graphErrorFromApiError(err);
       return graphError(err instanceof Error ? err.message : 'Failed to follow transcripts delta page');
     }
   }
-  const path = `${meetingsRoot(user)}/transcripts/delta`;
+  const init = args.initial;
+  if (!init?.organizerUserId?.trim() || !init.startDateTime?.trim() || !init.endDateTime?.trim()) {
+    return graphError(
+      'Transcripts delta needs a saved next/delta URL, or organizer plus start/end for the initial `getAllTranscripts(...)/delta` request.'
+    );
+  }
+  const fn =
+    `getAllTranscripts(meetingOrganizerUserId='${encodeURIComponent(init.organizerUserId.trim())}'` +
+    `,startDateTime=${encodeURIComponent(init.startDateTime)}` +
+    `,endDateTime=${encodeURIComponent(init.endDateTime)})`;
+  let path = `${meetingsRoot(args.user)}/${fn}/delta`;
+  if (init.top !== undefined && Number.isFinite(init.top) && init.top > 0) {
+    path += `?$top=${Math.min(999, Math.floor(init.top))}`;
+  }
   try {
     return await callGraph<CallTranscriptListResponse>(token, path);
   } catch (err) {
     if (err instanceof GraphApiError) return graphErrorFromApiError(err);
-    return graphError(err instanceof Error ? err.message : 'Failed to call transcripts/delta');
+    return graphError(err instanceof Error ? err.message : 'Failed to call getAllTranscripts delta');
   }
 }

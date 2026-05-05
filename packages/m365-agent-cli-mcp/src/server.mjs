@@ -72,7 +72,7 @@ server.registerTool(
     description:
       'Read-only Graph GET (`m365-agent-cli --read-only graph invoke -X GET <path>`). Path must start with /.',
     inputSchema: {
-      path: z.string().min(1).describe('Example: /v1.0/me/drive/root/children?$top=5'),
+      path: z.string().min(1).describe('Example: /me/drive/root/children?$top=5 (relative to v1.0 or beta root)'),
       beta: z.boolean().optional().describe('Use Graph beta root URL')
     }
   },

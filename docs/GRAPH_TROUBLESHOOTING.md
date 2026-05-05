@@ -7,7 +7,7 @@ Short notes for **advanced OData** and **people** queries. For delegated scope c
 Some Graph queries (notably **`$search`**, **`$count=true`** on certain collections, and advanced **`$filter`** combinations) require the request header **`ConsistencyLevel: eventual`**. The CLI sets this where it wraps the API (for example directory **`$count`** and To Do **`--count`** on the single-page path). For **`graph invoke`**, pass headers explicitly, for example:
 
 ```bash
-m365-agent-cli graph invoke GET "/me/messages?\$search=foo" --header "ConsistencyLevel: eventual"
+m365-agent-cli graph invoke -X GET "/me/messages?\$search=foo" --header "ConsistencyLevel: eventual"
 ```
 
 Always confirm the current requirement in [Microsoft Graph documentation](https://learn.microsoft.com/en-us/graph/api/overview) for the resource you are calling.

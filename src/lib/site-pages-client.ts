@@ -1,8 +1,8 @@
 import {
   callGraphAt,
   fetchAllPages,
-  GraphApiError,
   GRAPH_BASE_URL,
+  GraphApiError,
   type GraphResponse,
   graphError
 } from './graph-client.js';

@@ -163,7 +163,11 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
   ).action(
-    async (fileId: string, opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {
@@ -221,7 +225,13 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       }
       const loc = parseLoc(opts);
       if (opts.collab) {
-        const result = await createOfficeCollaborationLink(auth.token, fileId, { lock: opts.lock }, loc, graphRoot(opts));
+        const result = await createOfficeCollaborationLink(
+          auth.token,
+          fileId,
+          { lock: opts.lock },
+          loc,
+          graphRoot(opts)
+        );
         if (!result.ok || !result.data) {
           console.error(`Error: ${result.error?.message || 'Collaboration link creation failed'}`);
           process.exit(1);
@@ -617,25 +627,31 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--json', 'Output as JSON')
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
-  ).action(async (fileId: string, opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error}`);
-      process.exit(1);
+  ).action(
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error}`);
+        process.exit(1);
+      }
+      const loc = parseLoc(opts);
+      const result = await checkoutFile(auth.token, fileId, loc, graphRoot(opts));
+      if (!result.ok) {
+        console.error(`Error: ${result.error?.message || 'Checkout failed'}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify({ success: true, fileId }, null, 2));
+        return;
+      }
+      console.log(`✓ Checked out: ${fileId}`);
     }
-    const loc = parseLoc(opts);
-    const result = await checkoutFile(auth.token, fileId, loc, graphRoot(opts));
-    if (!result.ok) {
-      console.error(`Error: ${result.error?.message || 'Checkout failed'}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify({ success: true, fileId }, null, 2));
-      return;
-    }
-    console.log(`✓ Checked out: ${fileId}`);
-  });
+  );
 
   withDrive(
     parent
@@ -756,7 +772,10 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
   ).action(
-    async (fileId: string, opts: DriveLocOpts & { top?: string; json?: boolean; token?: string; identity?: string }) => {
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { top?: string; json?: boolean; token?: string; identity?: string }
+    ) => {
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {
         console.error(`Auth error: ${auth.error}`);
@@ -816,7 +835,11 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
   ).action(
-    async (fileId: string, opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {
@@ -845,7 +868,11 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
   ).action(
-    async (fileId: string, opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {
@@ -945,7 +972,11 @@ export function registerOfficeDriveMirroredCommands(parent: Command): void {
       .option('--token <token>', 'Graph access token')
       .option('--identity <name>', 'Graph token cache identity')
   ).action(
-    async (fileId: string, opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string }, cmd: Command) => {
+    async (
+      fileId: string,
+      opts: DriveLocOpts & { json?: boolean; token?: string; identity?: string },
+      cmd: Command
+    ) => {
       checkReadOnly(cmd);
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
       if (!auth.success || !auth.token) {

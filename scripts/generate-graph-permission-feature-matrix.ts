@@ -91,7 +91,7 @@ function featureWriteCell(row: CapabilityMatrixRow): string {
 }
 
 function escapeTableCell(s: string): string {
-  return s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  return s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
 function buildPermissionToAreas(): Map<string, Set<string>> {

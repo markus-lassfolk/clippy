@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import { resolveGraphAuth } from '../lib/graph-auth.js';
+import { graphApiRoot } from '../lib/graph-client.js';
 import {
   applyDeltaPageToState,
   assertDeltaScopeMatchesState,
@@ -8,7 +9,6 @@ import {
   resolveDeltaContinuationUrl,
   writeDeltaStateFile
 } from '../lib/graph-delta-state-file.js';
-import { graphApiRoot } from '../lib/graph-client.js';
 import { followSites, listFollowedSites, unfollowSites } from '../lib/graph-insights-client.js';
 import {
   createListItem,
@@ -181,7 +181,9 @@ sharepointCommand
 
 sharepointCommand
   .command('drives')
-  .description('List document libraries / drives under a site (`GET /sites/{id}/drives`) — use drive id with `files --library-drive-id`')
+  .description(
+    'List document libraries / drives under a site (`GET /sites/{id}/drives`) — use drive id with `files --library-drive-id`'
+  )
   .requiredOption('--site-id <id>', 'SharePoint Site ID')
   .option('--json', 'Output as JSON')
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
@@ -224,25 +226,34 @@ sharepointCommand
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { siteId: string; listId: string; json?: boolean; beta?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-      process.exit(1);
+  .action(
+    async (opts: {
+      siteId: string;
+      listId: string;
+      json?: boolean;
+      beta?: boolean;
+      token?: string;
+      identity?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const res = await getListMetadata(auth.token, opts.siteId, opts.listId, spApi(opts));
+      if (!res.ok || !res.data) {
+        console.error(`Error: ${res.error?.message || 'Unknown error'}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(res.data, null, 2));
+        return;
+      }
+      console.log(`${res.data.name} (${res.data.id})`);
+      if (res.data.description) console.log(`  ${res.data.description}`);
+      if (res.data.webUrl) console.log(`  ${res.data.webUrl}`);
     }
-    const res = await getListMetadata(auth.token, opts.siteId, opts.listId, spApi(opts));
-    if (!res.ok || !res.data) {
-      console.error(`Error: ${res.error?.message || 'Unknown error'}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify(res.data, null, 2));
-      return;
-    }
-    console.log(`${res.data.name} (${res.data.id})`);
-    if (res.data.description) console.log(`  ${res.data.description}`);
-    if (res.data.webUrl) console.log(`  ${res.data.webUrl}`);
-  });
+  );
 
 sharepointCommand
   .command('columns')
@@ -253,32 +264,41 @@ sharepointCommand
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (opts: { siteId: string; listId: string; json?: boolean; beta?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-      process.exit(1);
+  .action(
+    async (opts: {
+      siteId: string;
+      listId: string;
+      json?: boolean;
+      beta?: boolean;
+      token?: string;
+      identity?: string;
+    }) => {
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const res = await getListColumns(auth.token, opts.siteId, opts.listId, spApi(opts));
+      if (!res.ok) {
+        console.error(`Error: ${res.error?.message || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const cols = res.data ?? [];
+      if (opts.json) {
+        console.log(JSON.stringify({ value: cols }, null, 2));
+        return;
+      }
+      if (cols.length === 0) {
+        console.log('No columns returned.');
+        return;
+      }
+      for (const c of cols) {
+        const name = typeof c.name === 'string' ? c.name : typeof c.id === 'string' ? c.id : '?';
+        const colType = typeof c.type === 'string' ? c.type : '';
+        console.log(`${name}${colType ? `\t${colType}` : ''}`);
+      }
     }
-    const res = await getListColumns(auth.token, opts.siteId, opts.listId, spApi(opts));
-    if (!res.ok) {
-      console.error(`Error: ${res.error?.message || 'Unknown error'}`);
-      process.exit(1);
-    }
-    const cols = res.data ?? [];
-    if (opts.json) {
-      console.log(JSON.stringify({ value: cols }, null, 2));
-      return;
-    }
-    if (cols.length === 0) {
-      console.log('No columns returned.');
-      return;
-    }
-    for (const c of cols) {
-      const name = typeof c.name === 'string' ? c.name : typeof c.id === 'string' ? c.id : '?';
-      const colType = typeof c.type === 'string' ? c.type : '';
-      console.log(`${name}${colType ? `\t${colType}` : ''}`);
-    }
-  });
+  );
 
 sharepointCommand
   .command('lists')
@@ -836,34 +856,40 @@ sharepointCommand
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (siteIds: string[], opts: { json?: boolean; beta?: boolean; token?: string; identity?: string }, cmd: any) => {
-    checkReadOnly(cmd);
-    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-    if (!auth.success || !auth.token) {
-      console.error(`Auth error: ${auth.error || 'Unknown error'}`);
-      process.exit(1);
+  .action(
+    async (
+      siteIds: string[],
+      opts: { json?: boolean; beta?: boolean; token?: string; identity?: string },
+      cmd: any
+    ) => {
+      checkReadOnly(cmd);
+      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+      if (!auth.success || !auth.token) {
+        console.error(`Auth error: ${auth.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+      const ids = siteIds.map((s) => s.trim()).filter(Boolean);
+      if (ids.length === 0) {
+        console.error('Error: provide at least one site id');
+        process.exit(1);
+      }
+      const r = await followSites(auth.token, ids, spApi(opts));
+      if (!r.ok) {
+        console.error(`Error: ${r.error?.message || 'follow failed'}`);
+        process.exit(1);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify(r.data ?? { value: [] }, null, 2));
+        return;
+      }
+      const items = r.data?.value ?? [];
+      console.log(`✓ Following ${items.length} site(s)`);
+      for (const s of items) {
+        const name = s.displayName ?? s.name ?? '(no name)';
+        console.log(`  ${s.id ?? ''}\t${name}`);
+      }
     }
-    const ids = siteIds.map((s) => s.trim()).filter(Boolean);
-    if (ids.length === 0) {
-      console.error('Error: provide at least one site id');
-      process.exit(1);
-    }
-    const r = await followSites(auth.token, ids, spApi(opts));
-    if (!r.ok) {
-      console.error(`Error: ${r.error?.message || 'follow failed'}`);
-      process.exit(1);
-    }
-    if (opts.json) {
-      console.log(JSON.stringify(r.data ?? { value: [] }, null, 2));
-      return;
-    }
-    const items = r.data?.value ?? [];
-    console.log(`✓ Following ${items.length} site(s)`);
-    for (const s of items) {
-      const name = s.displayName ?? s.name ?? '(no name)';
-      console.log(`  ${s.id ?? ''}\t${name}`);
-    }
-  });
+  );
 
 sharepointCommand
   .command('unfollow <siteId...>')

@@ -3,10 +3,10 @@ import {
   callGraph,
   fetchAllPages,
   GraphApiError,
+  type GraphResponse,
   graphError,
   graphErrorFromApiError,
-  graphResult,
-  type GraphResponse
+  graphResult
 } from './graph-client.js';
 
 export interface Place {
@@ -99,9 +99,7 @@ export function filterPlacesByQuery(places: Place[], query: string): Place[] {
     const building = r.building?.toLowerCase() ?? '';
     const floor = String(r.floorNumber ?? '').toLowerCase();
     const tags = (r.tags ?? []).join(' ').toLowerCase();
-    return (
-      name.includes(q) || email.includes(q) || building.includes(q) || floor.includes(q) || tags.includes(q)
-    );
+    return name.includes(q) || email.includes(q) || building.includes(q) || floor.includes(q) || tags.includes(q);
   });
 }
 

@@ -5,8 +5,8 @@ import {
   buildMicrosoftSearchRequest,
   deepMergeSearchRequest,
   flattenMicrosoftSearchHits,
-  microsoftSearchQueryRaw,
-  type MicrosoftSearchQueryResponse
+  type MicrosoftSearchQueryResponse,
+  microsoftSearchQueryRaw
 } from '../lib/graph-microsoft-search.js';
 
 const DEFAULT_ENTITY_TYPES = ['message', 'event', 'driveItem', 'listItem', 'person'];
@@ -116,9 +116,7 @@ function assertBodyFileExclusive(
     (opts.preset ?? 'default').toLowerCase() !== 'default'
   ];
   if (conflicts.some(Boolean)) {
-    console.error(
-      'Error: --body-file is exclusive; use only --json / --json-hits / --token / --identity with it'
-    );
+    console.error('Error: --body-file is exclusive; use only --json / --json-hits / --token / --identity with it');
     process.exit(1);
   }
 }
@@ -163,8 +161,7 @@ function printSearchResponse(
           if (oneLine) console.log(`      ${oneLine}`);
         }
       }
-      if (c.moreResultsAvailable)
-        console.log('    … more results available (increase --size or paginate with --from)');
+      if (c.moreResultsAvailable) console.log('    … more results available (increase --size or paginate with --from)');
     }
   }
 }
@@ -288,10 +285,7 @@ graphSearchCommand
       let requestPatch: Record<string, unknown> | undefined;
       if (opts.mergeJsonFile?.trim()) {
         try {
-          const mergeObj = JSON.parse(await readFile(opts.mergeJsonFile.trim(), 'utf-8')) as Record<
-            string,
-            unknown
-          >;
+          const mergeObj = JSON.parse(await readFile(opts.mergeJsonFile.trim(), 'utf-8')) as Record<string, unknown>;
           if (!mergeObj || typeof mergeObj !== 'object' || Array.isArray(mergeObj)) {
             console.error('Error: --merge-json-file must be a JSON object');
             process.exit(1);

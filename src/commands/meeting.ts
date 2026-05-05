@@ -24,6 +24,7 @@ import {
   transcriptContentPath,
   transcriptMetadataContentPath
 } from '../lib/graph-meeting-recordings-client.js';
+import { getUserProfile } from '../lib/graph-org-client.js';
 import {
   createOnlineMeeting,
   createOnlineMeetingFromBody,
@@ -33,6 +34,36 @@ import {
   updateOnlineMeeting
 } from '../lib/online-meetings-graph-client.js';
 import { checkReadOnly } from '../lib/utils.js';
+
+function parseOptionalRecordingsTop(raw?: string): number | undefined {
+  if (!raw?.trim()) return undefined;
+  const n = Number.parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n) || n < 1) {
+    return undefined;
+  }
+  return Math.min(999, n);
+}
+
+/** Resolve `me` / default to a real `meetingOrganizerUserId` for `getAllRecordings` / `getAllTranscripts`. */
+async function resolveMeetingOrganizerUserId(
+  token: string,
+  organizerFlag: string | undefined,
+  graphUserOption: string | undefined
+): Promise<string | undefined> {
+  const fromFlag = organizerFlag?.trim();
+  if (fromFlag && fromFlag !== 'me') {
+    return fromFlag;
+  }
+  const u = graphUserOption?.trim();
+  if (u && u !== 'me') {
+    return u;
+  }
+  const r = await getUserProfile(token);
+  if (!r.ok || !r.data?.id) {
+    return undefined;
+  }
+  return r.data.id;
+}
 
 export const meetingCommand = new Command('meeting').description(
   'Teams online meetings via Microsoft Graph (`OnlineMeetings.ReadWrite`). ' +
@@ -278,13 +309,13 @@ recordingsBaseFlags(meetingCommand.command('recording-download <meetingId> <reco
 
 recordingsBaseFlags(meetingCommand.command('recordings-all'))
   .description(
-    'Tenant-wide / per-organizer recordings (`getAllRecordings(...)`). With `--delta`, switches to `recordings/delta()` and supports `--state-file`. Requires `OnlineMeetingRecording.Read.All`.'
+    'Tenant-wide / per-organizer recordings (`getAllRecordings(...)`). With `--delta`, uses `getAllRecordings(...)/delta` and supports `--state-file`. Requires `OnlineMeetingRecording.Read.All`.'
   )
   .option('--organizer <upn-or-id>', 'Meeting organizer (defaults to the signed-in user)')
   .option('--start <iso>', 'Start window (required unless --delta)')
   .option('--end <iso>', 'End window (required unless --delta)')
   .option('--next <url>', 'Follow `@odata.nextLink` from a previous page')
-  .option('--delta', 'Use `recordings/delta()` for incremental sync')
+  .option('--delta', 'Use `getAllRecordings(...)/delta` for incremental sync')
   .option('--state-file <path>', '(With --delta) read/write JSON delta cursor (kind: meetingRecordings)')
   .option('--top <n>', 'Limit per page (Graph $top) — applies to non-delta calls')
   .action(
@@ -306,13 +337,39 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
       }
       const accessToken = auth.token;
       if (opts.delta) {
+        const existingForCont = opts.stateFile?.trim() ? await readDeltaStateFile(opts.stateFile.trim()) : null;
+        const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.next, state: existingForCont });
+        if (!continueUrl && (!opts.start?.trim() || !opts.end?.trim())) {
+          console.error(
+            'Error: --delta requires --start and --end for the initial sync (or pass --next / use a state file with a saved URL).'
+          );
+          process.exit(1);
+        }
+        const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
+        if (!organizerUserId) {
+          console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');
+          process.exit(1);
+        }
+        const topParsed = parseOptionalRecordingsTop(opts.top);
         await runMeetingDelta({
           auth: accessToken,
           kind: 'meetingRecordings',
           stateFile: opts.stateFile,
           explicitNext: opts.next,
           json: opts.json,
-          fetchPage: (pageUrl) => getRecordingsDeltaPage(accessToken, pageUrl, opts.user),
+          fetchPage: (pageUrl) =>
+            getRecordingsDeltaPage(accessToken, {
+              pageUrl,
+              user: opts.user,
+              initial: pageUrl?.trim()
+                ? undefined
+                : {
+                    organizerUserId,
+                    startDateTime: opts.start ?? '',
+                    endDateTime: opts.end ?? '',
+                    top: topParsed
+                  }
+            }),
           renderItem: (it: CallRecording) => renderRecording(it),
           scope: { user: opts.user }
         });
@@ -324,13 +381,19 @@ recordingsBaseFlags(meetingCommand.command('recordings-all'))
           process.exit(1);
         }
       }
-      const organizer = opts.organizer?.trim() || opts.user?.trim() || 'me';
+      const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
+      if (!organizerUserId) {
+        console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');
+        process.exit(1);
+      }
+      const topParsed = parseOptionalRecordingsTop(opts.top);
       const r = await getAllRecordings(accessToken, {
-        organizerUserId: organizer === 'me' ? '' : organizer,
+        organizerUserId,
         start: opts.start ?? '',
         end: opts.end ?? '',
         user: opts.user,
-        pageUrl: opts.next
+        pageUrl: opts.next,
+        top: topParsed
       });
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message ?? 'getAllRecordings failed'}`);
@@ -422,14 +485,15 @@ recordingsBaseFlags(meetingCommand.command('transcript-download <meetingId> <tra
 
 recordingsBaseFlags(meetingCommand.command('transcripts-all'))
   .description(
-    'Tenant-wide / per-organizer transcripts (`getAllTranscripts(...)`). With `--delta`, switches to `transcripts/delta()` + `--state-file`. Requires `OnlineMeetingTranscript.Read.All`.'
+    'Tenant-wide / per-organizer transcripts (`getAllTranscripts(...)`). With `--delta`, uses `getAllTranscripts(...)/delta` + `--state-file`. Requires `OnlineMeetingTranscript.Read.All`.'
   )
   .option('--organizer <upn-or-id>', 'Meeting organizer (defaults to the signed-in user)')
   .option('--start <iso>', 'Start window (required unless --delta)')
   .option('--end <iso>', 'End window (required unless --delta)')
   .option('--next <url>', 'Follow `@odata.nextLink` from a previous page')
-  .option('--delta', 'Use `transcripts/delta()` for incremental sync')
+  .option('--delta', 'Use `getAllTranscripts(...)/delta` for incremental sync')
   .option('--state-file <path>', '(With --delta) read/write JSON delta cursor (kind: meetingTranscripts)')
+  .option('--top <n>', 'Limit per page (Graph $top) — applies to non-delta calls')
   .action(
     async (
       opts: RecordingsBaseOpts & {
@@ -439,6 +503,7 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
         next?: string;
         delta?: boolean;
         stateFile?: string;
+        top?: string;
       }
     ) => {
       const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
@@ -448,13 +513,39 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
       }
       const accessToken = auth.token;
       if (opts.delta) {
+        const existingForCont = opts.stateFile?.trim() ? await readDeltaStateFile(opts.stateFile.trim()) : null;
+        const continueUrl = resolveDeltaContinuationUrl({ explicitNext: opts.next, state: existingForCont });
+        if (!continueUrl && (!opts.start?.trim() || !opts.end?.trim())) {
+          console.error(
+            'Error: --delta requires --start and --end for the initial sync (or pass --next / use a state file with a saved URL).'
+          );
+          process.exit(1);
+        }
+        const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
+        if (!organizerUserId) {
+          console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');
+          process.exit(1);
+        }
+        const topParsed = parseOptionalRecordingsTop(opts.top);
         await runMeetingDelta({
           auth: accessToken,
           kind: 'meetingTranscripts',
           stateFile: opts.stateFile,
           explicitNext: opts.next,
           json: opts.json,
-          fetchPage: (pageUrl) => getTranscriptsDeltaPage(accessToken, pageUrl, opts.user),
+          fetchPage: (pageUrl) =>
+            getTranscriptsDeltaPage(accessToken, {
+              pageUrl,
+              user: opts.user,
+              initial: pageUrl?.trim()
+                ? undefined
+                : {
+                    organizerUserId,
+                    startDateTime: opts.start ?? '',
+                    endDateTime: opts.end ?? '',
+                    top: topParsed
+                  }
+            }),
           renderItem: (it: CallTranscript) => renderTranscript(it),
           scope: { user: opts.user }
         });
@@ -466,13 +557,19 @@ recordingsBaseFlags(meetingCommand.command('transcripts-all'))
           process.exit(1);
         }
       }
-      const organizer = opts.organizer?.trim() || opts.user?.trim() || 'me';
+      const organizerUserId = await resolveMeetingOrganizerUserId(accessToken, opts.organizer, opts.user);
+      if (!organizerUserId) {
+        console.error('Error: could not resolve meeting organizer (try --organizer <upn-or-id>).');
+        process.exit(1);
+      }
+      const topParsed = parseOptionalRecordingsTop(opts.top);
       const r = await getAllTranscripts(accessToken, {
-        organizerUserId: organizer === 'me' ? '' : organizer,
+        organizerUserId,
         start: opts.start ?? '',
         end: opts.end ?? '',
         user: opts.user,
-        pageUrl: opts.next
+        pageUrl: opts.next,
+        top: topParsed
       });
       if (!r.ok || !r.data) {
         console.error(`Error: ${r.error?.message ?? 'getAllTranscripts failed'}`);

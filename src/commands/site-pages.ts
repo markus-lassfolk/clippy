@@ -63,32 +63,38 @@ sitePagesCommand
   .option('--beta', 'Use Microsoft Graph beta API host for this call', false)
   .option('--token <token>', 'Use a specific Graph token')
   .option('--identity <name>', 'Graph token cache identity (default: default)')
-  .action(async (siteId: string, pageId: string, options: { json?: boolean; beta?: boolean; token?: string; identity?: string }) => {
-    const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
-    if (!auth.success) {
-      console.error(`Error: ${auth.error}`);
-      process.exit(1);
-    }
+  .action(
+    async (
+      siteId: string,
+      pageId: string,
+      options: { json?: boolean; beta?: boolean; token?: string; identity?: string }
+    ) => {
+      const auth = await resolveGraphAuth({ token: options.token, identity: options.identity });
+      if (!auth.success) {
+        console.error(`Error: ${auth.error}`);
+        process.exit(1);
+      }
 
-    const result = await getSitePage(auth.token!, siteId, pageId, pagesApi(options));
-    if (!result.ok || !result.data) {
-      console.error(`Error: ${result.error?.message || 'Request failed'}`);
-      process.exit(1);
-    }
+      const result = await getSitePage(auth.token!, siteId, pageId, pagesApi(options));
+      if (!result.ok || !result.data) {
+        console.error(`Error: ${result.error?.message || 'Request failed'}`);
+        process.exit(1);
+      }
 
-    if (options.json) {
-      console.log(JSON.stringify(result.data, null, 2));
-      return;
-    }
+      if (options.json) {
+        console.log(JSON.stringify(result.data, null, 2));
+        return;
+      }
 
-    console.log(`ID: ${result.data.id}`);
-    console.log(`Name: ${result.data.name || '-'}`);
-    console.log(`Title: ${result.data.title || '-'}`);
-    console.log(`Web URL: ${result.data.webUrl || '-'}`);
-    if (result.data.publishingState) {
-      console.log(`State: ${result.data.publishingState.level} (v${result.data.publishingState.versionId})`);
+      console.log(`ID: ${result.data.id}`);
+      console.log(`Name: ${result.data.name || '-'}`);
+      console.log(`Title: ${result.data.title || '-'}`);
+      console.log(`Web URL: ${result.data.webUrl || '-'}`);
+      if (result.data.publishingState) {
+        console.log(`State: ${result.data.publishingState.level} (v${result.data.publishingState.versionId})`);
+      }
     }
-  });
+  );
 
 sitePagesCommand
   .command('update <siteId> <pageId>')

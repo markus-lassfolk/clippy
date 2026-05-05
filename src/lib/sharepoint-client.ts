@@ -1,9 +1,9 @@
 import {
-  callGraphAt,
   callGraphAbsolute,
+  callGraphAt,
   fetchAllPages,
-  GraphApiError,
   GRAPH_BASE_URL,
+  GraphApiError,
   type GraphResponse,
   graphError,
   graphResult
@@ -22,8 +22,13 @@ export async function getSiteByGraphPath(
   sitePath: string,
   apiBase: string = GRAPH_BASE_URL
 ): Promise<GraphResponse<SharePointSiteSummary>> {
-  const encoded = encodeURIComponent(sitePath.trim());
-  return callGraphAt<SharePointSiteSummary>(apiBase, token, `/sites/${encoded}`);
+  const raw = sitePath.trim();
+  if (!raw) {
+    return graphError('sitePath is required');
+  }
+  // Graph expects `hostname:/server-relative-path` with `:` and `/` preserved — not a single encoded segment.
+  const pathSegment = encodeURI(raw);
+  return callGraphAt<SharePointSiteSummary>(apiBase, token, `/sites/${pathSegment}`);
 }
 
 export async function getSiteDefaultDriveId(
@@ -59,11 +64,7 @@ export async function getLists(
 ): Promise<GraphResponse<SharePointList[]>> {
   let res: GraphResponse<{ value: SharePointList[] }>;
   try {
-    res = await callGraphAt<{ value: SharePointList[] }>(
-      apiBase,
-      token,
-      `/sites/${encodeURIComponent(siteId)}/lists`
-    );
+    res = await callGraphAt<{ value: SharePointList[] }>(apiBase, token, `/sites/${encodeURIComponent(siteId)}/lists`);
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphError(err.message, err.code, err.status);
