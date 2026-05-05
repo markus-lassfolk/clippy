@@ -35,7 +35,7 @@
 | `outlook-graph` | `src/commands/outlook-graph.ts` | yes | yes |
 | `people` | `src/commands/people.ts` | yes | no |
 | `planner` | `src/commands/planner.ts` | yes | yes |
-| `powerpoint` | `src/commands/powerpoint.ts` | yes | no |
+| `powerpoint` | `src/commands/powerpoint.ts` | yes | yes |
 | `presence` | `src/commands/presence.ts` | yes | yes |
 | `respond` | `src/commands/respond.ts` | yes | yes |
 | `rooms` | `src/commands/rooms.ts` | yes | no |
@@ -57,7 +57,7 @@
 | `viva-tenant-subcommands` | `src/commands/viva-tenant-subcommands.ts` | yes | yes |
 | `viva` | `src/commands/viva.ts` | yes | yes |
 | `whoami` | `src/commands/whoami.ts` | yes | no |
-| `word` | `src/commands/word.ts` | yes | no |
+| `word` | `src/commands/word.ts` | yes | yes |
 
 _`--json`_: heuristic match for `.option(..., '--json'` or similar in the command module (subcommands vary)._
 _`checkReadOnly`_: module calls the guard for at least one mutating path; see [CLI_REFERENCE.md](./CLI_REFERENCE.md) for the authoritative read-only action list._

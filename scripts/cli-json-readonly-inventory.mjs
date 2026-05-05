@@ -33,17 +33,22 @@ function fileUsesJsonOption(filePath) {
 }
 const officeSharedPath = join(commandsDir, 'office-docs-shared.ts');
 const officeSharedHasJson = fileUsesJsonOption(officeSharedPath);
+const officeMirrorPath = join(commandsDir, 'office-docs-drive-mirror.ts');
+const officeMirrorHasReadOnly = readFileSync(officeMirrorPath, 'utf8').includes('checkReadOnly(');
 
 const rows = [];
 for (const f of files) {
   const fullPath = join(commandsDir, f);
   const content = readFileSync(fullPath, 'utf8');
   let hasJson = fileUsesJsonOption(fullPath);
-  const hasReadOnly = content.includes('checkReadOnly(');
+  let hasReadOnly = content.includes('checkReadOnly(');
   const m = content.match(/export const \w+Command = new Command\(\s*['"]([^'"]+)['"]/);
   const cmdName = m ? m[1] : f.replace(/\.ts$/, '');
   if ((cmdName === 'word' || cmdName === 'powerpoint') && officeSharedHasJson) {
     hasJson = true;
+  }
+  if ((cmdName === 'word' || cmdName === 'powerpoint') && officeMirrorHasReadOnly) {
+    hasReadOnly = true;
   }
   rows.push({ file: f, cmdName, hasJson: hasJson ? 'yes' : 'no', hasReadOnly: hasReadOnly ? 'yes' : 'no' });
 }
