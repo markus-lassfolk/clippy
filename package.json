@@ -42,7 +42,7 @@
     "report:coverage:lib-gaps": "node scripts/report-lib-coverage-gaps.mjs",
     "postinstall": "node scripts/install-openclaw-skill.mjs",
     "test": "node scripts/run-bun-test.mjs test --isolate",
-    "test:coverage": "node scripts/run-bun-test.mjs test --isolate --coverage --coverage-reporter=lcov --coverage-reporter=text"
+    "test:coverage": "node scripts/run-bun-test.mjs test --isolate --parallel=1 --coverage --coverage-reporter=lcov --coverage-reporter=text"
   },
   "files": [
     "src",

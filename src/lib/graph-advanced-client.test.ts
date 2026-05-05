@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  type GraphBatchRequestBody,
-  graphInvoke,
-  graphInvokeText,
-  graphPostBatch,
-  parseGraphInvokeHeaders
-} from './graph-advanced-client.js';
+import type { GraphBatchRequestBody } from './graph-advanced-client.js';
+
+/** Bypasses `mock.module('./graph-advanced-client.js', …)` used in copilot invoke tests (same specifier = mocked). */
+const ga = await import(new URL('./graph-advanced-client.js?contractTest=1', import.meta.url).href);
+const { graphInvoke, graphInvokeText, graphPostBatch, parseGraphInvokeHeaders } = ga;
 
 describe('parseGraphInvokeHeaders', () => {
   it('parses Name: value with first colon as separator', () => {
