@@ -36,6 +36,7 @@ export async function uploadBufferViaGraphUploadUrl(
     const contentRange = `bytes ${start}-${end - 1}/${total}`;
     let response: Response;
     try {
+      // codeql[js/file-access-to-http]: Chunked PUT to Graph-provided uploadUrl; body is the caller's attachment bytes, not arbitrary file exfiltration.
       response = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {

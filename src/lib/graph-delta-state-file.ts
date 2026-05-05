@@ -79,6 +79,7 @@ export async function readDeltaStateFile(path: string): Promise<DeltaStateFileV1
 
 export async function writeDeltaStateFile(path: string, state: DeltaStateFileV1): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
+  // codeql[js/http-to-file-access]: Persists Graph delta cursors (next/delta links) as JSON for incremental sync; content is not executed as code.
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }
 

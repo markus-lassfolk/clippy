@@ -19,6 +19,17 @@ interface BaseOpts {
   identity?: string;
 }
 
+/** Strip HTML tags for terminal preview (repeat until stable so nested/obfuscated tags are removed). */
+function stripHtmlTagsForConsole(html: string): string {
+  let cur = html;
+  let prev = '';
+  while (cur !== prev) {
+    prev = cur;
+    cur = cur.replace(/<[^>]+>/g, '');
+  }
+  return cur.replace(/\s+/g, ' ').trim();
+}
+
 const baseFlags = (cmd: Command) =>
   cmd
     .option('--json', 'Output as JSON')
@@ -27,7 +38,7 @@ const baseFlags = (cmd: Command) =>
 
 baseFlags(groupsCommand.command('list'))
   .description(
-    'List Microsoft 365 / Outlook groups the user belongs to (`GET /me/memberOf/microsoft.graph.group?$filter=groupTypes/any(c:c eq \'Unified\')`). Sends `ConsistencyLevel: eventual` per Graph rules.'
+    "List Microsoft 365 / Outlook groups the user belongs to (`GET /me/memberOf/microsoft.graph.group?$filter=groupTypes/any(c:c eq 'Unified')`). Sends `ConsistencyLevel: eventual` per Graph rules."
   )
   .option('--top <n>', 'Limit results (Graph $top, max 200)')
   .action(async (opts: BaseOpts & { top?: string }) => {
@@ -133,52 +144,43 @@ baseFlags(groupsCommand.command('thread <groupId> <conversationId>'))
   });
 
 baseFlags(groupsCommand.command('posts <groupId> <conversationId> <threadId>'))
-  .description(
-    'List posts in a group thread (`GET /groups/{id}/conversations/{id}/threads/{id}/posts`).'
-  )
+  .description('List posts in a group thread (`GET /groups/{id}/conversations/{id}/threads/{id}/posts`).')
   .option('--top <n>', 'Limit results (Graph $top, max 200)')
-  .action(
-    async (
-      groupId: string,
-      conversationId: string,
-      threadId: string,
-      opts: BaseOpts & { top?: string }
-    ) => {
-      const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
-      if (!auth.success || !auth.token) {
-        console.error(`Auth error: ${auth.error}`);
-        process.exit(1);
-      }
-      const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
-      if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
-        console.error('Error: --top must be a positive integer');
-        process.exit(1);
-      }
-      const r = await listThreadPosts(auth.token, groupId, conversationId, threadId, { top });
-      if (!r.ok || !r.data) {
-        console.error(`Error: ${r.error?.message ?? 'posts failed'}`);
-        process.exit(1);
-      }
-      const items = r.data.value ?? [];
-      if (opts.json) {
-        console.log(JSON.stringify({ value: items }, null, 2));
-        return;
-      }
-      if (items.length === 0) {
-        console.log('No posts.');
-        return;
-      }
-      for (const p of items) {
-        const sender = p.from?.emailAddress?.address ?? p.sender?.emailAddress?.address ?? '';
-        console.log(`${p.id}\t${p.receivedDateTime ?? p.createdDateTime ?? ''}\t${sender}`);
-        const c = p.body?.content;
-        if (c) {
-          const stripped = c.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-          if (stripped) console.log(`  ${stripped.slice(0, 200)}${stripped.length > 200 ? '…' : ''}`);
-        }
+  .action(async (groupId: string, conversationId: string, threadId: string, opts: BaseOpts & { top?: string }) => {
+    const auth = await resolveGraphAuth({ token: opts.token, identity: opts.identity });
+    if (!auth.success || !auth.token) {
+      console.error(`Auth error: ${auth.error}`);
+      process.exit(1);
+    }
+    const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
+    if (opts.top && (!Number.isFinite(top) || (top as number) <= 0)) {
+      console.error('Error: --top must be a positive integer');
+      process.exit(1);
+    }
+    const r = await listThreadPosts(auth.token, groupId, conversationId, threadId, { top });
+    if (!r.ok || !r.data) {
+      console.error(`Error: ${r.error?.message ?? 'posts failed'}`);
+      process.exit(1);
+    }
+    const items = r.data.value ?? [];
+    if (opts.json) {
+      console.log(JSON.stringify({ value: items }, null, 2));
+      return;
+    }
+    if (items.length === 0) {
+      console.log('No posts.');
+      return;
+    }
+    for (const p of items) {
+      const sender = p.from?.emailAddress?.address ?? p.sender?.emailAddress?.address ?? '';
+      console.log(`${p.id}\t${p.receivedDateTime ?? p.createdDateTime ?? ''}\t${sender}`);
+      const c = p.body?.content;
+      if (c) {
+        const stripped = stripHtmlTagsForConsole(c);
+        if (stripped) console.log(`  ${stripped.slice(0, 200)}${stripped.length > 200 ? '…' : ''}`);
       }
     }
-  );
+  });
 
 baseFlags(groupsCommand.command('post-reply <groupId> <conversationId> <threadId> <postId>'))
   .description(

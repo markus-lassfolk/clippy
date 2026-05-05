@@ -84,29 +84,17 @@ export async function listMeetingTranscripts(
 }
 
 /** `GET /me/onlineMeetings/{id}/recordings/{recordingId}/content` — binary stream. */
-export function recordingContentPath(
-  meetingId: string,
-  recordingId: string,
-  user?: string
-): string {
+export function recordingContentPath(meetingId: string, recordingId: string, user?: string): string {
   return `${meetingsRoot(user)}/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}/content`;
 }
 
 /** `GET /me/onlineMeetings/{id}/transcripts/{transcriptId}/content` — VTT stream. */
-export function transcriptContentPath(
-  meetingId: string,
-  transcriptId: string,
-  user?: string
-): string {
+export function transcriptContentPath(meetingId: string, transcriptId: string, user?: string): string {
   return `${meetingsRoot(user)}/${encodeURIComponent(meetingId)}/transcripts/${encodeURIComponent(transcriptId)}/content`;
 }
 
 /** `GET .../transcripts/{id}/metadataContent` — time-aligned utterance metadata. */
-export function transcriptMetadataContentPath(
-  meetingId: string,
-  transcriptId: string,
-  user?: string
-): string {
+export function transcriptMetadataContentPath(meetingId: string, transcriptId: string, user?: string): string {
   return `${meetingsRoot(user)}/${encodeURIComponent(meetingId)}/transcripts/${encodeURIComponent(transcriptId)}/metadataContent`;
 }
 
@@ -196,6 +184,7 @@ async function streamResponseToFile(body: ReadableStream<Uint8Array>, filePath: 
         await unlink(filePath).catch(() => {});
         throw new Error(`Download exceeded ${MAX_DOWNLOAD_BYTES} bytes`);
       }
+      // codeql[js/http-to-file-access]: Writes authenticated Graph/stream media bytes to user-chosen output with host allowlist and size cap.
       if (!stream.write(chunk)) {
         await new Promise<void>((res, rej) => {
           stream.once('drain', res);

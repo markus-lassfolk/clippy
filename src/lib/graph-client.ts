@@ -6,25 +6,25 @@ import { basename, dirname, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import type { DriveLocation } from './drive-location.js';
 import {
-  DEFAULT_DRIVE_LOCATION,
   buildDriveFolderOrRootPath,
+  DEFAULT_DRIVE_LOCATION,
   driveDeltaStartPath,
   driveItemPath,
   driveRootSearchPath
 } from './drive-location.js';
 import { GRAPH_BASE_URL } from './graph-constants.js';
 
-export { GRAPH_BASE_URL };
 export type { DriveLocation } from './drive-location.js';
 export {
-  DEFAULT_DRIVE_LOCATION,
   buildDriveFolderOrRootPath,
+  DEFAULT_DRIVE_LOCATION,
   driveDeltaStartPath,
   driveItemPath,
   driveLocationFromCliFlags,
   driveRootPrefix,
   driveRootSearchPath
 } from './drive-location.js';
+export { GRAPH_BASE_URL };
 
 /** Default 60s; override with `GRAPH_TIMEOUT_MS` (milliseconds). */
 const GRAPH_TIMEOUT_MS = Number(process.env.GRAPH_TIMEOUT_MS) > 0 ? Number(process.env.GRAPH_TIMEOUT_MS) : 60_000;
@@ -265,8 +265,7 @@ interface ParsedGraphFailure {
 }
 
 async function parseGraphFailureResponse(response: Response): Promise<ParsedGraphFailure> {
-  const requestId =
-    response.headers.get('request-id') || response.headers.get('client-request-id') || undefined;
+  const requestId = response.headers.get('request-id') || response.headers.get('client-request-id') || undefined;
   let message = `Graph request failed: HTTP ${response.status}`;
   let code: string | undefined;
   let innerError: GraphInnerError | undefined;
@@ -366,15 +365,10 @@ export async function fetchAllPages<T>(
       return graphError(err instanceof Error ? err.message : errorMessage) as GraphResponse<T[]>;
     }
     if (!result.ok || !result.data) {
-      return graphError(
-        result.error?.message || errorMessage,
-        result.error?.code,
-        result.error?.status,
-        {
-          requestId: result.error?.requestId,
-          innerError: result.error?.innerError
-        }
-      ) as GraphResponse<T[]>;
+      return graphError(result.error?.message || errorMessage, result.error?.code, result.error?.status, {
+        requestId: result.error?.requestId,
+        innerError: result.error?.innerError
+      }) as GraphResponse<T[]>;
     }
     items.push(...(result.data.value || []));
     const nextLink = result.data['@odata.nextLink'];
@@ -430,11 +424,7 @@ async function callGraphUrlWithRetries<T>(
       } else if (expectJson) {
         headers.set('Accept', 'application/json');
       }
-      if (
-        fetchInit.body &&
-        !(fetchInit.body instanceof Uint8Array) &&
-        !(fetchInit.body instanceof ArrayBuffer)
-      ) {
+      if (fetchInit.body && !(fetchInit.body instanceof Uint8Array) && !(fetchInit.body instanceof ArrayBuffer)) {
         headers.set('Content-Type', 'application/json');
       }
       if (existingHeaders) {
@@ -443,6 +433,7 @@ async function callGraphUrlWithRetries<T>(
         });
       }
 
+      // codeql[js/file-access-to-http]: Same Graph client fetch; body is JSON or explicit upload payload from callers, not silent reads of unrelated local files.
       response = await fetch(fullUrl, {
         ...fetchRest,
         method,
@@ -486,13 +477,7 @@ async function callGraphUrlWithRetries<T>(
         await delayBeforeThrottleRetry(response.headers, throttleAttempt);
         continue;
       }
-      throw new GraphApiError(
-        parsed.message,
-        parsed.code,
-        response.status,
-        parsed.requestId,
-        parsed.innerError
-      );
+      throw new GraphApiError(parsed.message, parsed.code, response.status, parsed.requestId, parsed.innerError);
     }
 
     if (responseMode === 'text') {
@@ -1024,14 +1009,10 @@ export async function shareFile(
 ): Promise<GraphResponse<SharingLinkResult>> {
   let result: GraphResponse<{ link?: SharingLinkResult }>;
   try {
-    result = await callGraph<{ link?: SharingLinkResult }>(
-      token,
-      `${driveItemPath(location, itemId)}/createLink`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ type, scope })
-      }
-    );
+    result = await callGraph<{ link?: SharingLinkResult }>(token, `${driveItemPath(location, itemId)}/createLink`, {
+      method: 'POST',
+      body: JSON.stringify({ type, scope })
+    });
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1049,12 +1030,7 @@ export async function checkoutFile(
   location: DriveLocation = DEFAULT_DRIVE_LOCATION
 ): Promise<GraphResponse<void>> {
   try {
-    return await callGraph<void>(
-      token,
-      `${driveItemPath(location, itemId)}/checkout`,
-      { method: 'POST' },
-      false
-    );
+    return await callGraph<void>(token, `${driveItemPath(location, itemId)}/checkout`, { method: 'POST' }, false);
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);
@@ -1456,10 +1432,7 @@ export async function getDriveItemDeltaPage(
     if (options.nextOrDeltaLink?.trim()) {
       return await callGraphAbsolute<DriveDeltaPage>(token, options.nextOrDeltaLink.trim());
     }
-    return await callGraph<DriveDeltaPage>(
-      token,
-      driveDeltaStartPath(options.location, options.folderItemId)
-    );
+    return await callGraph<DriveDeltaPage>(token, driveDeltaStartPath(options.location, options.folderItemId));
   } catch (err) {
     if (err instanceof GraphApiError) {
       return graphErrorFromApiError(err);

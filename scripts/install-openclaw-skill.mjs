@@ -2,8 +2,9 @@
 /**
  * Copy the bundled OpenClaw skill (`skills/m365-agent-cli`) into a target skills directory.
  *
- * Opt-in postinstall: when `npm_lifecycle_event` is `postinstall` and `OPENCLAW_SKILLS_DIR`
- * is unset or empty, this script exits 0 without doing anything.
+ * Opt-in during installs: when no target directory is given and the process is clearly an
+ * `install`/`ci` run (or CI), this script exits 0. Bun often omits `npm_lifecycle_event` for root
+ * lifecycles, so we also treat `npm_command=install|ci` as install context.
  *
  * Manual: `node node_modules/m365-agent-cli/scripts/install-openclaw-skill.mjs ~/.openclaw/workspace/skills`
  *     or: `OPENCLAW_SKILLS_DIR=... npm install` (postinstall runs this file).
@@ -17,7 +18,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(__dirname, '..');
 const sourceSkill = join(pkgRoot, 'skills', 'm365-agent-cli');
 
-const isPostinstall = process.env.npm_lifecycle_event === 'postinstall';
+/** True when the package manager is installing and skill copy is optional (opt-in via OPENCLAW_SKILLS_DIR). */
+function shouldNoopWhenNoTargetDir() {
+  const ev = process.env.npm_lifecycle_event;
+  if (ev === 'postinstall' || ev === 'prepare') return true;
+  // npm/yarn set npm_command for the top-level install session; Bun often omits npm_lifecycle_event for root lifecycles.
+  const cmd = process.env.npm_command;
+  if (cmd === 'install' || cmd === 'ci') return true;
+  if (process.env.CI) return true;
+  return false;
+}
 
 /** @param {string} p */
 function expandUser(p) {
@@ -47,12 +57,11 @@ function main() {
   const envDir = process.env.OPENCLAW_SKILLS_DIR?.trim();
   const argDir = process.argv[2]?.trim();
 
-  if (isPostinstall && !envDir) {
-    return;
-  }
-
   const target = envDir || argDir;
   if (!target) {
+    if (shouldNoopWhenNoTargetDir()) {
+      return;
+    }
     console.error(
       'install-openclaw-skill: pass the OpenClaw skills directory as the first argument, or set OPENCLAW_SKILLS_DIR.\n' +
         'Example: node scripts/install-openclaw-skill.mjs ~/.openclaw/workspace/skills\n' +
@@ -63,7 +72,9 @@ function main() {
 
   try {
     const dest = copyOpenclawSkill(target);
-    if (!isPostinstall) {
+    const quietLifecycle =
+      process.env.npm_lifecycle_event === 'postinstall' || process.env.npm_lifecycle_event === 'prepare';
+    if (!quietLifecycle) {
       console.log(`install-openclaw-skill: copied bundled skill to ${dest}`);
     }
   } catch (e) {
