@@ -82,6 +82,7 @@ jobs:
           name: coverage-report
           path: coverage/
           if-no-files-found: ignore
+          retention-days: 7
 
   security:
     name: Security & secrets
@@ -105,8 +106,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Keep Trivy's DB cache stable instead of minting date-keyed cache entries on
+      # every scheduled run. The workflow hash refreshes safely when this setup changes,
+      # and the restore prefix lets new keys reuse the previous DB snapshot.
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: ${{ runner.os }}-trivy-db-v1-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-db-v1-
+
       - name: Trivy (filesystem, HIGH+CRITICAL)
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'fs'
           ignore-unfixed: true
